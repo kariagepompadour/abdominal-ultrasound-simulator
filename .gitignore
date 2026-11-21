@@ -1,0 +1,16 @@
+# Local TLS material and other secrets
+*.pem
+*.key
+*.p12
+*.pfx
+.env
+.env.*
+!.env.example
+
+# Local and generated files
+.DS_Store
+__pycache__/
+*.py[cod]
+.venv/
+local_tls/
+dist/

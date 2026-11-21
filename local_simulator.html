@@ -1,0 +1,2596 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Abdominal Ultrasound Simulator v43</title>
+<script src="vendor/qrcode.min.js"></script>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-user-select: none; }
+  body { background: #0d1117; color: #e6edf3; font-family: -apple-system, BlinkMacSystemFont, sans-serif; height: 100dvh; overflow: hidden; }
+  #pcView { display: flex; flex-direction: column; height: 100dvh; }
+  header { background: #161b22; padding: 8px 16px; border-bottom: 1px solid #30363d; display: flex; flex-direction: column; align-items: stretch; gap: 7px; }
+  header h1 { font-size: 15px; font-weight: 600; color: #58a6ff; }
+  .header-main { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .toolbar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .zone-toolbar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; border-top: 1px solid #30363d; padding-top: 7px; }
+  .zone-toolbar-label { color: #79c0ff; font-size: 11px; font-weight: bold; margin-right: 4px; }
+  button { background: #21262d; color: #c9d1d9; border: 1px solid #30363d; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+  button:hover { background: #30363d; border-color: #8b949e; }
+  button.active { background: #1f6feb; color: #fff; border-color: #388bfd; }
+  button.freeze-active { background: #da3633; color: #fff; border-color: #f85149; font-weight: bold; }
+  button.press-active { background: #d29922; color: #0d1117; border-color: #e3b341; font-weight: bold; }
+  button.anatomy-btn.active { background: #8957e5; color: #fff; }
+  button.dev-btn { background: #238636; color: #fff; font-weight: bold; }
+  button.dev-btn.connected { background: #1f6feb; }
+  button.lang-btn { background: #30363d; color: #f0f6fc; border: 1px solid #8b949e; font-weight: bold; }
+  main { display: flex; flex: 1; padding: 12px; gap: 12px; overflow: hidden; }
+  .left-panel { width: 330px; background: #161b22; border: 1px solid #30363d; border-radius: 8px; display: flex; flex-direction: column; padding: 10px; gap: 8px; overflow-y: auto; }
+  .mode-banner { text-align: center; padding: 5px; border-radius: 6px; font-weight: bold; font-size: 12px; line-height: 1.35; white-space: pre-line; background: rgba(63, 185, 80, 0.15); color: #3fb950; border: 1px solid #3fb950; flex-shrink: 0; }
+  .mode-banner.moving { background: rgba(240, 136, 62, 0.2); color: #f0883e; border-color: #f0883e; }
+  #btnMobileQR { width: 100%; min-height: 34px; flex-shrink: 0; }
+  .body-step-hint { color: #8b949e; font-size: 10px; line-height: 1.35; flex-shrink: 0; }
+  .body-panel { width: 100%; flex-shrink: 0; }
+  .body-overlay-title { color: #79c0ff; font-size: 11px; font-weight: bold; margin-bottom: 4px; }
+  .body-stage { position: relative; width: min(100%, 286px); margin: 0 auto; }
+  #bodyCanvas { width: 100%; height: auto; background: transparent; cursor: grab; display: block; }
+  .body-panel .body-step-hint { margin-top: 4px; }
+  .view-status { display: none; position: absolute; left: 50%; bottom: 52px; transform: translateX(-50%); z-index: 30; width: max-content; max-width: min(85%, 540px); background: rgba(13,17,23,0.91); border: 1px solid #e3b341; border-radius: 6px; color: #e3b341; text-align: center; padding: 6px 10px; line-height: 1.35; font-size: 11px; pointer-events: none; }
+  .controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; font-size: 11px; flex-shrink: 0; }
+  .control-box { background: #0d1117; padding: 5px 8px; border-radius: 6px; border: 1px solid #21262d; }
+  .control-box label { display: block; color: #8b949e; margin-bottom: 2px; }
+  .control-box input[type="range"] { width: 100%; }
+  .val-display { font-family: monospace; color: #58a6ff; float: right; }
+  .diagram-box { background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 6px; text-align: center; flex-shrink: 0; }
+  .diagram-title { font-size: 11px; font-weight: bold; color: #58a6ff; margin-bottom: 4px; }
+  #spatialCanvas { background: #090c10; border: 1px solid #21262d; border-radius: 4px; width: 100%; height: 185px; display: block; }
+  #vascular3DCanvas { background: #090c10; border: 1px solid #21262d; border-radius: 4px; width: 100%; height: 220px; display: block; }
+  .rule-box { font-size: 11px; color: #c9d1d9; background: #0d1117; padding: 7px 8px; border-radius: 6px; border: 1px solid #30363d; line-height: 1.45; flex-shrink: 0; }
+  .right-panel { flex: 1; min-width: 0; background: #000; border: 1px solid #30363d; border-radius: 8px; position: relative; display: flex; justify-content: center; align-items: center; overflow: hidden; }
+  #echoCanvas { max-width: 100%; max-height: 100%; }
+  .hud-overlay { position: absolute; top: 14px; left: 16px; font-family: monospace; font-size: 13px; color: #3fb950; pointer-events: none; line-height: 1.55; }
+  .hud-right { position: absolute; top: 14px; right: 16px; font-family: monospace; font-size: 13px; color: #8b949e; text-align: right; pointer-events: none; line-height: 1.55; }
+  .freeze-badge { position: absolute; bottom: 196px; right: 20px; background: #da3633; color: #fff; font-weight: bold; padding: 4px 12px; border-radius: 4px; display: none; }
+  .press-badge { position: absolute; bottom: 196px; right: 105px; background: #d29922; color: #0d1117; border-radius: 4px; font-weight: bold; padding: 4px 12px; display: none; }
+  .organ-legend { position: absolute; bottom: 14px; left: 16px; right: 16px; font-size: 11px; color: #8b949e; background: rgba(13, 17, 23, 0.85); padding: 6px 10px; border-radius: 6px; border: 1px solid #30363d; }
+
+  #qrModal { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.78); z-index: 100; justify-content: center; align-items: center; }
+  .qr-card { background: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 24px; text-align: center; max-width: 360px; width: 90%; }
+  .qr-card h2 { font-size: 16px; color: #58a6ff; margin-bottom: 8px; }
+  .qr-card p { font-size: 12px; color: #8b949e; margin-bottom: 16px; line-height: 1.5; }
+  #qrcode { background: #fff; padding: 14px; border-radius: 8px; display: inline-block; margin-bottom: 14px; }
+  .qr-url { font-size: 11px; color: #58a6ff; word-break: break-all; background: #0d1117; padding: 8px; border-radius: 4px; margin-bottom: 14px; font-family: monospace; user-select: text; -webkit-user-select: text; }
+  .schema-modal { display: none; position: fixed; inset: 0; z-index: 115; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; }
+  .schema-modal.open { display: flex; }
+  .schema-card { width: min(92vw, 520px); max-height: 90dvh; overflow-y: auto; padding: 16px; background: #161b22; border: 1px solid #484f58; border-radius: 12px; text-align: center; }
+  .schema-card h2 { font-size: 16px; color: #79c0ff; margin-bottom: 10px; }
+  .schema-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+  .schema-tabs button { flex: 1; min-height: 36px; }
+  .schema-tabs button.active { background: #1f6feb; color: #fff; border-color: #388bfd; }
+  .schema-pane { display: none; }
+  .schema-pane.active { display: block; }
+  .schema-pane canvas { position: static; display: block; width: min(100%, 380px); max-width: 100%; height: auto; margin: 0 auto; }
+  #schemaVascular3D #vascular3DCanvas { width: min(100%, 380px); height: auto; }
+  #schemaSpatial #spatialCanvas { width: min(100%, 380px); height: auto; }
+  .schema-note { color: #e3b341; font-size: 11px; line-height: 1.4; margin-top: 8px; }
+  .schema-card > button { width: 100%; margin-top: 12px; min-height: 32px; }
+
+  /* スマホ専用ブラインド操作画面 */
+  #mobileBlindRoot { display: none; flex-direction: column; height: 100dvh; padding: 10px 12px calc(14px + env(safe-area-inset-bottom)) 12px; gap: 10px; background: #090c10; touch-action: none; }
+  .m-header { display: flex; justify-content: space-between; align-items: center; background: #161b22; padding: 8px 12px; border-radius: 10px; border: 1px solid #30363d; flex-shrink: 0; }
+  .m-status { font-size: 12px; font-weight: bold; color: #3fb950; }
+  #btnSensorStart { width: 100%; padding: 16px; font-size: 16px; font-weight: bold; background: #238636; color: #fff; border: none; border-radius: 12px; flex-shrink: 0; }
+  .blind-pad-container { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+  .blind-zone { flex: 1; border-radius: 16px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 16px; transition: transform 0.06s, background 0.1s; }
+  .blind-zone-top { background: rgba(31, 111, 235, 0.22); border: 3px solid #388bfd; }
+  .blind-zone-top.active { background: #1f6feb; transform: scale(0.98); }
+  .blind-zone-bottom { background: rgba(218, 54, 51, 0.20); border: 3px solid #f85149; }
+  .blind-zone-bottom.active-tap { background: #da3633; transform: scale(0.98); }
+  .blind-zone-bottom.active-hold { background: #d29922; border-color: #e3b341; color: #0d1117; transform: scale(0.98); }
+  .bz-title { font-size: 20px; font-weight: bold; margin-bottom: 6px; }
+  .bz-sub { font-size: 12px; opacity: 0.85; line-height: 1.4; }
+  .m-footer-telemetry { text-align: center; font-family: monospace; font-size: 11px; color: #8b949e; background: #161b22; padding: 6px; border-radius: 8px; border: 1px solid #30363d; flex-shrink: 0; }
+  .m-zero-status { text-align: center; font-size: 12px; color: #d29922; flex-shrink: 0; }
+</style>
+<style>
+#liverSegCanvas, #vesselMiniCanvas { background: transparent !important; height: auto !important; }
+</style>
+</head>
+<body>
+<div id="pcView">
+  <header>
+    <div class="header-main">
+      <h1 id="appTitle">🩺 腹部エコーシミュレーター v43</h1>
+      <div class="toolbar">
+        <button id="btnResetZero" onclick="triggerZeroReset()">🔄 基準画像に戻す (R)</button>
+        <button id="btnPcFreeze" onclick="toggleFreeze()">⏸ FREEZE (F)</button>
+        <button id="btnPcPress" onmousedown="setPcPress(true)" onmouseup="setPcPress(false)" onmouseleave="setPcPress(false)">👇 圧迫 (P)</button>
+        <button id="btnStone" onclick="toggleStone()">胆石: OFF</button>
+        <button id="btnAnatomy" class="anatomy-btn active" onclick="toggleAnatomy()">🎯 画像内ラベル: ON</button>
+        <button id="btnSchemata" onclick="openSchemaWindow()">📚 解剖シェーマを別画面で見る</button>
+        <button id="btnLang" class="lang-btn" onclick="toggleLang()">🌐 日本語 / EN</button>
+      </div>
+    </div>
+    <div class="zone-toolbar" role="group" aria-labelledby="zoneToolbarLabel">
+      <span id="zoneToolbarLabel" class="zone-toolbar-label">走査部位</span>
+      <button id="btnPreEpTrans" onclick="selectZone('epigastric')">心窩部</button>
+      <button id="btnPreSubGb" onclick="selectZone('subcostal_gb')">右季肋部</button>
+      <button id="btnPreRtFlank" onclick="selectZone('right_flank')">右側腹部</button>
+      <button id="btnPreLtFlank" onclick="selectZone('left_flank')">左側腹部</button>
+      <button id="btnPreBladder" onclick="selectZone('pelvis_bladder')">下腹部</button>
+    </div>
+  </header>
+  <main>
+    <div class="left-panel">
+      <div id="modeBanner" class="mode-banner">PROBE READY<br>← → / Space：部位｜スマホ：角度<br>Shift＋矢印 / マウスドラッグ：位置調整</div>
+      <button id="btnMobileQR" class="dev-btn" onclick="openQRModal()">📱 スマホ接続 (QR)</button>
+      <div class="body-panel">
+        <div id="bodyOverlayTitle" class="body-overlay-title">ボディマーク（ドラッグで位置移動）</div>
+        <div class="body-stage">
+          <canvas id="bodyCanvas" width="286" height="195"></canvas>
+          <div id="bodyMouseHint" style="position:absolute; top:6px; right:6px; background:rgba(22,27,34,0.88); border:1px solid #484f58; color:#8b949e; font-size:10px; padding:2px 6px; border-radius:4px; pointer-events:none; display:flex; align-items:center; gap:3px;">🖱️ <span>移動</span></div>
+        </div>
+        <div id="bodyStepHint" class="body-step-hint">接触位置は選んだ部位の暫定的な目安です。</div>
+      </div>
+      <div class="controls-grid">
+        <div class="control-box"><label><span id="lblYaw">回転 (Yaw)</span> <span id="valYaw" class="val-display">0°</span></label><input type="range" id="sliderYaw" min="-90" max="90" value="0"></div>
+        <div class="control-box"><label><span id="lblPitch">頭尾煽り (Pitch)</span> <span id="valPitch" class="val-display">0°</span></label><input type="range" id="sliderPitch" min="-45" max="45" value="0"></div>
+        <div class="control-box"><label><span id="lblRoll">左右煽り (Roll)</span> <span id="valRoll" class="val-display">0°</span></label><input type="range" id="sliderRoll" min="-45" max="45" value="0"></div>
+        <div class="control-box"><label><span id="lblGain">ゲイン (Gain)</span> <span id="valGain" class="val-display">65</span></label><input type="range" id="sliderGain" min="30" max="100" value="65"></div>
+      </div>
+
+      <div class="rule-box" id="ruleBox"></div>
+    </div>
+    <div class="right-panel">
+      <canvas id="echoCanvas" width="760" height="580"></canvas>
+      <div class="hud-overlay" id="hudLeft"></div>
+      <div class="hud-right" id="hudRight"></div>
+      <div class="organ-legend" id="organLegend"></div>
+      <div id="viewStatus" class="view-status"></div>
+      <div class="press-badge" id="pressBadge">PRESS (ガス排除)</div>
+      <div class="freeze-badge" id="freezeBadge">FREEZE</div>
+    </div>
+  </main>
+</div>
+
+<div id="schemaModal" class="schema-modal" onclick="if(event.target===this) closeSchemaModal()" role="dialog" aria-modal="true" aria-labelledby="schemaTitle">
+  <div class="schema-card">
+    <h2 id="schemaTitle">解剖シェーマ</h2>
+    <canvas id="sectionCanvas" width="380" height="290" aria-label="現在の走査断面の模式図" hidden></canvas>
+    <canvas id="liverReferenceCanvas" width="430" height="300" aria-label="肝区域の走査面別模式図" hidden></canvas>
+    <canvas id="targetReferenceCanvas" width="430" height="300" aria-label="部位ごとの観察見本の模式図" hidden></canvas>
+    <div class="schema-tabs" role="tablist" aria-label="解剖シェーマ">
+      <button id="tabLiver" class="active" role="tab" aria-selected="true" aria-controls="schemaLiver" onclick="selectSchemaTab('liver')">肝区域</button>
+      <button id="tabVessel" role="tab" aria-selected="false" aria-controls="schemaVessel" onclick="selectSchemaTab('vessel')">血管走行</button>
+      <button id="tabVascular3D" role="tab" aria-selected="false" aria-controls="schemaVascular3D" onclick="selectSchemaTab('vascular3d')">血管3D</button>
+      <button id="tabSpatial" role="tab" aria-selected="false" aria-controls="schemaSpatial" onclick="selectSchemaTab('spatial')">相対チルト</button>
+    </div>
+    <div id="schemaLiver" class="schema-pane active" role="tabpanel" aria-labelledby="tabLiver">
+      <canvas id="liverSegCanvas" width="360" height="290" aria-label="肝区域の模式図"></canvas>
+    </div>
+    <div id="schemaVessel" class="schema-pane" role="tabpanel" aria-labelledby="tabVessel">
+      <canvas id="vesselMiniCanvas" width="380" height="310" aria-label="血管走行の模式図"></canvas>
+    </div>
+    <div id="schemaVascular3D" class="schema-pane" role="tabpanel" aria-labelledby="tabVascular3D">
+      <div class="diagram-title" id="vascular3DTitle">血管3D・チルト断面（模式図）</div>
+      <canvas id="vascular3DCanvas" width="290" height="220" aria-label="スマホの傾きと連動する血管3D模式図"></canvas>
+    </div>
+    <div id="schemaSpatial" class="schema-pane" role="tabpanel" aria-labelledby="tabSpatial">
+      <div class="diagram-title" id="spatialTitle">🧭 相対チルトとビーム軸（模式図）</div>
+      <canvas id="spatialCanvas" width="290" height="185"></canvas>
+      <p id="spatialNote" class="schema-note">スマホをタップした姿勢を相対0°として描画します。患者に対する絶対角度ではありません。</p>
+    </div>
+    <button id="btnSchemaClose" onclick="closeSchemaModal()">閉じる</button>
+  </div>
+</div>
+
+<div id="qrModal" onclick="if(event.target===this) closeQRModal()">
+  <div class="qr-card">
+    <h2 id="qrTitle">📱 スマホをプローブとして接続 (ローカル直接通信)</h2>
+    <p id="qrDesc">スマホとPCを同じネットワークに接続し、信頼済みHTTPS証明書で開いてからQRを読み取ってください。</p>
+    <div id="qrcode"></div>
+    <div class="qr-url" id="qrUrlText"></div>
+    <button id="qrCloseBtn" onclick="closeQRModal()" style="width:100%; padding:8px;">閉じる</button>
+  </div>
+</div>
+
+<div id="mobileBlindRoot">
+  <div class="m-header">
+    <span style="font-weight:bold; color:#58a6ff;">📱 BLIND PROBE (v43)</span>
+    <span id="mConnStatus" class="m-status">接続待機</span>
+  </div>
+  <button id="btnSensorStart" onclick="startMobileSensors()">センサー ＆ 操作音を有効にして開始</button>
+  <div class="blind-pad-container">
+    <div id="blindZoneTop" class="blind-zone blind-zone-top">
+      <div class="bz-title" id="bzTopTitle">🎯 上半分タップ：チルト開始／基準に戻す</div>
+      <div class="bz-sub" id="bzTopSub">1回目で今の姿勢を相対0°にして探索。2回目で基準画像に戻る</div>
+    </div>
+    <div id="blindZoneBottom" class="blind-zone blind-zone-bottom">
+      <div class="bz-title" id="bzBotTitle">⏸ 下半分タップ：FREEZE<br>👇 下半分長押し：圧迫</div>
+      <div class="bz-sub" id="bzBotSub">短押しでフリーズ切替 ／ 長押し中は消化管ガス排除</div>
+    </div>
+  </div>
+  <div class="m-zero-status" id="mZeroStatus">センサー開始待ち</div>
+  <div class="m-footer-telemetry" id="mTelemetry">基準から ROT: 0° | P: 0° | R: 0°</div>
+</div>
+
+<script>
+const urlParams = new URLSearchParams(window.location.search);
+const isMobileMode = urlParams.get('probe') === 'local';
+const isHostedMode = window.location.pathname === '/web';
+let webSession = isHostedMode && isMobileMode ? {
+  sid: urlParams.get('sid') || '',
+  token: new URLSearchParams(window.location.hash.slice(1)).get('token') || ''
+} : null;
+const initialLang = urlParams.get('lang') === 'en' ? 'en' : 'ja';
+const BOUNDS = { minX: -8.5, maxX: 8.5, minY: -6.5, maxY: 8.5 };
+
+function relayFetch(path, options = {}) {
+  if (!isHostedMode) return fetch(`/api/${path}`, options);
+  if (!webSession || !webSession.sid || !webSession.token) return Promise.reject(new Error('Web session is not ready'));
+  const headers = { ...options.headers, 'X-Simulator-Token': webSession.token };
+  return fetch(`/api/web/${path}?sid=${encodeURIComponent(webSession.sid)}`, { ...options, headers });
+}
+
+const I18N = {
+  ja: {
+    appTitle: '🩺 腹部エコーシミュレーター v43',
+    btnMobileQR: '📱 スマホ接続 (QR)',
+    btnMobileConn: '✅ スマホ直接接続中',
+    btnReset: '🔄 基準画像に戻す (R)',
+    btnSchemata: '📚 解剖シェーマを別画面で見る',
+    schemaTitle: '解剖シェーマ',
+    tabLiver: '肝区域',
+    tabVessel: '血管走行',
+    tabVascular3D: '血管3D',
+    tabSpatial: '相対チルト',
+    spatialNote: 'スマホをタップした姿勢を相対0°として描画します。患者に対する絶対角度ではありません。',
+    btnSchemaClose: '閉じる',
+    bodyOverlayTitle: 'ボディマーク（ドラッグで位置移動）',
+    btnFreeze: '⏸ FREEZE (F)',
+    btnPress: '👇 圧迫 (P)',
+    preEpTrans: '心窩部',
+    preEpLong: '心窩部縦',
+    preSubGb: '右季肋部',
+    preRtFlank: '右側腹部',
+    preLtFlank: '左側腹部',
+    preBladder: '下腹部',
+    zoneToolbarLabel: '走査部位',
+    stoneOn: '胆石: ON',
+    stoneOff: '胆石: OFF',
+    anatomyOn: '🎯 画像内ラベル: ON',
+    anatomyOff: '🎯 画像内ラベル: OFF',
+    langBtn: '🌐 日本語 / EN',
+    bannerReady: 'PROBE READY\n← → / Space：部位｜スマホ：角度\nShift＋矢印 / マウスドラッグ：位置調整',
+    bannerConn: (src) => `${src} 接続中\n← → / Space：部位｜スマホ：角度\nShift＋矢印 / マウスドラッグ：位置調整`,
+    lblYaw: '回転 (Yaw)',
+    lblPitch: '頭尾煽り (Pitch)',
+    lblRoll: '左右煽り (Roll)',
+    lblGain: 'ゲイン (Gain)',
+    spatialTitle: '🧭 相対チルトとビーム軸（模式図）',
+    ruleHtml: `<strong>【操作ガイド】</strong><br>
+      ・<strong>スマホの持ち方</strong>：タップした姿勢が相対0°。以後は同じ持ち方を保つ。患者に対する絶対角度ではありません<br>
+      ・<strong>スマホ上半分タップ</strong>：1回目で周辺チルト開始、2回目で基準画像に戻す<br>
+      ・<strong>スマホ下半分</strong>：短押しFREEZE・長押し圧迫<br>
+      ・<strong>左手(PC)</strong>：<code>←</code>前の部位 ／ <code>→</code>・<code>Space</code>次の部位 ／ <code>Shift</code>＋矢印で位置を0.5 cmずつ調整 ／ <code>F</code>=FREEZE ／ <code>P</code>長押し=圧迫<br>
+      ・⚠️ <strong>画面ロック注意</strong>：スマホがロックされると操作が効かなくなるため、自動ロック解除（画面点灯）にして使用してください`,
+    qrTitle: '📱 スマホをプローブとして接続 (ローカル直接通信)',
+    qrDesc: 'スマホとPCを同じネットワークに接続し、信頼済みHTTPS証明書で開いてからQRを読み取ってください。',
+    qrClose: '閉じる',
+    scanLong: '縦走査 (Long)',
+    scanTrans: '横走査 (Trans)',
+    markHead: 'H (頭側)',
+    markRight: 'R (患者右)',
+    legendPrefix: '描出中: ',
+    legendEmpty: '描出中: なし',
+    mStartBtn: 'センサー ＆ 操作音を有効にして開始',
+    bzTopTitle: '🎯 上半分タップ：チルト開始／基準に戻す',
+    bzTopSub: '1回目で今の姿勢を相対0°にして探索。2回目で基準画像に戻る',
+    zeroWaiting: 'センサー開始待ち',
+    zeroTemporary: '基準画像で待機中。上半分をタップしてチルト開始',
+    zeroReference: '周辺チルト中。上半分をタップして基準画像へ戻る',
+    zeroNoSensor: '姿勢センサーの値を待っています',
+    zeroTelemetry: '基準から',
+    bzBotTitle: '⏸ 下半分タップ：FREEZE\n👇 下半分長押し：圧迫',
+    bzBotSub: '短押しでフリーズ切替 ／ 長押し中は消化管ガス排除'
+  },
+  en: {
+    appTitle: '🩺 Abdominal Ultrasound Simulator v43',
+    btnMobileQR: '📱 Mobile Probe (QR)',
+    btnMobileConn: '✅ Mobile Connected',
+    btnReset: '🔄 Return to Reference View (R)',
+    btnSchemata: '📚 Open Anatomy Window',
+    schemaTitle: 'Anatomy Diagrams',
+    tabLiver: 'Liver Segments',
+    tabVessel: 'Vessel Course',
+    tabVascular3D: '3D Tilt Plane',
+    tabSpatial: 'Relative Tilt',
+    spatialNote: 'The phone pose at the first tap is relative 0°. This is not an absolute probe angle on the patient.',
+    btnSchemaClose: 'Close',
+    bodyOverlayTitle: 'Body Marker (Drag to Move)',
+    btnFreeze: '⏸ FREEZE (F)',
+    btnPress: '👇 Compress (P)',
+    preEpTrans: 'Epigastric Trans',
+    preEpLong: 'Epigastric Long',
+    preSubGb: 'Rt. Subcostal',
+    preRtFlank: 'Rt. Flank',
+    preLtFlank: 'Lt. Flank',
+    preBladder: 'Pelvis (Bladder)',
+    zoneToolbarLabel: 'Scan regions',
+    stoneOn: 'Gallstone: ON',
+    stoneOff: 'Gallstone: OFF',
+    anatomyOn: '🎯 Image Labels: ON',
+    anatomyOff: '🎯 Image Labels: OFF',
+    langBtn: '🌐 English / JP',
+    bannerReady: 'PROBE READY\n← → / Space: region | Phone: tilt\nShift+arrows / mouse drag: position',
+    bannerConn: (src) => `${src} Connected\n← → / Space: region | Phone: tilt\nShift+arrows / mouse drag: position`,
+    lblYaw: 'Rotation (Yaw)',
+    lblPitch: 'Tilt Pitch',
+    lblRoll: 'Tilt Roll',
+    lblGain: 'Gain',
+    spatialTitle: '🧭 Relative Tilt and Beam Axis (Schematic)',
+    ruleHtml: `<strong>[Control Guide]</strong><br>
+      • <strong>Phone hold</strong>: The pose at the first tap is relative 0°. Keep the same grip; this is not an absolute patient probe angle.<br>
+      • <strong>Top Half Tap</strong>: Start nearby tilt; tap again to return to the reference view<br>
+      • <strong>Bottom Half</strong>: Tap FREEZE, Hold Press<br>
+      • <strong>PC Left Hand</strong>: <code>←</code> previous region / <code>→</code> or <code>Space</code> next region / <code>Shift</code>+arrows adjust position by 0.5 cm / <code>F</code>=FREEZE / hold <code>P</code>=Press.<br>
+      • ⚠️ <strong>Screen Lock</strong>: Controls stop when locked — keep auto-lock off / screen awake during use`,
+    qrTitle: '📱 Connect Smartphone as Probe (Local Direct)',
+    qrDesc: 'Connect the phone and PC to the same network and use a trusted HTTPS certificate before scanning.',
+    qrClose: 'Close',
+    scanLong: 'Longitudinal',
+    scanTrans: 'Transverse',
+    markHead: 'H (Head)',
+    markRight: 'R (Pt. Right)',
+    legendPrefix: 'Visible: ',
+    legendEmpty: 'Visible: None',
+    mStartBtn: 'Enable Sensors & Audio Feedback',
+    bzTopTitle: '🎯 TOP TAP: Tilt / Return to Reference',
+    bzTopSub: 'First tap sets relative 0° and starts tilt. Tap again to return to the reference view.',
+    zeroWaiting: 'Waiting for sensor start',
+    zeroTemporary: 'At reference view. Tap the top half to start tilting.',
+    zeroReference: 'Tilting nearby views. Tap the top half to return.',
+    zeroNoSensor: 'Waiting for orientation sensor data',
+    zeroTelemetry: 'From reference',
+    bzBotTitle: '⏸ BOTTOM TAP: FREEZE\n👇 BOTTOM HOLD: Compress',
+    bzBotSub: 'Short tap to freeze / Hold down to push bowel gas'
+  }
+};
+
+const ORGAN_NAMES = {
+  spine: { ja: '脊椎(椎体)', en: 'Vertebral Body' },
+  ao: { ja: '腹部大動脈(Ao)', en: 'Abd. Aorta (Ao)' },
+  ivc: { ja: '下大静脈(IVC)', en: 'IVC' },
+  ra: { ja: '右心房(RA)', en: 'Right Atrium (RA)' },
+  diaphragm: { ja: '横隔膜', en: 'Diaphragm' },
+  mpd: { ja: '主膵管(MPD)', en: 'MPD' },
+  pancreas: { ja: '膵臓', en: 'Pancreas' },
+  sv: { ja: '脾静脈(SV)', en: 'Splenic Vein (SV)' },
+  smv: { ja: '上腸間膜静脈(SMV)', en: 'Superior Mesenteric Vein (SMV)' },
+  sma: { ja: '上腸間膜動脈(SMA)', en: 'Superior Mesenteric Artery (SMA)' },
+  cbd: { ja: '総胆管(CBD)', en: 'Common Bile Duct (CBD)' },
+  stone: { ja: '胆石(音響陰影)', en: 'Gallstone (Shadow)' },
+  gb: { ja: '胆嚢(GB)', en: 'Gallbladder (GB)' },
+  pv: { ja: '門脈(PV)', en: 'Portal Vein (PV)' },
+  hv: { ja: '肝静脈(HV)', en: 'Hepatic Vein (HV)' },
+  liverRt: { ja: '肝右葉', en: 'Rt. Liver Lobe' },
+  liverLt: { ja: '肝左葉', en: 'Lt. Liver Lobe' },
+  kidneyMedulla: { ja: '右腎髄質', en: 'Rt. Renal Medulla' },
+  kidneyCec: { ja: '右腎(中心部)', en: 'Rt. Kidney (Sinus)' },
+  kidneyCort: { ja: '右腎(皮質)', en: 'Rt. Kidney (Cortex)' },
+  ltKidneyMedulla: { ja: '左腎髄質', en: 'Lt. Renal Medulla' },
+  ltKidneyCec: { ja: '左腎(中心部)', en: 'Lt. Kidney (Sinus)' },
+  ltKidneyCort: { ja: '左腎(皮質)', en: 'Lt. Kidney (Cortex)' },
+  rightAdrenal: { ja: '右副腎(模式)', en: 'Rt. Adrenal (schematic)' },
+  leftAdrenal: { ja: '左副腎(模式)', en: 'Lt. Adrenal (schematic)' },
+  stomachWall: { ja: '胃壁(模式)', en: 'Stomach Wall (schematic)' },
+  bowelWall: { ja: '腸管壁(模式)', en: 'Bowel Wall (schematic)' },
+  spleen: { ja: '脾臓', en: 'Spleen' },
+  bladder: { ja: '膀胱', en: 'Urinary Bladder' },
+  prostate: { ja: '前立腺', en: 'Prostate' },
+  gas: { ja: '消化管ガス', en: 'Bowel Gas' }
+};
+
+const state = {
+  lang: initialLang, source: 'PC LOCAL', mobileConnected: false, px: 0.2, py: 0.5, yaw: 0, pitch: 0, roll: 0,
+  gain: 65, pressure: 0, pcPressing: false, mobilePressing: false, isMoving: false, hasStone: false, showAnatomy: true, frozen: false, detectedOrgans: new Set(),
+  selectedZone: 'epigastric'
+};
+let prevFreezeSignal = 0, lastPosSyncSent = 0;
+
+// 体表の5領域から入り、観察候補を示す。各視野の正常像との一致は未検証。
+const ZONE_GUIDES = {
+  epigastric: {
+    ja: '心窩部', en: 'Epigastrium',
+    viewsJa: ['腹部大動脈（縦走査）', '下大静脈・肝左葉', '膵頭部・膵体部'],
+    viewsEn: ['Abdominal aorta (long axis)', 'IVC and left liver', 'Pancreatic head and body'],
+    landmarkKeys: ['liverLt', 'pancreas', 'mpd', 'sv', 'sma', 'pv', 'ivc', 'ao']
+  },
+  subcostal_gb: {
+    ja: '右季肋部', en: 'Right subcostal',
+    viewsJa: ['胆嚢（縦・横・斜走査）', '肝外胆管', '肝右葉・肝静脈'],
+    viewsEn: ['Gallbladder (long/transverse/oblique)', 'Extrahepatic bile duct', 'Right liver and hepatic veins'],
+    landmarkKeys: ['liverRt', 'gb', 'cbd', 'pv', 'hv', 'ivc']
+  },
+  right_flank: {
+    ja: '右側腹部・肋間', en: 'Right flank / intercostal',
+    viewsJa: ['肝右葉の肋間走査', '肝臓・右腎の境界', '右腎（長軸・短軸）'],
+    viewsEn: ['Right liver through intercostal space', 'Liver and right kidney interface', 'Right kidney (long/short axis)'],
+    landmarkKeys: ['liverRt', 'kidneyCort', 'kidneyMedulla', 'kidneyCec', 'rightAdrenal', 'hv', 'diaphragm']
+  },
+  left_flank: {
+    ja: '左側腹部・肋間', en: 'Left flank / intercostal',
+    viewsJa: ['脾臓', '左腎（長軸・短軸）', '膵尾部'],
+    viewsEn: ['Spleen', 'Left kidney (long/short axis)', 'Pancreatic tail'],
+    landmarkKeys: ['spleen', 'ltKidneyCort', 'ltKidneyMedulla', 'ltKidneyCec', 'leftAdrenal', 'pancreas', 'sv']
+  },
+  pelvis_bladder: {
+    ja: '下腹部', en: 'Lower abdomen',
+    viewsJa: ['膀胱（追加学習）'], viewsEn: ['Bladder (additional practice)'],
+    landmarkKeys: ['bladder', 'prostate']
+  }
+};
+const ZONE_ORDER = ['epigastric', 'subcostal_gb', 'right_flank', 'left_flank', 'pelvis_bladder'];
+// 添付テキストの正常解剖・断面模式図を、5つの接触部位内の観察候補へ整理。
+// PDFページはユーザー提供ファイル内のページ番号。見本の臨床的一致や到達可能性は未検証。
+const NORMAL_TARGETS = {
+  epigastric: [
+    {id:'pancreas_trans', ja:'膵体部・脾静脈', en:'Pancreas and splenic vein', pages:'34–37, 87', keys:'膵体部 / 主膵管 / 脾静脈 / SMA / Ao / IVC', keysEn:'Pancreatic body / pancreatic duct / splenic vein / SMA / aorta / IVC'},
+    {id:'liver_hv', ja:'肝静脈面', en:'Hepatic vein plane', pages:'2–5, 85', keys:'肝左葉 / RHV / MHV / LHV / IVC', keysEn:'Left liver / RHV / MHV / LHV / IVC'},
+    {id:'liver_pv', ja:'門脈分枝面', en:'Portal branch plane', pages:'2–5, 85', keys:'S2–S4 / 門脈左枝の横部・臍部 / PV / IVC', keysEn:'S2–S4 / transverse and umbilical left portal vein / PV / IVC'},
+    {id:'aorta_long', ja:'大動脈の縦走査', en:'Aorta long axis', pages:'4, 7, 46–48', keys:'肝左葉 / Ao / 腹腔動脈 / SMA / 膵 / 脾静脈', keysEn:'Left liver / aorta / celiac artery / SMA / pancreas / splenic vein'}
+  ],
+  subcostal_gb: [
+    {id:'biliary_hilum', ja:'胆嚢・肝門部', en:'Gallbladder and hilum', pages:'24–26, 86', keys:'肝 / 胆嚢 / 胆管 / 門脈 / IVC', keysEn:'Liver / gallbladder / bile duct / portal vein / IVC'},
+    {id:'gb_long', ja:'胆嚢長軸', en:'Gallbladder long axis', pages:'24–27, 86', keys:'肝 / 胆嚢底部・体部・頸部 / 胆管', keysEn:'Liver / gallbladder fundus, body and neck / bile duct'},
+    {id:'right_portal', ja:'肝右葉・門脈枝', en:'Right liver and portal branches', pages:'3–6, 25, 85', keys:'右肝静脈 / 門脈右枝と前後枝 / 肝右葉 / IVC', keysEn:'RHV / right portal vein and its anterior/posterior branches / right liver / IVC'}
+  ],
+  right_flank: [
+    {id:'hepatorenal', ja:'肝腎境界', en:'Hepatorenal interface', pages:'53, 57, 88', keys:'肝右葉 / 右腎 / 腎皮質 / 腎中心部', keysEn:'Right liver / right kidney / cortex / renal sinus'},
+    {id:'right_kidney_long', ja:'右腎長軸', en:'Right kidney long axis', pages:'53–57, 88', keys:'肝 / 右腎皮質 / 腎中心部 / 腎門', keysEn:'Liver / right renal cortex / renal sinus / hilum'},
+    {id:'right_kidney_short', ja:'右腎短軸', en:'Right kidney short axis', pages:'56–57, 88', keys:'腎皮質 / 髄質 / 腎中心部', keysEn:'Renal cortex / medulla / renal sinus'}
+  ],
+  left_flank: [
+    {id:'splenorenal', ja:'脾腎関係', en:'Spleen and left kidney', pages:'21, 53, 57', keys:'脾臓 / 左腎 / 腎皮質 / 腎中心部', keysEn:'Spleen / left kidney / cortex / renal sinus'},
+    {id:'spleen_long', ja:'脾臓の左肋間走査', en:'Spleen intercostal', pages:'21, 87', keys:'脾臓 / 左腎 / 脾門', keysEn:'Spleen / left kidney / splenic hilum'},
+    {id:'left_kidney_long', ja:'左腎長軸', en:'Left kidney long axis', pages:'53–57, 88', keys:'脾臓 / 左腎皮質 / 腎中心部 / 腎門', keysEn:'Spleen / left renal cortex / renal sinus / hilum'}
+  ],
+  pelvis_bladder: [
+    {id:'bladder_trans', ja:'膀胱横断', en:'Bladder transverse', pages:'71–72, 79–80', keys:'膀胱内腔 / 膀胱壁 / 後方組織', keysEn:'Bladder lumen / wall / posterior tissue'},
+    {id:'bladder_uterus', ja:'女性骨盤の縦断', en:'Female pelvis sagittal', pages:'71–72', keys:'膀胱 / 子宮体部 / 子宮頸部（3Dモデル未対応）', keysEn:'Bladder / uterine body / cervix (not in 3D model)'},
+    {id:'bladder_prostate', ja:'男性骨盤の横断', en:'Male pelvis transverse', pages:'79–80', keys:'膀胱 / 前立腺（3Dモデルは粗い近似）', keysEn:'Bladder / prostate (coarse 3D approximation)'}
+  ]
+};
+const ZONE_STARTS = {
+  epigastric: [-0.6, 0.2], subcostal_gb: [-3.8, -0.5],
+  right_flank: [-7.2, 1.8], left_flank: [5.8, 1.0], pelvis_bladder: [0.0, 7.0]
+};
+const ZONE_ADJUST_CM = 1.5;
+const ZONE_KEY_STEP_CM = 0.5;
+
+function updateZoneUI() {
+  const ja = state.lang === 'ja';
+  const guide = ZONE_GUIDES[state.selectedZone];
+  const name = ja ? guide.ja : guide.en;
+  [['epigastric', 'btnPreEpTrans'], ['subcostal_gb', 'btnPreSubGb'], ['right_flank', 'btnPreRtFlank'], ['left_flank', 'btnPreLtFlank'], ['pelvis_bladder', 'btnPreBladder']].forEach(([zone, id]) => {
+    document.getElementById(id).classList.toggle('active', state.selectedZone === zone);
+  });
+  document.getElementById('bodyStepHint').textContent = ja
+    ? `接触位置は${name}の開始目安。Shift＋矢印またはドラッグで各${ZONE_ADJUST_CM} cm以内を調整。`
+    : `Approximate ${name} start point. Shift+arrows or drag within ${ZONE_ADJUST_CM} cm.`;
+  document.getElementById('bodyOverlayTitle').textContent = (ja ? 'ボディマーク：' : 'Body marker: ') + name;
+  const status = document.getElementById('viewStatus');
+  status.style.display = 'block';
+  status.textContent = ja ? '模式エコー：各視野の正常像との一致は未検証です。' : 'Schematic echo: normal views have not been validated.';
+}
+
+function selectZone(zone) {
+  if (!ZONE_GUIDES[zone]) return;
+  state.selectedZone = zone;
+  moveXY(zone);
+  triggerZeroReset();
+  updateZoneUI();
+}
+function stepZone(direction) {
+  const current = ZONE_ORDER.indexOf(state.selectedZone);
+  const next = (current + direction + ZONE_ORDER.length) % ZONE_ORDER.length;
+  selectZone(ZONE_ORDER[next]);
+}
+
+function t(k) { return I18N[state.lang][k]; }
+function getOrganLabel(k) { return ORGAN_NAMES[k] ? ORGAN_NAMES[k][state.lang] : k; }
+function clampPos(x, y) { return { x: Math.max(BOUNDS.minX, Math.min(BOUNDS.maxX, x)), y: Math.max(BOUNDS.minY, Math.min(BOUNDS.maxY, y)) }; }
+function clampZonePos(x, y) {
+  const [cx, cy] = ZONE_STARTS[state.selectedZone];
+  return clampPos(
+    Math.max(cx - ZONE_ADJUST_CM, Math.min(cx + ZONE_ADJUST_CM, x)),
+    Math.max(cy - ZONE_ADJUST_CM, Math.min(cy + ZONE_ADJUST_CM, y))
+  );
+}
+function nudgeZonePosition(dx, dy) {
+  const p = clampZonePos(state.px + dx * ZONE_KEY_STEP_CM, state.py + dy * ZONE_KEY_STEP_CM);
+  if (p.x === state.px && p.y === state.py) return;
+  state.px = p.x;
+  state.py = p.y;
+  sendPcPosNow();
+}
+function handleZoneNudgeKey(e) {
+  if (!e.shiftKey || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return false;
+  e.preventDefault();
+  const direction = {
+    ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1]
+  }[e.key];
+  nudgeZonePosition(...direction);
+  return true;
+}
+
+function setTextSafe(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+function updatePressureState() {
+  const active = state.pcPressing || state.mobilePressing;
+  state.pressure = active ? 1.0 : 0.0;
+  const btn = document.getElementById('btnPcPress');
+  if (btn) btn.classList.toggle('press-active', active);
+  const badge = document.getElementById('pressBadge');
+  if (badge) badge.style.display = active ? 'block' : 'none';
+}
+
+function toggleFreeze() {
+  state.frozen = !state.frozen;
+  const badge = document.getElementById('freezeBadge');
+  if (badge) badge.style.display = state.frozen ? 'block' : 'none';
+  const btn = document.getElementById('btnPcFreeze');
+  if (btn) btn.classList.toggle('freeze-active', state.frozen);
+}
+
+function setPcPress(isDown) {
+  state.pcPressing = isDown;
+  updatePressureState();
+}
+
+function toggleLang() {
+  state.lang = state.lang === 'ja' ? 'en' : 'ja';
+  applyLanguage();
+  updateQRCodeUrl();
+  drawLiverSegmentMapV43Addon(); // 静的な肝区域図だけ言語切替に合わせて再描画
+}
+
+// Wake Lock のイベントは言語切替の回数に関係なく一度だけ登録する。
+let wakeLockSentinel = null;
+let wakeLockPending = false;
+async function requestKeepAwake() {
+  if (!("wakeLock" in navigator) || wakeLockSentinel || wakeLockPending) return;
+  wakeLockPending = true;
+  try {
+    wakeLockSentinel = await navigator.wakeLock.request("screen");
+    wakeLockSentinel.addEventListener("release", () => { wakeLockSentinel = null; });
+  } catch (e) {
+    // 未対応・権限拒否時も、従来どおり操作を継続する。
+  } finally {
+    wakeLockPending = false;
+  }
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") requestKeepAwake();
+});
+window.addEventListener("touchstart", () => { requestKeepAwake(); }, { passive: true });
+requestKeepAwake();
+
+function applyLanguage() {
+  const L = I18N[state.lang];
+  setTextSafe('appTitle', L.appTitle);
+  setTextSafe('btnMobileQR', state.mobileConnected
+    ? (isHostedMode ? (state.lang === 'ja' ? '✅ Webスマホ接続中' : '✅ Web Phone Connected') : L.btnMobileConn)
+    : L.btnMobileQR);
+  setTextSafe('btnResetZero', L.btnReset);
+  setTextSafe('btnPcFreeze', L.btnFreeze);
+  setTextSafe('btnPcPress', L.btnPress);
+  setTextSafe('btnPreEpTrans', L.preEpTrans);
+  setTextSafe('btnPreSubGb', L.preSubGb);
+  setTextSafe('btnPreRtFlank', L.preRtFlank);
+  setTextSafe('btnPreLtFlank', L.preLtFlank);
+  setTextSafe('btnPreBladder', L.preBladder);
+  setTextSafe('zoneToolbarLabel', L.zoneToolbarLabel);
+  setTextSafe('btnStone', state.hasStone ? L.stoneOn : L.stoneOff);
+  setTextSafe('btnAnatomy', state.showAnatomy ? L.anatomyOn : L.anatomyOff);
+  setTextSafe('btnLang', L.langBtn);
+  updateZoneUI();
+
+  setTextSafe('lblYaw', L.lblYaw);
+  setTextSafe('lblPitch', L.lblPitch);
+  setTextSafe('lblRoll', L.lblRoll);
+  setTextSafe('lblGain', L.lblGain);
+
+  setTextSafe('btnSchemata', L.btnSchemata);
+  setTextSafe('schemaTitle', L.schemaTitle);
+  setTextSafe('tabLiver', L.tabLiver);
+  setTextSafe('tabVessel', L.tabVessel);
+  setTextSafe('tabVascular3D', L.tabVascular3D);
+  setTextSafe('tabSpatial', L.tabSpatial);
+  setTextSafe('spatialNote', L.spatialNote);
+  setTextSafe('btnSchemaClose', L.btnSchemaClose);
+  setTextSafe('spatialTitle', L.spatialTitle);
+  setTextSafe('vascular3DTitle', state.lang === 'ja' ? '血管3D・チルト断面（模式図）' : '3D Vessels and Tilt Plane (Schematic)');
+  const rb = document.getElementById('ruleBox');
+  if (rb) rb.innerHTML = L.ruleHtml;
+
+  setTextSafe('qrTitle', L.qrTitle);
+  setTextSafe('qrDesc', L.qrDesc);
+  setTextSafe('qrCloseBtn', L.qrClose);
+
+  const b = document.getElementById('modeBanner');
+  if (b) b.textContent = state.mobileConnected ? L.bannerConn(state.source) : L.bannerReady;
+
+  setTextSafe('btnSensorStart', L.mStartBtn);
+  const topT = document.getElementById('bzTopTitle');
+  if (topT) topT.textContent = L.bzTopTitle;
+  setTextSafe('bzTopSub', L.bzTopSub);
+  const zeroStatus = document.getElementById('mZeroStatus');
+  if (zeroStatus && zeroStatus.dataset.phase) zeroStatus.textContent = L[zeroStatus.dataset.phase];
+  const botT = document.getElementById('bzBotTitle');
+  if (botT) botT.innerHTML = L.bzBotTitle.replace('\n', '<br>');
+  setTextSafe('bzBotSub', L.bzBotSub);
+}
+
+function updateQRCodeUrl() {
+  const qrEl = document.getElementById('qrcode');
+  if (!qrEl) return;
+  if (isHostedMode) setTextSafe('qrTitle', state.lang === 'ja' ? '📱 スマホをWeb接続に参加させる' : '📱 Pair Phone with Web Session');
+  const host = window.location.hostname;
+  if (isHostedMode && (!webSession || !webSession.probeToken)) {
+    const message = state.lang === 'ja' ? 'Web接続を準備しています。少し待ってから開き直してください。' : 'Preparing the web pairing session. Please reopen shortly.';
+    setTextSafe('qrDesc', message);
+    setTextSafe('qrUrlText', message);
+    qrEl.textContent = message;
+    return;
+  }
+  if (window.location.protocol !== 'https:' || host === 'localhost' || host === '127.0.0.1') {
+    const message = isHostedMode
+      ? (state.lang === 'ja' ? 'Web版のスマホ接続は公開HTTPS URLで利用できます。現在はPC専用のHTTP試作です。' : 'Phone pairing requires a public HTTPS URL. This HTTP prototype is for PC checks only.')
+      : (state.lang === 'ja'
+        ? '現在のfile://またはlocalhostの画面はスマホから開けません。同じネットワークに接続し、server.pyを起動後、PCでも https://<PCのLAN側IP>:8443/local_simulator.html を開いてください。'
+        : 'A file:// or localhost page cannot be opened from your phone. Connect both devices to the same network, start server.py, and open https://<PC LAN IP>:8443/local_simulator.html on the PC.');
+    setTextSafe('qrDesc', message);
+    setTextSafe('qrUrlText', message);
+    qrEl.innerHTML = '';
+    qrEl.textContent = state.lang === 'ja' ? 'スマホ接続は未準備です' : 'Phone connection is not ready';
+    qrEl.style.color = '#0d1117';
+    return;
+  }
+  setTextSafe('qrDesc', isHostedMode
+    ? (state.lang === 'ja' ? 'スマホでQRを読み取り、同じWeb接続に参加してください。Wi-Fiは別でも使えます。' : 'Scan this QR on your phone to join this web session. The devices may use different networks.')
+    : t('qrDesc'));
+  qrEl.style.color = '';
+  const baseUrl = window.location.href.split('?')[0];
+  const connectUrl = isHostedMode
+    ? `${baseUrl}?probe=local&sid=${encodeURIComponent(webSession.sid)}&lang=${state.lang}#token=${encodeURIComponent(webSession.probeToken)}`
+    : `${baseUrl}?probe=local&lang=${state.lang}&v=${Date.now()}`;
+  setTextSafe('qrUrlText', connectUrl);
+  qrEl.innerHTML = '';
+  if (typeof QRCode !== 'undefined') {
+    new QRCode(qrEl, { text: connectUrl, width: 200, height: 200, colorDark: '#000000', colorLight: '#ffffff' });
+  } else {
+    qrEl.textContent = state.lang === 'ja' ? 'QR画像を生成できません。下の接続URLを使用してください。' : 'QR generation failed. Use the connection URL below.';
+    qrEl.style.color = '#0d1117';
+  }
+}
+
+async function triggerZeroReset() {
+  state.yaw = 0; state.pitch = 0; state.roll = 0;
+  syncSliders();
+  try { await relayFetch('zero', { method: 'POST' }); } catch (e) {}
+}
+
+window.addEventListener('keydown', e => {
+  if (isMobileMode) return;
+  if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+  const schemaOpen = document.getElementById('schemaModal').classList.contains('open');
+  if (e.key === 'Escape' && schemaOpen) {
+    if (schemaOpen) closeSchemaModal();
+    return;
+  }
+  if (schemaOpen) return;
+  if (handleZoneNudgeKey(e)) return;
+  if (e.key === 'ArrowRight' || e.code === 'Space') {
+    e.preventDefault();
+    if (!e.repeat) stepZone(1);
+  } else if (e.key === 'ArrowLeft') {
+    e.preventDefault();
+    if (!e.repeat) stepZone(-1);
+  } else if (e.key === 'r' || e.key === 'R') {
+    if (!e.repeat) triggerZeroReset();
+  } else if (e.key === 'f' || e.key === 'F') {
+    e.preventDefault();
+    if (!e.repeat) toggleFreeze();
+  } else if (e.key === 'p' || e.key === 'P') {
+    setPcPress(true);
+  }
+});
+
+window.addEventListener('keyup', e => {
+  if (isMobileMode) return;
+  if (e.key === 'p' || e.key === 'P') {
+    setPcPress(false);
+  }
+});
+// ウィンドウ切替でキーアップが失われても圧迫状態を解除する。
+window.addEventListener('blur', () => {
+  if (!isMobileMode && state.pcPressing) setPcPress(false);
+});
+
+function openQRModal() { updateQRCodeUrl(); document.getElementById('qrModal').style.display = 'flex'; }
+function selectSchemaTab(kind) {
+  const liver = kind === 'liver';
+  const vessel = kind === 'vessel';
+  const vascular3d = kind === 'vascular3d';
+  const spatial = kind === 'spatial';
+  [['Liver', liver], ['Vessel', vessel], ['Vascular3D', vascular3d], ['Spatial', spatial]].forEach(([name, active]) => {
+    document.getElementById('schema' + name).classList.toggle('active', active);
+    document.getElementById('tab' + name).classList.toggle('active', active);
+    document.getElementById('tab' + name).setAttribute('aria-selected', String(active));
+  });
+}
+function openSchemaModal() { selectSchemaTab('liver'); document.getElementById('schemaModal').classList.add('open'); }
+function closeSchemaModal() { document.getElementById('schemaModal').classList.remove('open'); }
+function closeQRModal() { document.getElementById('qrModal').style.display = 'none'; }
+
+let schemaWindow = null;
+function openSchemaWindow() {
+  if (schemaWindow && !schemaWindow.closed) { schemaWindow.focus(); return; }
+  const popup = window.open('', 'abdominal_v43_anatomy', 'width=900,height=680,resizable=yes,scrollbars=yes');
+  if (!popup) {
+    window.alert(state.lang === 'ja' ? '別画面がブロックされました。このページのポップアップを許可してください。' : 'The anatomy window was blocked. Allow pop-ups for this page.');
+    return;
+  }
+  schemaWindow = popup;
+  popup.document.open();
+  popup.document.write(`<!doctype html><html lang="${state.lang}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>v43 Anatomy</title><style>
+    *{box-sizing:border-box}body{margin:0;padding:16px;background:#0d1117;color:#e6edf3;font:14px -apple-system,BlinkMacSystemFont,sans-serif}
+    h1{font-size:18px;color:#79c0ff;margin:0 0 8px}nav{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
+    button{border:1px solid #484f58;border-radius:6px;padding:8px 11px;background:#21262d;color:#e6edf3;cursor:pointer}
+    button.active{background:#1f6feb;border-color:#58a6ff}
+    #referenceViewControls{display:none;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+    #referenceViewControls.active{display:flex}
+    #referenceViewControls button{font-size:12px;padding:6px 9px}
+    .diagram-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
+    .diagram-grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .diagram-title{display:none;margin:0 0 8px;color:#79c0ff;font-weight:600}
+    .two .diagram-title{display:block}
+    .diagram-grid canvas{display:block;width:100%;max-width:580px;height:auto;margin:auto;background:#090c10;border-radius:6px}
+    #liverViewControls{display:none;gap:6px;margin:0 0 8px;flex-wrap:wrap}.two #liverViewControls{display:flex}
+    #liverViewHint{display:none;color:#e3b341;font-size:11px;line-height:1.45;margin:8px 0}.two #liverViewHint{display:block}
+    #secondDiagram{display:none}.two #secondDiagram{display:block}
+    @media(max-width:700px){.diagram-grid.two{grid-template-columns:minmax(0,1fr)}}
+    #schemaReadout{color:#79c0ff;font-size:12px;margin:8px 0}
+    #schemaTargets{color:#c9d1d9;font-size:12px;line-height:1.5;margin:0 0 10px}
+    p{font-size:12px;line-height:1.5;color:#e3b341;margin:10px 0}
+  </style></head><body><h1 id="schemaWindowTitle"></h1><nav>
+    <button data-kind="section" class="active"></button><button data-kind="reference"></button><button data-kind="anatomy"></button>
+  </nav><div id="schemaReadout"></div><div id="referenceViewControls"></div><div id="schemaTargets"></div><div id="diagramGrid" class="diagram-grid">
+    <div><div id="firstTitle" class="diagram-title"></div><div id="liverViewControls"><button data-liver-view="hepatic" class="active"></button><button data-liver-view="portal"></button></div><canvas id="schemaDisplay" width="380" height="290"></canvas><div id="liverViewHint"></div></div>
+    <div id="secondDiagram"><div id="secondTitle" class="diagram-title"></div><canvas id="schemaVascularDisplay" width="290" height="220"></canvas></div>
+  </div><p id="schemaCaution"></p></body></html>`);
+  popup.document.close();
+  let kind = 'section';
+  let liverView = 'hepatic';
+  let targetZone = '';
+  let targetIndex = 0;
+  popup.document.querySelectorAll('button[data-kind]').forEach(button => {
+    button.addEventListener('click', () => {
+      kind = button.dataset.kind;
+      popup.document.querySelectorAll('button[data-kind]').forEach(b => b.classList.toggle('active', b === button));
+    });
+  });
+  popup.document.querySelectorAll('button[data-liver-view]').forEach(button => {
+    button.addEventListener('click', () => {
+      liverView = button.dataset.liverView;
+      popup.document.querySelectorAll('button[data-liver-view]').forEach(b => b.classList.toggle('active', b === button));
+    });
+  });
+  popup.addEventListener('keydown', e => {
+    if (handleZoneNudgeKey(e)) return;
+    if (e.key === 'ArrowRight' || e.code === 'Space' || e.key === 'ArrowLeft') {
+      e.preventDefault();
+      if (!e.repeat) stepZone(e.key === 'ArrowLeft' ? -1 : 1);
+    } else if (e.key === 'f' || e.key === 'F') {
+      if (!e.repeat) toggleFreeze();
+    } else if (e.key === 'p' || e.key === 'P') {
+      setPcPress(true);
+    } else if (e.key === 'r' || e.key === 'R') {
+      if (!e.repeat) triggerZeroReset();
+    }
+  });
+  popup.addEventListener('keyup', e => { if (e.key === 'p' || e.key === 'P') setPcPress(false); });
+  popup.addEventListener('blur', () => { if (state.pcPressing) setPcPress(false); });
+  popup.setInterval(() => {
+    if (popup.closed) return;
+    const ja = state.lang === 'ja';
+    const names = ja
+      ? {section:'現在の断面',reference:'観察見本（模式図）',anatomy:'肝区域・血管の3D模式図'}
+      : {section:'Current section',reference:'Reference schematic',anatomy:'Liver segments and vessels in 3D'};
+    popup.document.title = ja ? 'v43 解剖シェーマ' : 'v43 Anatomy Diagrams';
+    popup.document.getElementById('schemaWindowTitle').textContent = popup.document.title;
+    popup.document.querySelectorAll('button[data-kind]').forEach(b => { b.textContent = names[b.dataset.kind]; });
+    popup.document.querySelectorAll('button[data-liver-view]').forEach(b => {
+      b.textContent = ja
+        ? (b.dataset.liverView === 'hepatic' ? '肝静脈面' : '門脈分枝面')
+        : (b.dataset.liverView === 'hepatic' ? 'Hepatic vein plane' : 'Portal branch plane');
+    });
+    popup.document.getElementById('schemaReadout').textContent =
+      `${ja ? ZONE_GUIDES[state.selectedZone].ja : ZONE_GUIDES[state.selectedZone].en}  ·  ${ja ? '位置' : 'Position'} (${state.px.toFixed(1)}, ${state.py.toFixed(1)}) cm  ·  Y ${Math.round(state.yaw)}° / P ${Math.round(state.pitch)}° / R ${Math.round(state.roll)}°`;
+    const targets = NORMAL_TARGETS[state.selectedZone];
+    const controls = popup.document.getElementById('referenceViewControls');
+    if (targetZone !== state.selectedZone) {
+      targetZone = state.selectedZone;
+      targetIndex = 0;
+      controls.replaceChildren();
+      targets.forEach((view, i) => {
+        const button = popup.document.createElement('button');
+        button.dataset.targetIndex = i;
+        button.addEventListener('click', () => { targetIndex = i; });
+        controls.appendChild(button);
+      });
+    }
+    controls.classList.toggle('active', kind === 'reference');
+    controls.querySelectorAll('button').forEach((button, i) => {
+      button.textContent = ja ? targets[i].ja : targets[i].en;
+      button.classList.toggle('active', i === targetIndex);
+    });
+    const target = targets[targetIndex];
+    popup.document.getElementById('schemaTargets').textContent = kind === 'reference'
+      ? (ja ? `教本PDF p.${target.pages} · 確認構造：${target.keys} · 独立した模式見本（到達判定なし）`
+            : `Textbook PDF pp.${target.pages} · Landmarks: ${target.keysEn} · Fixed schematic, not an attainment test`)
+      : (ja ? 'この部位で今後照合する観察候補：' : 'Views to validate for this region: ') +
+        (ja ? ZONE_GUIDES[state.selectedZone].viewsJa : ZONE_GUIDES[state.selectedZone].viewsEn).join(' / ');
+    popup.document.getElementById('diagramGrid').classList.toggle('two', kind === 'anatomy');
+    popup.document.getElementById('firstTitle').textContent = ja ? '肝区域の断面例（手動切替）' : 'Liver section examples (manual selection)';
+    popup.document.getElementById('secondTitle').textContent = ja ? '肝区域S1–S8・血管・現在の走査面' : 'Liver S1–S8, vessels and current scan plane';
+    popup.document.getElementById('liverViewHint').textContent = ja
+      ? '添付テキストの断面区分を参考に独自作図した学習用草案です。スマホ角度とは自動対応せず、区域境界と正常所見は専門医確認前です。'
+      : 'Original learning draft based on the reference text’s scan planes. It does not follow phone tilt; segment boundaries and normal findings need specialist review.';
+    popup.document.getElementById('schemaCaution').textContent = ja
+      ? (kind === 'section'
+        ? '模式図です。エコーと同じ簡略3Dモデル・位置・角度から作成しています。実際の正常エコー像との一致は未検証です。'
+        : kind === 'reference'
+          ? '教本の構造関係を参考に独自作図した固定見本です。実際のエコー写真ではなく、現在の角度とも自動対応しません。位置関係は専門医確認前です。'
+          : '左は固定の断面草案、右は同じ3D区域・血管モデルと現在の走査面です。区域境界と正常所見は未検証です。')
+      : (kind === 'section'
+        ? 'Schematic only. This section uses the same simplified 3D model, position, and angle as the echo. Clinical image matching has not been validated.'
+        : kind === 'reference'
+          ? 'Original fixed schematic based on anatomical relationships in the reference text. It is not an ultrasound photo and does not follow the current angle. Specialist review is pending.'
+          : 'Left: fixed section draft. Right: the shared 3D liver-segment and vessel model with the current scan plane. Segment boundaries and clinical appearance remain unvalidated.');
+    const mirror = (sourceId, targetId) => {
+      const source = document.getElementById(sourceId);
+      const target = popup.document.getElementById(targetId);
+      if (target.width !== source.width || target.height !== source.height) {
+        target.width = source.width; target.height = source.height;
+      }
+      const g = target.getContext('2d');
+      g.clearRect(0, 0, target.width, target.height);
+      g.drawImage(source, 0, 0);
+    };
+    if (kind === 'section') {
+      drawCurrentSection();
+      mirror('sectionCanvas', 'schemaDisplay');
+    } else if (kind === 'reference') {
+      drawTargetReferenceView(state.selectedZone, target.id);
+      mirror('targetReferenceCanvas', 'schemaDisplay');
+    } else {
+      drawLiverReferenceView(liverView);
+      drawVascular3D();
+      mirror('liverReferenceCanvas', 'schemaDisplay');
+      mirror('vascular3DCanvas', 'schemaVascularDisplay');
+    }
+  }, 120);
+  popup.addEventListener('beforeunload', () => { if (schemaWindow === popup) schemaWindow = null; });
+  popup.focus();
+}
+
+function computeProbeFrame(yawDeg, pitchDeg, rollDeg) {
+  const yRad = (yawDeg * Math.PI) / 180;
+  const pRad = (pitchDeg * Math.PI) / 180;
+  const rRad = (rollDeg * Math.PI) / 180;
+  // プローブ面の横方向とビーム軸を直交・正規化する。エコーと断面シェーマで共用。
+  const rawB = [-Math.sin(rRad), -Math.sin(pRad), Math.cos(pRad) * Math.cos(rRad)];
+  const bLen = Math.hypot(...rawB);
+  const [bx, by, bz] = rawB.map(v => v / bLen);
+  const rawU = [Math.cos(yRad), Math.sin(yRad), 0];
+  const projection = rawU[0] * bx + rawU[1] * by;
+  const lateral = [rawU[0] - projection * bx, rawU[1] - projection * by, -projection * bz];
+  const uLen = Math.hypot(...lateral);
+  const [ux, uy, uz] = lateral.map(v => v / uLen);
+  return { ux, uy, uz, bx, by, bz };
+}
+
+function drawSpatialDiagram() {
+  const sCanvas = document.getElementById('spatialCanvas');
+  if (!sCanvas) return;
+  const ctx = sCanvas.getContext('2d');
+  const W = sCanvas.width, H = sCanvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const cx = W * 0.50;
+  const cy = H * 0.45;
+
+  function proj(x, y, z) {
+    return {
+      sx: cx + x * 6.8 + y * 3.2,
+      sy: cy + y * 2.6 + z * 5.0 - x * 0.8
+    };
+  }
+
+  const c1 = proj(-9, -7, 0), c2 = proj(9, -7, 0), c3 = proj(9, 7, 0), c4 = proj(-9, 7, 0);
+  ctx.fillStyle = 'rgba(33, 38, 45, 0.55)';
+  ctx.strokeStyle = '#30363d';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(c1.sx, c1.sy); ctx.lineTo(c2.sx, c2.sy);
+  ctx.lineTo(c3.sx, c3.sy); ctx.lineTo(c4.sx, c4.sy);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  const pR = proj(-10.5, 0, 0), pL = proj(10.5, 0, 0);
+  const pH = proj(0, -8.5, 0), pF = proj(0, 8.5, 0);
+  const pO = proj(0, 0, 0), pZ = proj(0, 0, 10.5);
+
+  ctx.strokeStyle = '#484f58';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([2, 2]);
+  ctx.beginPath();
+  ctx.moveTo(pR.sx, pR.sy); ctx.lineTo(pL.sx, pL.sy);
+  ctx.moveTo(pH.sx, pH.sy); ctx.lineTo(pF.sx, pF.sy);
+  ctx.moveTo(pO.sx, pO.sy); ctx.lineTo(pZ.sx, pZ.sy);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.font = 'bold 10px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#8b949e';
+  ctx.fillText('R(右)', pR.sx - 10, pR.sy + 3);
+  ctx.fillText('L(左)', pL.sx + 10, pL.sy + 3);
+  ctx.fillStyle = '#58a6ff';
+  ctx.fillText('H(頭)', pH.sx - 8, pH.sy - 4);
+  ctx.fillText('F(尾)', pF.sx + 10, pF.sy + 10);
+  ctx.fillStyle = '#3fb950';
+  ctx.fillText('Z(深部)', pZ.sx, pZ.sy + 11);
+
+  const frame = computeProbeFrame(state.yaw, state.pitch, state.roll);
+  const dMax = 10.5;
+  const tanHalf = Math.tan((34 * Math.PI) / 180) * 0.95;
+
+  function axisPoint(lateralOffset, depth) {
+    return proj(
+      state.px + frame.ux * lateralOffset + frame.bx * depth,
+      state.py + frame.uy * lateralOffset + frame.by * depth,
+      frame.uz * lateralOffset + frame.bz * depth
+    );
+  }
+
+  const footHalfW = 1.8;
+  const pFootL = axisPoint(-footHalfW, 0);
+  const pFootR = axisPoint(footHalfW, 0);
+  const pFootC = proj(state.px, state.py, 0);
+
+  const fanHalfW = footHalfW + dMax * tanHalf;
+  const pBotL = axisPoint(-fanHalfW, dMax);
+  const pBotC = axisPoint(0, dMax * 1.04);
+  const pBotR = axisPoint(fanHalfW, dMax);
+  const pPlumb = proj(state.px, state.py, dMax);
+
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([2, 2]);
+  ctx.beginPath();
+  ctx.moveTo(pFootC.sx, pFootC.sy);
+  ctx.lineTo(pPlumb.sx, pPlumb.sy);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.fillStyle = 'rgba(56, 189, 248, 0.24)';
+  ctx.beginPath();
+  ctx.moveTo(pFootL.sx, pFootL.sy);
+  ctx.lineTo(pFootR.sx, pFootR.sy);
+  ctx.lineTo(pBotR.sx, pBotR.sy);
+  ctx.quadraticCurveTo(pBotC.sx, pBotC.sy, pBotL.sx, pBotL.sy);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.strokeStyle = '#ff3b30';
+  ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  ctx.moveTo(pFootL.sx, pFootL.sy);
+  ctx.lineTo(pBotL.sx, pBotL.sy);
+  ctx.stroke();
+
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(pFootR.sx, pFootR.sy);
+  ctx.lineTo(pBotR.sx, pBotR.sy);
+  ctx.quadraticCurveTo(pBotC.sx, pBotC.sy, pBotL.sx, pBotL.sy);
+  ctx.stroke();
+
+  const probeLen = -5.8;
+  const probeTopHalfW = 1.4;
+  const pTopL = axisPoint(-probeTopHalfW, probeLen);
+  const pTopR = axisPoint(probeTopHalfW, probeLen);
+
+  ctx.fillStyle = 'rgba(63, 185, 80, 0.85)';
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(pFootL.sx, pFootL.sy);
+  ctx.lineTo(pFootR.sx, pFootR.sy);
+  ctx.lineTo(pTopR.sx, pTopR.sy);
+  ctx.lineTo(pTopL.sx, pTopL.sy);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
+
+  const pTopC = axisPoint(0, probeLen);
+  ctx.strokeStyle = '#f0883e';
+  ctx.lineWidth = 1.4;
+  ctx.setLineDash([3, 2]);
+  ctx.beginPath();
+  ctx.moveTo(pTopC.sx, pTopC.sy);
+  ctx.lineTo(pBotC.sx, pBotC.sy);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  const pMark = axisPoint(-1.65, -1.6);
+  ctx.fillStyle = '#ff3b30';
+  ctx.beginPath();
+  ctx.arc(pMark.sx, pMark.sy, 4.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.textAlign = 'left';
+  ctx.font = 'bold 10px monospace';
+  ctx.fillStyle = '#ff7b72';
+  ctx.fillText(Math.abs(state.yaw) > 45 ? '●赤=頭側(H)' : '●赤=患者右(R)', 8, 14);
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#58a6ff';
+  ctx.fillText(`P:${Math.round(state.pitch)}° R:${Math.round(state.roll)}°`, W - 8, 14);
+}
+
+function drawAnatomicalBodyAndProbe(bCtx, W, H, px, py, yaw, pitch, roll, isMoving) {
+  bCtx.clearRect(0, 0, W, H);
+  const scaleX = W / 286, scaleY = H / 240;
+  bCtx.save(); bCtx.scale(scaleX, scaleY);
+
+  bCtx.strokeStyle = '#8b949e'; bCtx.lineWidth = 2.2;
+  // 体表マークは上下を閉じず、エコー画像が透ける輪郭だけを描く。
+  bCtx.beginPath();
+  bCtx.moveTo(60, 25);
+  bCtx.quadraticCurveTo(58, 80, 72, 118);
+  bCtx.quadraticCurveTo(78, 136, 72, 152);
+  bCtx.quadraticCurveTo(58, 192, 60, 226);
+  bCtx.moveTo(226, 25);
+  bCtx.quadraticCurveTo(228, 80, 214, 118);
+  bCtx.quadraticCurveTo(208, 136, 214, 152);
+  bCtx.quadraticCurveTo(228, 192, 226, 226);
+  bCtx.stroke();
+
+  bCtx.strokeStyle = '#8b949e'; bCtx.lineWidth = 1.8; bCtx.beginPath();
+  bCtx.moveTo(80, 99); bCtx.lineTo(132, 49); bCtx.lineTo(138, 55);
+  bCtx.lineTo(143, 47); bCtx.lineTo(148, 55); bCtx.lineTo(154, 49);
+  bCtx.lineTo(206, 99); bCtx.stroke();
+  bCtx.beginPath();
+  bCtx.moveTo(86, 194); bCtx.lineTo(116, 214);
+  bCtx.moveTo(170, 214); bCtx.lineTo(200, 194); bCtx.stroke();
+
+  bCtx.strokeStyle = '#6e7681'; bCtx.lineWidth = 1.5; bCtx.beginPath(); bCtx.arc(143, 158, 4, 0, Math.PI * 2); bCtx.stroke();
+
+  if (state.showAnatomy) {
+    bCtx.fillStyle = 'rgba(210, 153, 34, 0.18)'; bCtx.beginPath();
+    bCtx.moveTo(74, 75); bCtx.lineTo(175, 75); bCtx.lineTo(125, 112); bCtx.lineTo(74, 142); bCtx.closePath(); bCtx.fill();
+    bCtx.fillStyle = 'rgba(63, 185, 80, 0.28)'; bCtx.beginPath(); bCtx.ellipse(106, 118, 6, 12, -0.3, 0, Math.PI * 2); bCtx.fill();
+    bCtx.fillStyle = 'rgba(88, 166, 255, 0.25)'; bCtx.beginPath(); bCtx.ellipse(148, 108, 22, 6, -0.15, 0, Math.PI * 2); bCtx.fill();
+    bCtx.fillStyle = 'rgba(163, 113, 247, 0.25)'; bCtx.beginPath(); bCtx.ellipse(204, 102, 9, 16, 0.2, 0, Math.PI * 2); bCtx.fill();
+    bCtx.strokeStyle = 'rgba(139, 148, 158, 0.45)'; bCtx.lineWidth = 1.2;
+    bCtx.beginPath(); bCtx.ellipse(90, 128, 8, 15, 0.15, 0, Math.PI * 2); bCtx.stroke();
+    bCtx.beginPath(); bCtx.ellipse(196, 120, 8, 15, -0.15, 0, Math.PI * 2); bCtx.stroke();
+    bCtx.fillStyle = 'rgba(56, 189, 248, 0.25)'; bCtx.beginPath(); bCtx.ellipse(143, 198, 18, 12, 0, 0, Math.PI * 2); bCtx.fill();
+
+    // ボディマーク上の臓器簡易ラベル
+    bCtx.font = 'bold 8.5px sans-serif'; bCtx.textAlign = 'center';
+    bCtx.fillStyle = 'rgba(240, 180, 60, 0.85)';
+    bCtx.fillText(state.lang === 'ja' ? '肝' : 'Liv', 102, 92);
+    bCtx.fillStyle = 'rgba(126, 231, 135, 0.9)';
+    bCtx.fillText('GB', 106, 121);
+    bCtx.fillStyle = 'rgba(121, 192, 255, 0.9)';
+    bCtx.fillText(state.lang === 'ja' ? '膵' : 'Pan', 150, 111);
+    bCtx.fillStyle = 'rgba(210, 168, 255, 0.9)';
+    bCtx.fillText(state.lang === 'ja' ? '脾' : 'Spl', 206, 98);
+    bCtx.fillStyle = 'rgba(201, 209, 217, 0.8)';
+    bCtx.fillText('RK', 90, 131);
+    bCtx.fillText('LK', 196, 123);
+    bCtx.fillStyle = 'rgba(121, 192, 255, 0.9)';
+    bCtx.fillText(state.lang === 'ja' ? '膀胱' : 'Bla', 143, 201);
+  }
+
+  bCtx.fillStyle = '#8b949e'; bCtx.font = 'bold 11px sans-serif'; bCtx.textAlign = 'center';
+  bCtx.fillText(state.lang === 'ja' ? 'H (頭)' : 'H (Head)', 143, 32);
+  bCtx.fillText(state.lang === 'ja' ? 'F (尾)' : 'F (Foot)', 143, 218);
+  bCtx.fillText('R', 44, 120); bCtx.fillText('L', 242, 120);
+
+  const probeCx = 143 + px * 8.5, probeCy = 110 + py * 8.5;
+  const frame = computeProbeFrame(yaw, pitch, roll);
+
+  const beamDx = frame.bx * 38;
+  const beamDy = frame.by * 38;
+  bCtx.strokeStyle = '#f0883e'; bCtx.lineWidth = 2.8; bCtx.beginPath();
+  bCtx.moveTo(probeCx, probeCy); bCtx.lineTo(probeCx + beamDx, probeCy + beamDy); bCtx.stroke();
+  bCtx.fillStyle = '#f0883e'; bCtx.beginPath();
+  bCtx.arc(probeCx + beamDx, probeCy + beamDy, 3.2, 0, Math.PI * 2); bCtx.fill();
+
+  bCtx.save(); bCtx.translate(probeCx, probeCy); bCtx.rotate((yaw * Math.PI) / 180);
+
+  bCtx.fillStyle = isMoving ? '#f0883e' : '#3fb950'; bCtx.strokeStyle = '#ffffff'; bCtx.lineWidth = 1.2;
+  bCtx.beginPath(); bCtx.roundRect(-18, -5, 36, 10, 3); bCtx.fill(); bCtx.stroke();
+
+  bCtx.fillStyle = '#ff3b30'; bCtx.beginPath(); bCtx.arc(-15, 0, 4.5, 0, Math.PI * 2); bCtx.fill();
+  bCtx.strokeStyle = '#fff'; bCtx.lineWidth = 1; bCtx.stroke();
+  bCtx.restore();
+
+  bCtx.restore();
+}
+
+function isValidProbePacket(d) {
+  return d && ['px', 'py', 'yaw', 'pitch', 'roll'].every(k => Number.isFinite(d[k]));
+}
+
+function ingestProbePacket(src, d) {
+  if (!isValidProbePacket(d)) return;
+  state.source = src;
+  // スマホは姿勢と操作信号だけを送る。接触位置はPCで選択した部位内に固定する。
+  state.yaw = Math.max(-90, Math.min(90, d.yaw));
+  state.pitch = Math.max(-45, Math.min(45, d.pitch));
+  state.roll = Math.max(-45, Math.min(45, d.roll));
+  state.mobilePressing = (d.press === 1);
+  updatePressureState();
+  if (d.freeze === 1 && prevFreezeSignal === 0) {
+    toggleFreeze();
+  }
+  prevFreezeSignal = d.freeze;
+  const L = I18N[state.lang];
+  const b = document.getElementById('modeBanner');
+  if (b) b.textContent = L.bannerConn(src);
+  syncSliders();
+}
+
+function initLocalPCReceiver() {
+  let lastSeq = -1, lastTime = 0, polling = false;
+  setInterval(async () => {
+    // ネットワーク遅延時にも GET を重ねない。
+    if (polling) return;
+    polling = true;
+    try {
+      const res = await relayFetch('sensor', { cache: 'no-store' });
+      if (res.ok) {
+        const d = await res.json();
+        if (isValidProbePacket(d) && Number.isSafeInteger(d.seq) && d.seq !== lastSeq) {
+          lastSeq = d.seq;
+          lastTime = performance.now();
+          if (!state.mobileConnected) {
+            state.mobileConnected = true;
+            const btn = document.getElementById('btnMobileQR');
+            btn.textContent = isHostedMode
+              ? (state.lang === 'ja' ? '✅ Webスマホ接続中' : '✅ Web Phone Connected')
+              : t('btnMobileConn');
+            btn.classList.add('connected');
+            closeQRModal();
+          }
+          ingestProbePacket(isHostedMode ? 'WEB MOBILE (v43)' : 'MOBILE (v43)', d);
+        }
+      }
+    } catch (e) {
+      // サーバー停止・通信断も finally で切断判定する。
+    } finally {
+      polling = false;
+      if (state.mobileConnected && performance.now() - lastTime > 3000) {
+        state.mobileConnected = false;
+        state.mobilePressing = false;
+        updatePressureState();
+        prevFreezeSignal = 0;
+        const btn = document.getElementById('btnMobileQR');
+        btn.textContent = t('btnMobileQR');
+        btn.classList.remove('connected');
+        state.source = isHostedMode ? 'WEB READY' : 'PC LOCAL';
+        const b = document.getElementById('modeBanner');
+        if (b) b.textContent = t('bannerReady');
+      }
+    }
+  }, isHostedMode ? 60 : 30);
+}
+
+function getRotationMatrix(alphaDeg, betaDeg, gammaDeg) {
+  const deg2rad = Math.PI / 180;
+  const a = alphaDeg * deg2rad, b = betaDeg * deg2rad, g = gammaDeg * deg2rad;
+  const cA = Math.cos(a), sA = Math.sin(a), cB = Math.cos(b), sB = Math.sin(b), cG = Math.cos(g), sG = Math.sin(g);
+  return [
+    [cA * cG - sA * sB * sG, -sA * cB, cA * sG + sA * sB * cG],
+    [sA * cG + cA * sB * sG,  cA * cB, sA * sG - cA * sB * cG],
+    [-cB * sG,                sB,      cB * cG]
+  ];
+}
+
+function multiplyTranspose(R0, R) {
+  const out = [[0,0,0],[0,0,0],[0,0,0]];
+  for (let i = 0; i < 3; i++) {
+    for (let j = 0; j < 3; j++) {
+      out[i][j] = R0[0][i] * R[0][j] + R0[1][i] * R[1][j] + R0[2][i] * R[2][j];
+    }
+  }
+  return out;
+}
+
+function initMobileProbeController() {
+  const statusEl = document.getElementById('mConnStatus');
+  if (isHostedMode && (!webSession || !webSession.sid || !webSession.token)) {
+    statusEl.textContent = state.lang === 'ja' ? '接続用QRをPCから読み取り直してください' : 'Scan a new pairing QR on the PC';
+    document.getElementById('btnSensorStart').disabled = true;
+    return;
+  }
+  let rawAlpha = 0, rawBeta = 90, rawGamma = 0;
+  let R0 = getRotationMatrix(0, 90, 0);
+  let hasSensorSample = false, exploring = false;
+  let probeX = 0.2, probeY = 0.5, isPressing = false, freezePulse = 0, seq = 0, isSending = false, lastZeroSeq = -1, lastPcPosSeq = 0;
+  let audioCtx = null;
+
+  function playTone(freq, durationMs, delayMs = 0) {
+    try {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const start = audioCtx.currentTime + delayMs / 1000;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, start);
+      gain.gain.setValueAtTime(0.25, start);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + durationMs / 1000);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(start);
+      osc.stop(start + durationMs / 1000);
+    } catch (e) {}
+  }
+
+  function setExploreStatus(key) {
+    const el = document.getElementById('mZeroStatus');
+    el.dataset.phase = key;
+    el.textContent = t(key);
+    el.style.color = key === 'zeroReference' ? '#3fb950' : '#d29922';
+  }
+
+  function resetZeroPose() {
+    if (!hasSensorSample) { setExploreStatus('zeroNoSensor'); return; }
+    R0 = getRotationMatrix(rawAlpha, rawBeta, rawGamma);
+    exploring = false;
+    setExploreStatus('zeroTemporary');
+    playTone(1046, 110);
+  }
+
+  window.startMobileSensors = async function() {
+    playTone(880, 80);
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      try {
+        const res = await DeviceOrientationEvent.requestPermission();
+        if (res !== 'granted') return;
+      } catch (e) {
+        // センサー権限ダイアログが拒否・中断された場合はUIを維持する。
+        statusEl.textContent = state.lang === 'ja' ? 'センサー許可が必要です' : 'Sensor permission required';
+        statusEl.style.color = '#f85149';
+        return;
+      }
+    }
+    window.addEventListener('deviceorientation', e => {
+      if ([e.alpha, e.beta, e.gamma].every(Number.isFinite)) {
+        rawAlpha = e.alpha; rawBeta = e.beta; rawGamma = e.gamma;
+        if (!hasSensorSample) {
+          hasSensorSample = true;
+          R0 = getRotationMatrix(rawAlpha, rawBeta, rawGamma);
+          setExploreStatus('zeroTemporary');
+        }
+      }
+    });
+    document.getElementById('btnSensorStart').style.display = 'none';
+    setExploreStatus('zeroNoSensor');
+  };
+
+  const zTop = document.getElementById('blindZoneTop');
+  zTop.addEventListener('touchstart', e => { e.preventDefault(); zTop.classList.add('active'); }, { passive: false });
+  zTop.addEventListener('touchend', e => {
+    e.preventDefault();
+    zTop.classList.remove('active');
+    if (!hasSensorSample) { setExploreStatus('zeroNoSensor'); return; }
+    if (exploring) {
+      resetZeroPose();
+    } else {
+      R0 = getRotationMatrix(rawAlpha, rawBeta, rawGamma);
+      exploring = true;
+      setExploreStatus('zeroReference');
+      playTone(880, 80);
+    }
+  }, { passive: false });
+  zTop.addEventListener('touchcancel', e => { e.preventDefault(); zTop.classList.remove('active'); }, { passive: false });
+
+  const zBot = document.getElementById('blindZoneBottom');
+  let holdTimer = null, isHoldMode = false;
+
+  zBot.addEventListener('touchstart', e => {
+    e.preventDefault();
+    isHoldMode = false;
+    zBot.classList.add('active-tap');
+    holdTimer = setTimeout(() => {
+      isHoldMode = true;
+      isPressing = true;
+      zBot.classList.remove('active-tap');
+      zBot.classList.add('active-hold');
+      playTone(330, 140);
+    }, 250);
+  }, { passive: false });
+
+  function finishBottomTouch(e, cancelled) {
+    e.preventDefault();
+    if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+    zBot.classList.remove('active-tap', 'active-hold');
+    if (isHoldMode) {
+      isPressing = false;
+      isHoldMode = false;
+      if (!cancelled) playTone(440, 60);
+    } else if (!cancelled) {
+      freezePulse = 1;
+      setTimeout(() => { freezePulse = 0; }, 120);
+      playTone(784, 70, 0);
+      playTone(784, 70, 95);
+    }
+  }
+  zBot.addEventListener('touchend', e => finishBottomTouch(e, false), { passive: false });
+  zBot.addEventListener('touchcancel', e => finishBottomTouch(e, true), { passive: false });
+
+  // アプリ切替・画面ロックで touchend が届かなくても圧迫状態を解除する。
+  function releaseMobileTouchState() {
+    if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; }
+    isPressing = false;
+    isHoldMode = false;
+    zTop.classList.remove('active');
+    zBot.classList.remove('active-tap', 'active-hold');
+    if (exploring) {
+      exploring = false;
+      setExploreStatus('zeroTemporary');
+    }
+  }
+  window.addEventListener('blur', releaseMobileTouchState);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) releaseMobileTouchState();
+  });
+
+  setInterval(async () => {
+    if (!hasSensorSample) return;
+    const R = getRotationMatrix(rawAlpha, rawBeta, rawGamma);
+    const Rrel = multiplyTranspose(R0, R);
+
+    const rawYaw = (Math.atan2(Rrel[2][0], Rrel[0][0]) * 180) / Math.PI;
+    const relYaw = Math.max(-90, Math.min(90, rawYaw));
+
+    const topX = Rrel[0][1];
+    const topY = Rrel[2][1];
+    const outRoll  = Math.max(-45, Math.min(45, (Math.asin(Math.max(-0.707, Math.min(0.707, topX))) * 180) / Math.PI));
+    const outPitch = Math.max(-45, Math.min(45, (Math.asin(Math.max(-0.707, Math.min(0.707, topY))) * 180) / Math.PI));
+
+    const scanMode = Math.abs(relYaw) > 45 ? t('scanLong') : t('scanTrans');
+    const yaw = exploring ? relYaw : 0;
+    const pitch = exploring ? outPitch : 0;
+    const roll = exploring ? outRoll : 0;
+    document.getElementById('mTelemetry').textContent = `${t('zeroTelemetry')} ROT:${Math.round(yaw)}°(${exploring ? scanMode : t('scanTrans')}) | P:${Math.round(pitch)}° R:${Math.round(roll)}°`;
+
+    if (isSending) return;
+    isSending = true; seq++;
+    try {
+      const res = await relayFetch('sensor', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seq, ack_pos_seq: lastPcPosSeq, px: probeX, py: probeY, yaw, pitch, roll, move: 0, press: isPressing ? 1 : 0, freeze: freezePulse })
+      });
+      if (res.ok) {
+        const ack = await res.json();
+        if (ack && typeof ack.zero_seq === 'number') {
+          if (lastZeroSeq !== -1 && ack.zero_seq !== lastZeroSeq) resetZeroPose();
+          lastZeroSeq = ack.zero_seq;
+        }
+        if (ack && ack.pc_pos && typeof ack.pc_pos.seq === 'number') {
+          if (ack.pc_pos.seq > lastPcPosSeq) {
+            probeX = ack.pc_pos.px;
+            probeY = ack.pc_pos.py;
+          }
+          lastPcPosSeq = ack.pc_pos.seq;
+        }
+        statusEl.textContent = state.lang === 'ja' ? (isHostedMode ? '✅ Webへ送信中' : '✅ Macへ送信中') : '✅ Streaming';
+        statusEl.style.color = '#3fb950';
+      }
+    } catch (e) { statusEl.textContent = 'Error'; statusEl.style.color = '#f85149'; }
+    finally { isSending = false; }
+  }, isHostedMode ? 60 : 35);
+}
+
+const NOISE_SIZE = 128, noiseGrid = new Float32Array(NOISE_SIZE * NOISE_SIZE * NOISE_SIZE);
+for (let i = 0; i < noiseGrid.length; i++) noiseGrid[i] = Math.sqrt(-2.0 * Math.log(Math.random() || 1e-5)) * 0.42;
+function sampleNoise(x, y, z) {
+  const xi = Math.floor(x) & 127, yi = Math.floor(y) & 127, zi = Math.floor(z) & 127;
+  return noiseGrid[(zi * 128 + yi) * 128 + xi];
+}
+function moveXY(zone) {
+  const start = ZONE_STARTS[zone];
+  if (!start) return;
+  const clamped = clampPos(start[0], start[1]);
+  state.px = clamped.x;
+  state.py = clamped.y;
+  relayFetch('pos', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ px: state.px, py: state.py })
+  }).catch(() => {});
+}
+function setPreset(n) {
+  if (n === 'epigastric_trans') moveXY('epigastric');
+  else if (n === 'epigastric_long') moveXY('epigastric');
+  else moveXY(n);
+}
+function toggleStone() { state.hasStone = !state.hasStone; document.getElementById('btnStone').textContent = state.hasStone ? t('stoneOn') : t('stoneOff'); }
+function toggleAnatomy() {
+  state.showAnatomy = !state.showAnatomy;
+  const btn = document.getElementById('btnAnatomy');
+  btn.textContent = state.showAnatomy ? t('anatomyOn') : t('anatomyOff');
+  btn.classList.toggle('active', state.showAnatomy);
+}
+['Yaw', 'Pitch', 'Roll', 'Gain'].forEach(n => document.getElementById('slider' + n).addEventListener('input', e => { state[n.toLowerCase()] = parseFloat(e.target.value); syncSliders(); }));
+function syncSliders() {
+  ['Yaw', 'Pitch', 'Roll'].forEach(n => { document.getElementById('slider' + n).value = state[n.toLowerCase()]; document.getElementById('val' + n).textContent = `${Math.round(state[n.toLowerCase()])}°`; });
+  document.getElementById('sliderGain').value = state.gain; document.getElementById('valGain').textContent = Math.round(state.gain);
+}
+
+// ============================================================
+// 3D解剖ボリューム：心窩部横・縦どちらでもIVC・肝静脈・右心房(RA)を確実に描出
+// ============================================================
+// 学習用の血管中心線。x<0 は患者右、y<0 は頭側、z は体表からの深さ。
+// 添付テキストの立体解剖図と断面模式図を参照した独自の近似。座標・分岐角度は未検証。
+// 半径はcm相当。IVC/Ao はエコー内で別途生成し、この配列は3Dガイド表示だけに使う。
+const VASCULAR_PATHS = [
+  { name: 'IVC', key: 'ivc', color: '#38bdf8', radius: 0.95, guideOnly: true, points: [[-1.1,-4.5,7.3],[-1.1,-2.8,7.8],[-1.1,0,8.2],[-1.1,4.5,8.2]] },
+  { name: 'Ao', key: 'ao', color: '#ff7b72', radius: 0.96, guideOnly: true, points: [[1.2,-4.2,8.8],[1.2,4.2,8.8]] },
+  { name: 'RHV', key: 'hv', color: '#79c0ff', radius: 0.48, points: [[-7,-1.1,5.3],[-5,-2.0,6.1],[-3.1,-2.6,7.0],[-1.1,-3.1,7.75]] },
+  { name: 'MHV', key: 'hv', color: '#79c0ff', radius: 0.42, points: [[-3.8,0.1,4.5],[-2.9,-1.3,5.9],[-2.0,-2.4,7.0],[-1.1,-3.1,7.75]] },
+  { name: 'LHV', key: 'hv', color: '#79c0ff', radius: 0.42, points: [[2.3,-1.0,4.2],[1.2,-1.8,5.1],[0,-2.5,6.5],[-1.1,-3.1,7.75]] },
+  { name: 'PV', key: 'pv', color: '#a371f7', radius: 0.50, points: [[0.6,0.5,7.0],[-0.4,-0.1,6.5],[-2.1,-0.8,5.9]] },
+  { name: 'RPV', key: 'pv', color: '#a371f7', radius: 0.40, points: [[-2.1,-0.8,5.9],[-4.2,-0.9,5.6],[-5.2,-1.0,5.5]] },
+  { name: 'RPV ant.', key: 'pv', color: '#a371f7', radius: 0.30, points: [[-5.2,-1.0,5.5],[-6.2,-1.8,4.8],[-6.9,-2.6,4.5]] },
+  { name: 'RPV post.', key: 'pv', color: '#a371f7', radius: 0.30, points: [[-5.2,-1.0,5.5],[-6.4,0.2,6.2],[-7.3,0.7,6.7]] },
+  { name: 'LPV trans.', key: 'pv', color: '#a371f7', radius: 0.40, points: [[-2.1,-0.8,5.9],[0.2,-1.0,5.7],[1.6,-1.1,5.3]] },
+  { name: 'LPV umb.', key: 'pv', color: '#a371f7', radius: 0.32, points: [[1.6,-1.1,5.3],[1.9,-2.0,4.8],[1.6,-2.7,4.4]] },
+  { name: 'LPV S2', key: 'pv', color: '#a371f7', radius: 0.22, points: [[1.6,-2.7,4.4],[2.5,-3.0,4.1]] },
+  { name: 'LPV S3', key: 'pv', color: '#a371f7', radius: 0.22, points: [[1.9,-2.0,4.8],[2.9,-1.3,4.2]] },
+  { name: 'LPV S4', key: 'pv', color: '#a371f7', radius: 0.24, points: [[0.2,-1.0,5.7],[-0.2,-2.0,4.6]] },
+  { name: 'SV', key: 'sv', color: '#a5d6ff', radius: 0.36, points: [[4.0,0.2,6.7],[2.5,0.3,6.8],[0.6,0.5,7.0]] },
+  { name: 'SMV', key: 'smv', color: '#a5d6ff', radius: 0.38, points: [[0.6,3.0,7.0],[0.6,1.7,7.0],[0.6,0.5,7.0]] },
+  // 脾静脈の背側・Aoの腹側を走るSMAと、門脈の腹側から膵頭部へ向かう胆管の模式経路。
+  { name: 'SMA', key: 'sma', color: '#ff9b83', radius: 0.32, points: [[0.8,-2.0,7.75],[0.8,0.0,7.75],[0.8,4.0,7.55]] },
+  { name: 'CBD', key: 'cbd', color: '#e3b341', radius: 0.28, points: [[-2.0,-1.2,5.3],[-2.25,0.0,5.55],[-2.7,1.6,6.0]] },
+  // PDF p.37の主膵管径（約2 mm以下）を参考にした、膵内の細い暫定中心線。
+  { name: 'MPD', key: 'mpd', color: '#d8c5e5', radius: 0.09, points: [[-3.3,0.4,5.25],[-0.5,0.15,5.15],[2.8,-0.2,5.0],[6.4,-0.75,4.72]] }
+];
+
+const VASCULAR_SEGMENTS = VASCULAR_PATHS.filter(path => !path.guideOnly).flatMap(path =>
+  path.points.slice(1).map((end, index) => {
+    const start = path.points[index], delta = end.map((v, axis) => v - start[axis]);
+    const margin = path.radius + 0.10;
+    return {
+      path, start, delta, length2: delta.reduce((sum, v) => sum + v * v, 0),
+      min: start.map((v, axis) => Math.min(v, end[axis]) - margin),
+      max: start.map((v, axis) => Math.max(v, end[axis]) + margin)
+    };
+  })
+);
+
+function sampleVascularVolume(x, y, z) {
+  for (const segment of VASCULAR_SEGMENTS) {
+    if (x < segment.min[0] || x > segment.max[0] || y < segment.min[1] || y > segment.max[1] || z < segment.min[2] || z > segment.max[2]) continue;
+    const p = segment.start, d = segment.delta;
+    const t = Math.max(0, Math.min(1, ((x - p[0]) * d[0] + (y - p[1]) * d[1] + (z - p[2]) * d[2]) / segment.length2));
+    const dx = x - p[0] - t * d[0], dy = y - p[1] - t * d[1], dz = z - p[2] - t * d[2];
+    const radius = segment.path.radius;
+    const wall = segment.path.key === 'pv' ? 0.09 : segment.path.key === 'cbd' || segment.path.key === 'sma' ? 0.06 : 0.035;
+    const distance2 = dx * dx + dy * dy + dz * dz;
+    if (distance2 <= radius * radius) return { val: segment.path.key === 'mpd' ? 35 : 15, shadow: 0, enhance: 0.15, organKey: segment.path.key };
+    if (distance2 <= (radius + wall) ** 2) return { val: segment.path.key === 'pv' || segment.path.key === 'cbd' || segment.path.key === 'mpd' ? 205 : 140, shadow: 0, enhance: 0, organKey: null };
+  }
+  return null;
+}
+
+// 一つの3D座標から肝区域と血管図・チルト断面を作る。境界は肝静脈面と門脈面を
+// 手掛かりにした教育用の近似であり、超音波で見える実在の線としてエコーへ描かない。
+const LIVER_SEGMENT_COLORS = {
+  S1:[155,125,100], S2:[235,200,94], S3:[218,167,73], S4:[228,188,130],
+  S5:[184,170,91], S6:[138,168,205], S7:[108,143,198], S8:[178,190,221]
+};
+function liverBounds(x, y, z) {
+  const topY = -3.6 - Math.max(0, 9.5 - z) * 0.14;
+  const backZ = x < 0 ? 9.8 + x * 0.2 : 6.5 - x * 0.85;
+  const bottomY = x < -2 ? 4.8 + (x + 2) * 0.3 : 2.2 - x * 0.4;
+  return x > -9.5 && x < 4.5 && y > topY && y < bottomY && z > 1.3 && z < backZ;
+}
+function liverSegmentAt(x, y, z) {
+  if (!liverBounds(x, y, z)) return null;
+  if (x > -2.1 && x < 0.2 && y > -2.0 && y < 0.5 && z > 6.3) return 'S1';
+  const middleVeinPlaneX = -2.3 + 0.16 * (z - 6);
+  const portalPlaneY = -1.0 + 0.08 * (z - 5.5);
+  if (x > middleVeinPlaneX) {
+    if (x < 1.3) return 'S4';
+    return y < portalPlaneY ? 'S2' : 'S3';
+  }
+  const rightVeinPlaneZ = 6.15 + 0.12 * (x + 5.0);
+  const posterior = z > rightVeinPlaneZ;
+  return y < portalPlaneY ? (posterior ? 'S7' : 'S8') : (posterior ? 'S6' : 'S5');
+}
+
+// 腎中心部を囲む複数の髄質錐体を3D楕円体として配置する。外側の皮質は保持する。
+function inRenalMedulla(nx, ny, nz) {
+  for (const side of [-1, 1]) for (const cy of [-0.62, -0.30, 0.02, 0.34, 0.65]) {
+    const centerX = side * (0.57 - 0.07 * Math.abs(cy));
+    if (Math.hypot((nx - centerX) / 0.25, (ny - cy) / 0.18, (nz + 0.05) / 0.58) < 1) return true;
+  }
+  return false;
+}
+
+function inAdrenalLobe(x, y, z, center, radii) {
+  return Math.hypot((x-center[0])/radii[0], (y-center[1])/radii[1], (z-center[2])/radii[2]) < 1;
+}
+function sampleAdrenals(x, y, z) {
+  // 腎上極と大血管の間に置いた左右別の小さな3D形状。正常で常に描出できる意味ではない。
+  if (y < -3.3 || y > -1.1 || z < 7.35 || z > 8.5) return null;
+  if (x > -5.9 && x < -4.1 && (inAdrenalLobe(x,y,z,[-5.0,-2.35,8.0],[0.75,0.52,0.29]) ||
+      inAdrenalLobe(x,y,z,[-4.55,-1.93,8.08],[0.32,0.75,0.28])))
+    return {val:122, shadow:0, enhance:0, organKey:'rightAdrenal'};
+  if (x > 3.1 && x < 4.7 && (inAdrenalLobe(x,y,z,[3.9,-2.55,7.7],[0.67,0.54,0.28]) ||
+      inAdrenalLobe(x,y,z,[3.45,-2.00,7.82],[0.26,0.72,0.27])))
+    return {val:119, shadow:0, enhance:0, organKey:'leftAdrenal'};
+  return null;
+}
+
+// 5層の反射強度を持つ胃壁と腸管壁。層は3Dの殻として続き、走査面を変えると断面も変わる。
+function sampleGutLayer(x, y, z, center, radii, key, gasInLumen) {
+  const d = Math.hypot((x-center[0])/radii[0], (y-center[1])/radii[1], (z-center[2])/radii[2]);
+  if (d >= 1) return null;
+  const wallDepth = (1-d) * Math.min(...radii);
+  if (wallDepth >= 0.37) return gasInLumen
+    ? {val:218, shadow:0.56 - state.pressure * 0.32, enhance:0, organKey:'gas'}
+    : {val:38, shadow:0, enhance:0.18, organKey:null};
+  const layers = [176,70,167,72,184];
+  const band = Math.min(4, Math.floor(wallDepth / 0.074));
+  return {val:layers[band], shadow:0, enhance:0, organKey:key};
+}
+function sampleGutWalls(x, y, z) {
+  // 胃は膵の腹側・患者左寄り。腸管は下腹部に別の短いループを置く。
+  if (z < 2.25 || z > 4.2) return null;
+  if (x > 3.3 && x < 6.7 && y > -2.2 && y < 1.2)
+    return sampleGutLayer(x,y,z,[5.0,-0.5,3.2],[1.65,1.65,0.92],'stomachWall',false);
+  if (x > 2.1 && x < 4.3 && y > 3.2 && y < 7.0)
+    return sampleGutLayer(x,y,z,[3.2,5.1,3.3],[1.03,1.8,0.86],'bowelWall',true);
+  return null;
+}
+
+function sampleVolume(x, y, z) {
+  if (z < 1.3) return { val: 65 + Math.exp(-Math.pow((z - 0.55) * 9, 2)) * 85, shadow: 0, enhance: 0, organKey: null };
+
+  // 1. 右心房（RA：横隔膜の頭側 y < -3.4 に限定。臍付近 y > +1.5 からは見えない）
+  if (y < -3.4 && state.py < 1.5) {
+    const raDist = Math.hypot((x + 1.4) / 2.0, (y + 5.6) / 1.6, (z - 7.6) / 1.9);
+    if (raDist < 1.0) {
+      if (raDist > 0.88) return { val: 165, shadow: 0, enhance: 0, organKey: null };
+      return { val: 10, shadow: 0, enhance: 0.35, organKey: 'ra' };
+    }
+  }
+
+  // 2. 下大静脈（IVC：x = -1.1 付近を縦走し、頭側で右心房へ流入）
+  const ivcCenterZ = y < -1.0 ? (8.2 + (y + 1.0) * 0.22) : 8.2;
+  // 旧式は横径が約4 cmとなり、3D血管図の径とも矛盾していた。模式的に約2.0 × 1.8 cmへ揃える。
+  if (y > -4.8 && y < 5.0 && Math.hypot((x + 1.1) / 1.0, (z - ivcCenterZ) / 0.9) < 1.0) {
+    return { val: 11, shadow: 0, enhance: 0.32, organKey: 'ivc' };
+  }
+
+  // 3. 脊椎（IVC・右心房より後ろ・尾側寄りに配置してIVCを遮らないようにする）
+  if (y > -2.8 && y < 4.5) {
+    const spineDist = Math.hypot(x * 0.9, (z - 12.2) * 1.15);
+    if (spineDist < 2.0) return z < 11.0 ? { val: 210, shadow: 1.0, enhance: 0, organKey: 'spine' } : { val: 12, shadow: 1.0, enhance: 0, organKey: null };
+  }
+
+  // 5. 腹部大動脈（Ao）
+  if (y > -4.5 && y < 4.0) {
+    const aoDistance = Math.hypot(x - 1.2, z - 8.8);
+    if (aoDistance < 0.96) return { val: 12, shadow: 0, enhance: 0.25, organKey: 'ao' };
+    if (aoDistance < 1.04) return { val: 195, shadow: 0, enhance: 0, organKey: null };
+  }
+
+  // 6. 横隔膜（Diaphragm）
+  const diaphY = -3.6 - Math.max(0, 9.5 - z) * 0.14;
+  if (x > -9.0 && x < 3.5 && z > 2.2 && z < 11.5 && Math.abs(y - diaphY) < 0.24) {
+    return { val: 215, shadow: 0, enhance: 0, organKey: 'diaphragm' };
+  }
+
+  // 7. 胆嚢・胆石：長軸を約7 cm、短軸を最大約2.8 cmとし、細い壁エコーを加える。
+  const gbAxisX = -4.2 - (y - 0.2) * 0.25, gbAxisZ = 4.6 + (y - 0.2) * 0.35;
+  if (y > -2.0 && y < 4.6) {
+    const t = (y + 2.0) / 6.6;
+    const r = 1.4 * Math.sin(t * Math.PI) ** 0.75;
+    const distance = Math.hypot(x - gbAxisX, z - gbAxisZ);
+    if (distance < r + 0.08) {
+      if (state.hasStone && Math.hypot(x - (gbAxisX - 0.1), y - 1.6, z - (gbAxisZ + 0.45)) < 0.48) return { val: 250, shadow: 0.94, enhance: 0, organKey: 'stone' };
+      if (distance >= r) return { val: 185, shadow: 0, enhance: 0, organKey: null };
+      return { val: 10, shadow: 0, enhance: 0.35, organKey: 'gb' };
+    }
+  }
+
+  // 8. 門脈・肝静脈と、膵・胆道を同定する目印となるSMA・総胆管の中心線。
+  const vascular = sampleVascularVolume(x, y, z);
+  if (vascular) return vascular;
+
+  const adrenal = sampleAdrenals(x, y, z);
+  if (adrenal) return adrenal;
+
+  // 9. 膵臓：頭部は厚く、体部から脾門に向かう尾部へ細くなる約12 cmの中心軸。
+  // 本体の形と走査時の見え方は、専門医による画像照合が必要。
+  if (x > -4.2 && x < 7.8) {
+    const t = (x + 4.2) / 12.0;
+    const pancY = 0.45 - 1.45 * t + 0.25 * Math.sin(Math.PI * t);
+    const pancZ = 5.25 - 0.65 * t + 0.25 * Math.sin(Math.PI * t);
+    const widthY = t < 0.27 ? 1.45 - 0.5 * (t / 0.27) : 0.95 - 0.32 * ((t - 0.27) / 0.73);
+    const widthZ = t < 0.27 ? 1.25 - 0.40 * (t / 0.27) : 0.85 - 0.24 * ((t - 0.27) / 0.73);
+    const endTaper = Math.min(1, Math.sqrt(Math.max(0, t * (1 - t) * 40)));
+    if (Math.hypot((y - pancY) / widthY, (z - pancZ) / widthZ) < endTaper) return { val: 138, shadow: 0, enhance: 0, organKey: 'pancreas' };
+  }
+
+  // 10. 肝実質
+  const segmentKey = liverSegmentAt(x, y, z);
+  if (segmentKey) {
+    return { val: 100, shadow: 0, enhance: 0, organKey: x < -1.5 ? 'liverRt' : 'liverLt', segmentKey };
+  }
+
+  // 10. 右腎
+  // 腎長軸は旧式の約7～8 cmでは小さすぎたため、左右とも約10 cmの学習用寸法にする。
+  const rk = Math.hypot((x + 6.8) / 2.2, (y - 2.2) / 4.7, (z - 9.2) / 1.9);
+  if (rk < 1.04) {
+    if (rk > 0.98) return { val: 165, shadow: 0, enhance: 0, organKey: null };
+    if (rk < 0.48) return { val: 185, shadow: 0, enhance: 0, organKey: 'kidneyCec' };
+    if (inRenalMedulla((x+6.8)/2.2,(y-2.2)/4.7,(z-9.2)/1.9)) return {val:68, shadow:0, enhance:0, organKey:'kidneyMedulla'};
+    return { val: 92, shadow: 0, enhance: 0, organKey: 'kidneyCort' };
+  }
+
+  // 11. 脾臓（左側腹部・左季肋部：x = +5.8 付近、z = 4.5..7.5 に広く配置して見つけやすくする）
+  const spDist = Math.hypot((x - 5.8) / 2.6, (y - 0.2) / 3.8, (z - 5.8) / 2.2);
+  if (spDist < 1.05) return { val: 108, shadow: 0, enhance: 0, organKey: 'spleen' };
+
+  // 12. 左腎：脾臓の背側へずらし、皮質・中心部と外側の輪郭を区別する。
+  const lk = Math.hypot((x - 5.8) / 2.3, (y - 1.2) / 4.7, (z - 9.0) / 2.2);
+  if (lk < 1.04) {
+    if (lk > 0.98) return { val: 165, shadow: 0, enhance: 0, organKey: null };
+    if (lk < 0.50) return { val: 190, shadow: 0, enhance: 0, organKey: 'ltKidneyCec' };
+    if (inRenalMedulla((x-5.8)/2.3,(y-1.2)/4.7,(z-9.0)/2.2)) return {val:69, shadow:0, enhance:0, organKey:'ltKidneyMedulla'};
+    return { val: 94, shadow: 0, enhance: 0, organKey: 'ltKidneyCort' };
+  }
+
+  // 12. 膀胱・前立腺：上腹部から深く傾けた模式ビームが骨盤へ貫通しないよう、下腹部の接触位置に限る。
+  if (state.py >= 4.5) {
+    const bladDist = Math.hypot(x / 3.2, (y - 7.2) / 2.2, (z - 4.6) / 2.1);
+    if (bladDist < 1.06) {
+      if (bladDist > 0.94) return { val: 155, shadow: 0, enhance: 0, organKey: null };
+      return { val: 8, shadow: 0, enhance: 0.45, organKey: 'bladder' };
+    }
+    const prostDist = Math.hypot(x / 1.6, (y - 8.8) / 1.2, (z - 6.2) / 1.3);
+    if (prostDist < 1.0) return { val: 92, shadow: 0, enhance: 0, organKey: 'prostate' };
+  }
+
+  // 13. 胃腸壁の層構造と消化管ガス
+  const gut = sampleGutWalls(x, y, z);
+  if (gut) return gut;
+  if (Math.hypot((x - 1.5) * 0.5, (y - 1.8) * 0.7, (z - 3.2) * 1.1) < (1.4 - state.pressure * 1.1)) return { val: 230, shadow: 0.85, enhance: 0, organKey: 'gas' };
+  return { val: 68, shadow: 0, enhance: 0, organKey: null };
+}
+
+// エコーと同じ模式ボリューム・走査面を色分けする。見本画像や診断用画像ではない。
+const sectionSmall = document.createElement('canvas');
+sectionSmall.width = 190;
+sectionSmall.height = 145;
+const sectionSmallCtx = sectionSmall.getContext('2d');
+const sectionPixels = sectionSmallCtx.createImageData(190, 145);
+const SECTION_COLORS = {
+  liverRt:[188,143,60], liverLt:[217,176,78], pancreas:[227,120,96], gb:[45,168,191],
+  kidneyCec:[224,198,151], kidneyCort:[148,107,186], kidneyMedulla:[104,77,145],
+  ltKidneyCec:[224,198,151], ltKidneyCort:[148,107,186], ltKidneyMedulla:[104,77,145],
+  rightAdrenal:[228,150,112], leftAdrenal:[228,150,112], stomachWall:[202,181,164], bowelWall:[202,181,164],
+  spleen:[115,190,151], bladder:[44,166,206], prostate:[169,129,181],
+  ra:[246,104,116], ivc:[91,161,237], ao:[239,107,94], hv:[121,192,255], pv:[163,113,247], sv:[165,214,255], smv:[165,214,255], sma:[255,155,131], cbd:[227,179,65], mpd:[213,189,222], diaphragm:[214,222,231],
+  spine:[199,201,205], gas:[171,177,181], stone:[244,220,87]
+};
+function drawCurrentSection() {
+  const canvas = document.getElementById('sectionCanvas');
+  const g = canvas.getContext('2d');
+  const data = sectionPixels.data;
+  const frame = computeProbeFrame(state.yaw, state.pitch, state.roll);
+  const respY = Math.sin(performance.now() * 0.0022) * 0.16;
+  const centroids = new Map();
+  for (let y = 0; y < 145; y++) for (let x = 0; x < 190; x++) {
+    const ex = x * 4 + 2, ey = y * 4 + 2;
+    const dx = ex - 380, dy = ey + 90, r = Math.hypot(dx, dy), th = Math.atan2(dx, dy);
+    const i = (y * 190 + x) * 4;
+    let color = [9, 12, 16], key = null;
+    if (r >= 120 && r <= 640 && Math.abs(th) <= 34 * Math.PI / 180) {
+      const dCm = ((r - 120) / 520) * 15;
+      const lCm = dCm * Math.tan(th) * 0.95;
+      const s = sampleVolume(
+        state.px + frame.ux * lCm + frame.bx * dCm,
+        state.py + frame.uy * lCm + frame.by * dCm + respY,
+        frame.uz * lCm + frame.bz * dCm
+      );
+      key = s.organKey;
+      color = s.segmentKey ? LIVER_SEGMENT_COLORS[s.segmentKey] : (SECTION_COLORS[key] || [51, 61, 73]);
+      const labelKey = s.segmentKey || key;
+      if (labelKey) {
+        const acc = centroids.get(labelKey) || {x:0,y:0,n:0};
+        acc.x += x; acc.y += y; acc.n++;
+        centroids.set(labelKey, acc);
+      }
+    }
+    data[i] = color[0]; data[i+1] = color[1]; data[i+2] = color[2]; data[i+3] = 255;
+  }
+  sectionSmallCtx.putImageData(sectionPixels, 0, 0);
+  g.imageSmoothingEnabled = false;
+  g.clearRect(0, 0, canvas.width, canvas.height);
+  g.drawImage(sectionSmall, 0, 0, canvas.width, canvas.height);
+  g.font = 'bold 10px sans-serif';
+  g.textAlign = 'center';
+  Array.from(centroids).filter(([, a]) => a.n >= 12).sort((a,b) => b[1].n - a[1].n).slice(0, 7).forEach(([key, a]) => {
+    const label = getOrganLabel(key), px = a.x / a.n * 2, py = a.y / a.n * 2;
+    const width = g.measureText(label).width + 8;
+    g.fillStyle = 'rgba(9,12,16,0.82)'; g.fillRect(px - width/2, py - 10, width, 14);
+    g.fillStyle = '#f0f6fc'; g.fillText(label, px, py + 1);
+  });
+}
+
+// 選択部位に対する固定の観察見本。現在のボリュームから生成せず、教本の構造関係から独立に作図する。
+// 超音波写真や到達判定ではなく、専門医が左右・深さ・必要構造を照合するための草案。
+function drawTargetReferenceView(zone, view) {
+  const canvas = document.getElementById('targetReferenceCanvas');
+  const g = canvas.getContext('2d');
+  const ja = state.lang === 'ja';
+  g.clearRect(0, 0, canvas.width, canvas.height);
+  g.fillStyle = '#10161d'; g.fillRect(0, 0, canvas.width, canvas.height);
+  g.strokeStyle = '#34404d'; g.lineWidth = 1.4;
+  g.beginPath(); g.moveTo(180, 38); g.lineTo(24, 276); g.moveTo(250, 38); g.lineTo(406, 276); g.stroke();
+  g.fillStyle = '#8b949e'; g.font = '11px sans-serif'; g.textAlign = 'left';
+  const longAxis = ['aorta_long','gb_long','right_kidney_long','left_kidney_long','spleen_long','bladder_uterus'].includes(view);
+  if (longAxis) {
+    g.fillText(ja ? '長軸の向きは模式上の配置' : 'Schematic long axis orientation', 12, 43);
+  } else {
+    g.fillText(ja ? 'R（患者右）' : 'R (patient right)', 12, 33);
+    g.textAlign = 'right'; g.fillText(ja ? 'L（患者左）' : 'L (patient left)', 418, 33);
+  }
+  g.textAlign = 'right';
+  g.fillText(ja ? '深部 ↓' : 'Deep ↓', 414, 288);
+
+  const labels = {
+    epigastric: ja ? '心窩部：膵体部と周辺血管' : 'Epigastrium: pancreas and vessels',
+    subcostal_gb: ja ? '右季肋部：胆嚢と肝門部' : 'Right subcostal: gallbladder and hilum',
+    right_flank: ja ? '右側腹部：肝腎境界' : 'Right flank: hepatorenal interface',
+    left_flank: ja ? '左側腹部：脾腎関係' : 'Left flank: spleen and kidney',
+    pelvis_bladder: ja ? '下腹部：充満した膀胱' : 'Lower abdomen: filled bladder'
+  };
+  g.fillStyle = '#e6edf3'; g.font = 'bold 14px sans-serif'; g.textAlign = 'center';
+  const selected = NORMAL_TARGETS[zone].find(item => item.id === view) || NORMAL_TARGETS[zone][0];
+  g.fillText(view === NORMAL_TARGETS[zone][0].id ? labels[zone] : (ja ? selected.ja : selected.en), 215, 22);
+
+  function oval(x, y, rx, ry, fill, stroke = '#aeb8c2', width = 2, rotation = 0) {
+    g.beginPath(); g.ellipse(x, y, rx, ry, rotation, 0, Math.PI * 2);
+    g.fillStyle = fill; g.fill(); g.strokeStyle = stroke; g.lineWidth = width; g.stroke();
+  }
+  function line(points, color, width) {
+    g.beginPath(); points.forEach(([x,y], i) => i ? g.lineTo(x,y) : g.moveTo(x,y));
+    g.strokeStyle = color; g.lineWidth = width; g.lineCap = 'round'; g.lineJoin = 'round'; g.stroke();
+  }
+  function tag(value, x, y) {
+    g.font = 'bold 11px sans-serif'; g.textAlign = 'center';
+    const width = g.measureText(value).width + 10;
+    g.fillStyle = 'rgba(8,12,18,0.88)'; g.fillRect(x-width/2, y-12, width, 16);
+    g.fillStyle = '#e6edf3'; g.fillText(value, x, y);
+  }
+
+  if (view === 'liver_hv' || view === 'liver_pv') {
+    drawLiverReferenceView(view === 'liver_hv' ? 'hepatic' : 'portal');
+    g.clearRect(0, 0, canvas.width, canvas.height);
+    g.drawImage(document.getElementById('liverReferenceCanvas'), 0, 0);
+  } else if (view === 'aorta_long') {
+    oval(195, 89, 143, 39, '#5d5239', '#ad976b');
+    oval(226, 139, 107, 21, '#755744', '#d7a27f');
+    line([[216,272],[216,229],[215,182],[214,146],[214,104]], '#e0aa97', 29);
+    line([[213,172],[176,158],[146,147]], '#e0aa97', 10);
+    line([[215,204],[176,198],[148,203]], '#e0aa97', 9);
+    line([[91,262],[96,224],[94,184]], '#8ec5e6', 20);
+    tag('Ao', 251, 248); tag(ja ? '腹腔動脈' : 'Celiac', 137, 139);
+    tag('SMA', 142, 218); tag(ja ? '膵' : 'Pancreas', 328, 142);
+    tag(ja ? '肝左葉' : 'Left liver', 330, 83); tag('IVC', 94, 273);
+  } else if (view === 'gb_long') {
+    oval(214, 112, 164, 65, '#5d5239', '#ad976b');
+    oval(174, 163, 30, 91, '#102634', '#d6e0d2', 3, -0.36);
+    line([[194,214],[219,227],[245,237]], '#d6b464', 6);
+    line([[241,249],[299,259],[345,265]], '#a38be2', 15);
+    tag(ja ? '肝' : 'Liver', 304, 105); tag(ja ? '底部' : 'Fundus', 133, 105);
+    tag(ja ? '体部' : 'Body', 127, 171); tag(ja ? '頸部' : 'Neck', 219, 225);
+    tag('CBD', 244, 218); tag('PV', 321, 252);
+  } else if (view === 'right_portal') {
+    oval(203, 147, 172, 103, '#5d5239', '#ad976b');
+    line([[333,240],[291,216],[251,190],[202,173],[143,151]], '#9d87d6', 18);
+    line([[202,173],[151,198],[101,225]], '#9d87d6', 10);
+    line([[204,173],[159,126],[113,101]], '#9d87d6', 10);
+    line([[343,263],[259,253],[181,234],[95,204]], '#7bc8e8', 9);
+    oval(345, 258, 22, 17, '#142d3b', '#8ec5e6');
+    tag('PV', 268, 203); tag(ja ? '右前枝' : 'Anterior', 108, 94);
+    tag(ja ? '右後枝' : 'Posterior', 99, 230); tag('RHV', 135, 230);
+    tag('IVC', 347, 267); tag(ja ? '肝右葉' : 'Right liver', 310, 102);
+  } else if (view === 'right_kidney_long' || view === 'left_kidney_long') {
+    const right = view === 'right_kidney_long';
+    oval(205, 86, right ? 147 : 96, 41, right ? '#5d5239' : '#3d6359', right ? '#ad976b' : '#8ebba9');
+    oval(216, 204, 155, 51, '#443e5a', '#d3d4dc', 3, -0.12);
+    oval(215, 204, 73, 19, '#e3d3a3', '#f4e5be', 2, -0.12);
+    for (const x of [122,156,273,306]) oval(x, 202, 12, 11, '#6c6384', '#a9a3bd', 1);
+    line([[363,205],[324,205],[283,205]], '#a7bfd2', 5);
+    tag(right ? (ja ? '肝右葉' : 'Liver') : (ja ? '脾臓' : 'Spleen'), 205, 84);
+    tag(right ? (ja ? '右腎皮質' : 'Right cortex') : (ja ? '左腎皮質' : 'Left cortex'), 216, 164);
+    tag(ja ? '腎中心部' : 'Renal sinus', 216, 207); tag(ja ? '腎門' : 'Hilum', 352, 193);
+  } else if (view === 'right_kidney_short') {
+    oval(211, 171, 108, 87, '#443e5a', '#d3d4dc', 3);
+    for (const [x,y] of [[153,125],[210,111],[266,135],[160,207],[212,227],[264,207]]) oval(x,y,19,16,'#6c6384','#aaa3ba',1);
+    oval(217, 169, 39, 30, '#e3d3a3', '#f4e5be');
+    line([[365,172],[304,172],[253,170]], '#a7bfd2', 5);
+    tag(ja ? '腎皮質' : 'Cortex', 110, 164); tag(ja ? '髄質' : 'Medulla', 268, 117);
+    tag(ja ? '腎中心部' : 'Renal sinus', 217, 172); tag(ja ? '腎門' : 'Hilum', 351, 159);
+  } else if (view === 'spleen_long') {
+    oval(186, 139, 72, 88, '#3d6359', '#8ebba9', 3, -0.35);
+    oval(279, 226, 87, 40, '#443e5a', '#d3d4dc', 2, -0.16);
+    oval(280, 226, 39, 15, '#e3d3a3', '#f4e5be', 2, -0.16);
+    line([[116,45],[177,37],[248,45],[334,68]], '#d4dbe2', 3);
+    tag(ja ? '脾臓' : 'Spleen', 167, 122); tag(ja ? '脾門' : 'Splenic hilum', 274, 144);
+    tag(ja ? '左腎' : 'Left kidney', 354, 240);
+  } else if (view === 'bladder_uterus') {
+    oval(204, 105, 126, 65, '#102634', '#d6e0d2', 3);
+    oval(234, 212, 63, 42, '#644c55', '#c6a0ac', 3, 0.21);
+    line([[218,202],[229,211],[245,220]], '#e6b8be', 4);
+    line([[252,246],[269,272]], '#c6a0ac', 10);
+    tag(ja ? '膀胱' : 'Bladder', 206, 109); tag(ja ? '子宮体部' : 'Uterus', 231, 202);
+    tag(ja ? '子宮頸部' : 'Cervix', 307, 260);
+  } else if (view === 'bladder_prostate') {
+    oval(214, 113, 121, 72, '#102634', '#d6e0d2', 3);
+    oval(215, 230, 55, 34, '#614b59', '#c9a5b6', 3);
+    line([[214,187],[214,218],[214,260]], '#b8c9d8', 4);
+    tag(ja ? '膀胱' : 'Bladder', 215, 111); tag(ja ? '前立腺' : 'Prostate', 215, 234);
+  } else if (zone === 'epigastric') {
+    oval(208, 88, 154, 47, '#5d5239', '#ad976b');
+    oval(214, 146, 131, 24, '#755744', '#d7a27f', 2, -0.06);
+    line([[137,153],[211,150],[288,145]], '#d8c5e5', 2);
+    line([[95,181],[140,185],[214,184],[291,180],[335,176]], '#87b8da', 12);
+    oval(215, 218, 15, 13, '#132837', '#c9a899', 3);
+    oval(216, 255, 22, 18, '#122431', '#e0aa97', 3);
+    oval(118, 251, 24, 17, '#142d3b', '#8ec5e6', 2);
+    tag(ja ? '肝左葉' : 'Left liver', 120, 83);
+    tag(ja ? '膵体部' : 'Pancreas', 245, 132); tag('MPD', 322, 158);
+    tag('SV', 303, 193); tag('SMA', 248, 220); tag('Ao', 252, 264); tag('IVC', 83, 260);
+  } else if (zone === 'subcostal_gb') {
+    oval(212, 137, 159, 92, '#5d5239', '#ad976b');
+    oval(132, 153, 26, 57, '#102634', '#d6e0d2', 3, -0.25);
+    line([[188,188],[235,190],[285,200],[325,208]], '#a38be2', 19);
+    line([[176,174],[216,175],[245,180]], '#d6b464', 6);
+    oval(294, 248, 24, 17, '#142d3b', '#8ec5e6', 2);
+    tag(ja ? '肝右葉' : 'Right liver', 310, 92);
+    tag('GB', 131, 157); tag('CBD', 215, 164); tag('PV', 282, 203); tag('IVC', 296, 255);
+  } else if (zone === 'right_flank' || zone === 'left_flank') {
+    const right = zone === 'right_flank';
+    oval(205, 112, right ? 155 : 92, right ? 62 : 67, right ? '#5d5239' : '#3d6359', right ? '#ad976b' : '#8ebba9', 2, right ? 0.05 : -0.25);
+    oval(224, 220, 108, 43, '#443e5a', '#d3d4dc', 3, -0.10);
+    oval(225, 219, 47, 17, '#e3d3a3', '#f4e5be', 2, -0.10);
+    line([[69,70],[150,59],[235,60],[335,79]], '#d4dbe2', 3);
+    tag(right ? (ja ? '肝右葉' : 'Right liver') : (ja ? '脾臓' : 'Spleen'), 207, 112);
+    tag(right ? (ja ? '右腎' : 'Right kidney') : (ja ? '左腎' : 'Left kidney'), 321, 222);
+    tag(ja ? '腎中心部' : 'Renal sinus', 221, 225);
+  } else if (zone === 'pelvis_bladder') {
+    oval(215, 155, 122, 82, '#102634', '#d6e0d2', 3);
+    line([[95,255],[155,244],[215,249],[277,244],[335,255]], '#6f7880', 4);
+    tag(ja ? '膀胱内腔' : 'Bladder lumen', 215, 149);
+    tag(ja ? '膀胱壁' : 'Bladder wall', 330, 184);
+    tag(ja ? '後方組織' : 'Posterior tissue', 215, 270);
+  }
+  g.font = '10px sans-serif'; g.textAlign = 'left'; g.fillStyle = '#e3b341';
+  g.fillText(ja ? '独自の固定模式図／正常エコー写真ではありません' : 'Original fixed schematic / not a clinical ultrasound image', 12, 293);
+}
+
+// 添付テキストの「肝 静脈面 / 門脈面」を参考にした独自の断面例。
+// 旧S1-S8固定正面図は使わず、走査面で見える構造が変わることを示す。
+// 実際の臨床画像との位置・角度対応は専門医の照合前。
+function drawLiverReferenceView(view) {
+  const canvas = document.getElementById('liverReferenceCanvas');
+  const g = canvas.getContext('2d');
+  const ja = state.lang === 'ja';
+  const portal = view === 'portal';
+  g.clearRect(0, 0, 430, 300);
+  g.fillStyle = '#090c10'; g.fillRect(0, 0, 430, 300);
+  g.fillStyle = '#e6edf3'; g.font = 'bold 14px sans-serif'; g.textAlign = 'left';
+  g.fillText(portal ? (ja ? '心窩部横〜斜走査：門脈分枝面' : 'Epigastric transverse/oblique: portal branches')
+                    : (ja ? '心窩部横走査：肝静脈面' : 'Epigastric transverse: hepatic veins'), 16, 24);
+  g.font = '11px sans-serif'; g.fillStyle = '#8b949e';
+  g.fillText('R', 12, 154); g.fillText('L', 408, 154);
+
+  // 肝輪郭は断面例の背景。区域の輪郭や縮尺を確定する線ではない。
+  g.beginPath();
+  g.moveTo(34, 154);
+  g.bezierCurveTo(40, 73, 127, 46, 250, 60);
+  g.bezierCurveTo(345, 55, 397, 103, 378, 177);
+  g.bezierCurveTo(356, 229, 282, 234, 219, 244);
+  g.bezierCurveTo(104, 254, 39, 225, 34, 154);
+  g.closePath();
+  g.fillStyle = '#3a3529'; g.fill();
+  g.strokeStyle = '#a89b77'; g.lineWidth = 1.8; g.stroke();
+
+  function vessel(points, color, width) {
+    g.strokeStyle = color; g.lineWidth = width; g.lineCap = 'round'; g.lineJoin = 'round';
+    g.beginPath();
+    points.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1]));
+    g.stroke();
+  }
+  function organ(x, y, rx, ry, color, title) {
+    g.fillStyle = color;
+    g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#f0f6fc'; g.font = 'bold 10px sans-serif'; g.textAlign = 'center';
+    g.fillText(title, x, y + 4);
+  }
+  function label(text, x, y, color = '#f0f6fc') {
+    g.font = 'bold 12px sans-serif'; g.textAlign = 'center';
+    const width = g.measureText(text).width + 8;
+    g.fillStyle = 'rgba(9,12,16,0.7)'; g.fillRect(x - width/2, y - 11, width, 15);
+    g.fillStyle = color; g.fillText(text, x, y);
+  }
+
+  organ(294, 220, 13, 10, '#2679a4', 'IVC');
+  organ(386, 217, 11, 11, '#9e4b4b', 'Ao');
+  if (portal) {
+    // 深部の門脈本幹から左右枝へ。臍部は左枝の頭側への折れを模式化。
+    vessel([[242, 229], [235, 183], [210, 166]], '#a371f7', 6);
+    vessel([[210, 166], [157, 159], [103, 143]], '#a371f7', 4.8);
+    vessel([[210, 166], [265, 158], [324, 150], [334, 105]], '#a371f7', 4.8);
+    vessel([[157, 159], [128, 188]], '#a371f7', 3);
+    vessel([[334, 105], [361, 89]], '#a371f7', 3);
+    label(ja ? '右枝' : 'RPV', 130, 134, '#d2a8ff');
+    label(ja ? '左枝' : 'LPV', 286, 145, '#d2a8ff');
+    label('UP', 347, 88, '#d2a8ff');
+    label(ja ? '門脈本幹' : 'PV', 205, 228, '#d2a8ff');
+    label('S8', 95, 95); label('S5', 103, 210);
+    label('S4', 250, 98); label('S2', 339, 113); label('S3', 345, 193);
+    label('S1', 275, 199);
+  } else {
+    // 肝静脈がIVCへ集まる面。門脈分枝面とは別に表示する。
+    vessel([[78, 156], [149, 172], [223, 195], [294, 220]], '#79c0ff', 6);
+    vessel([[159, 73], [193, 118], [245, 174], [294, 220]], '#79c0ff', 6);
+    vessel([[339, 80], [327, 137], [307, 188], [294, 220]], '#79c0ff', 6);
+    label('RHV', 91, 143, '#a5d6ff');
+    label('MHV', 182, 94, '#a5d6ff');
+    label('LHV', 341, 76, '#a5d6ff');
+    label('S8', 91, 99); label('S4', 247, 102);
+    label('S2', 340, 109); label('S3', 349, 177);
+    label('S1', 268, 196);
+  }
+  g.textAlign = 'left'; g.font = '10px sans-serif'; g.fillStyle = '#e3b341';
+  g.fillText(ja ? '区域・血管径は模式／診断・区域同定には使用不可' : 'Schematic sizes / not for diagnosis or segment ID', 16, 283);
+}
+
+const echoCanvas = document.getElementById('echoCanvas'), ctx = echoCanvas.getContext('2d');
+const W = echoCanvas.width, H = echoCanvas.height, imgData = ctx.createImageData(W, H);
+const apexX = W / 2, apexY = -90, rMin = 120, rMax = 640, halfAngle = (34 * Math.PI) / 180;
+const NUM_RAYS = 360, NUM_SAMPLES = 300, polarBuffer = new Float32Array(NUM_RAYS * NUM_SAMPLES);
+const pixelMapRay = new Float32Array(W * H), pixelMapSample = new Float32Array(W * H), pixelValid = new Uint8Array(W * H);
+for (let py = 0; py < H; py++) for (let px = 0; px < W; px++) {
+  const i = py * W + px, dx = px - apexX, dy = py - apexY, r = Math.hypot(dx, dy);
+  if (r >= rMin && r <= rMax) {
+    const th = Math.atan2(dx, dy);
+    if (Math.abs(th) <= halfAngle) { pixelValid[i] = 1; pixelMapRay[i] = ((th / halfAngle + 1) * 0.5) * (NUM_RAYS - 1); pixelMapSample[i] = ((r - rMin) / (rMax - rMin)) * (NUM_SAMPLES - 1); }
+  }
+}
+const organCentroids = new Map();
+
+// 肝の外面と区域の接触面を、同じ3D区域関数から疎な点群として作る。
+// 解剖シェーマは模式的な斜投影で、診断用の区域判定ではない。
+const LIVER_SEGMENT_GUIDE = [];
+for (let x=-9.2; x<=4.2; x+=0.68) for (let y=-3.7; y<=4.0; y+=0.68) for (let z=1.6; z<=9.3; z+=0.68) {
+  const key = liverSegmentAt(x,y,z);
+  if (!key) continue;
+  const nearEdge = [[0.68,0,0],[-0.68,0,0],[0,0.68,0],[0,-0.68,0],[0,0,0.68],[0,0,-0.68]]
+    .some(([dx,dy,dz]) => liverSegmentAt(x+dx,y+dy,z+dz) !== key);
+  if (nearEdge) LIVER_SEGMENT_GUIDE.push({point:[x,y,z], key});
+}
+
+function drawVascular3D() {
+  const canvas = document.getElementById('vascular3DCanvas');
+  if (!canvas) return;
+  const g = canvas.getContext('2d'), w = canvas.width, h = canvas.height;
+  g.clearRect(0, 0, w, h);
+  const ja = state.lang === 'ja';
+  const project = p => ({ x: 149 + p[0] * 11 + p[2] * 3, y: 97 + p[1] * 12 + p[2] * 3.7 });
+
+  g.fillStyle = '#8b949e';
+  g.font = '10px sans-serif';
+  g.textAlign = 'left';
+  g.fillText(ja ? '固定した血管に対し、スマホで断面を傾ける' : 'Tilt the scan plane across fixed vessels', 8, 15);
+  g.fillText(`Y ${Math.round(state.yaw)}°  P ${Math.round(state.pitch)}°  R ${Math.round(state.roll)}°`, 8, 29);
+  g.fillText('R', 9, 121); g.fillText('L', w - 17, 121); g.fillText('H', 142, 44);
+
+  // エコー描画と同じ姿勢・接触位置から走査面を作る。
+  const f = computeProbeFrame(state.yaw, state.pitch, state.roll);
+  const planePoint = (depth, lateral) => [
+    state.px + f.bx * depth + f.ux * lateral,
+    state.py + f.by * depth + f.uy * lateral,
+    f.uz * lateral + f.bz * depth
+  ];
+  const guideDepth = 11, guideHalfWidth = guideDepth * Math.tan(halfAngle) * 0.95;
+  const fan = [planePoint(0, 0), planePoint(guideDepth, -guideHalfWidth), planePoint(guideDepth, guideHalfWidth)].map(project);
+  g.fillStyle = 'rgba(240, 136, 62, 0.20)';
+  g.strokeStyle = '#f0883e';
+  g.lineWidth = 1.6;
+  g.beginPath();
+  fan.forEach((p, i) => i ? g.lineTo(p.x, p.y) : g.moveTo(p.x, p.y));
+  g.closePath(); g.fill(); g.stroke();
+
+  // 区域境界・肝表面を点群で立体表示。血管を上に重ねて位置関係を見せる。
+  for (const {point,key} of LIVER_SEGMENT_GUIDE) {
+    const p = project(point), c = LIVER_SEGMENT_COLORS[key];
+    g.fillStyle = `rgba(${c[0]},${c[1]},${c[2]},0.28)`;
+    g.fillRect(p.x, p.y, 2.2, 2.2);
+  }
+
+  // 血管中心線は固定し、傾けた走査面との位置関係だけが変わる。
+  for (const path of VASCULAR_PATHS) {
+    g.strokeStyle = path.color;
+    g.lineWidth = Math.max(1.7, path.radius * 4.5);
+    g.lineJoin = 'round'; g.lineCap = 'round';
+    g.beginPath();
+    path.points.slice(1).forEach((p, i) => {
+      const a = project(path.points[i]), b = project(p);
+      g.moveTo(a.x, a.y); g.lineTo(b.x, b.y);
+    });
+    g.stroke();
+  }
+
+  for (const path of VASCULAR_PATHS) {
+    if (!['IVC','Ao','RHV','MHV','LHV','PV','RPV','LPV trans.','SV','SMV','SMA','CBD'].includes(path.name)) continue;
+    const at = project(path.points[0]);
+    g.font = 'bold 9px sans-serif';
+    const width = g.measureText(path.name).width + 5;
+    g.fillStyle = 'rgba(9,12,16,0.82)';
+    g.fillRect(at.x + 2, at.y - 11, width, 12);
+    g.fillStyle = path.color;
+    g.fillText(path.name, at.x + 4, at.y - 2);
+  }
+
+  const tip = project(planePoint(0, 0));
+  g.fillStyle = '#f0883e';
+  g.beginPath(); g.arc(tip.x, tip.y, 4, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#8b949e';
+  g.font = '9px sans-serif';
+  g.fillText(ja ? '淡色点群: 肝S1–S8（近似） 紫:PV 青:HV 橙:走査面' : 'Dots: liver S1–S8 (approx.)  Purple: PV  Blue: HV', 8, h - 7);
+}
+
+
+
+
+function drawVesselMiniMap() {
+  const vCanvas = document.getElementById("vesselMiniCanvas");
+  if (!vCanvas) return;
+  const vCtx = vCanvas.getContext("2d");
+  const vw = vCanvas.width, vh = vCanvas.height;
+  vCtx.clearRect(0, 0, vw, vh);
+
+  function toVX(x) { return 138 + (x / 8.5) * 106; }
+  function toVY(y) { return 128 + (y / 8.5) * 86; }
+
+  // 枠・タイトル・上下左右目安
+  vCtx.strokeStyle = "#30363d";
+  vCtx.lineWidth = 1.5;
+  // vCtx.strokeRect(removed);
+  vCtx.fillStyle = "#e6edf3";
+  vCtx.font = "bold 11px sans-serif";
+  vCtx.textAlign = "left";
+  vCtx.fillText(state.lang === "ja" ? "血管走行シェーマ (追尾・確認用)" : "VESSEL MAP (Tracking)", 18, 25);
+
+  vCtx.fillStyle = "#8b949e";
+  vCtx.font = "bold 9.5px sans-serif";
+  vCtx.textAlign = "center";
+  vCtx.fillText(state.lang === "ja" ? "頭側(H)" : "Head (H)", 138, 39);
+  vCtx.textAlign = "left";
+  vCtx.fillText("R", 16, 130);
+  vCtx.textAlign = "right";
+  vCtx.fillText("L", vw - 16, 130);
+
+  // 右心房 (RA)
+  vCtx.fillStyle = "rgba(248, 81, 73, 0.25)";
+  vCtx.strokeStyle = "#ff7b72";
+  vCtx.lineWidth = 1.8;
+  vCtx.beginPath();
+  vCtx.ellipse(toVX(-1.4), toVY(-5.0), 23, 13, -0.2, 0, Math.PI * 2);
+  vCtx.fill();
+  vCtx.stroke();
+
+  // 下大静脈 (IVC：縦走ライン)
+  vCtx.strokeStyle = "#38bdf8";
+  vCtx.lineWidth = 5.0;
+  vCtx.beginPath();
+  vCtx.moveTo(toVX(-1.1), toVY(-4.4));
+  vCtx.lineTo(toVX(-1.1), toVY(4.5));
+  vCtx.stroke();
+
+  // 腹部大動脈 (Ao：縦走ライン)
+  vCtx.strokeStyle = "#ff7b72";
+  vCtx.lineWidth = 5.0;
+  vCtx.beginPath();
+  vCtx.moveTo(toVX(1.2), toVY(-4.2));
+  vCtx.lineTo(toVX(1.2), toVY(4.2));
+  vCtx.stroke();
+
+  // 3D模式図・エコー断面と同じ中心線を体表側から投影する。
+  for (const path of VASCULAR_PATHS) {
+    if (path.guideOnly) continue;
+    vCtx.strokeStyle = path.color;
+    vCtx.lineWidth = Math.max(1.7, path.radius * 5);
+    vCtx.lineCap = 'round'; vCtx.lineJoin = 'round';
+    vCtx.beginPath();
+    path.points.forEach((p, i) => i ? vCtx.lineTo(toVX(p[0]), toVY(p[1])) : vCtx.moveTo(toVX(p[0]), toVY(p[1])));
+    vCtx.stroke();
+  }
+
+  // 血管ラベル（読みやすい大きめフォント＋背景で視認性確保）
+  vCtx.font = "bold 11px sans-serif";
+  vCtx.textAlign = "center";
+  vCtx.fillStyle = "#ff7b72";
+  vCtx.fillText("RA", toVX(-1.4), toVY(-5.0) + 4);
+  vCtx.fillText("Ao", toVX(2.5), toVY(2.6));
+  vCtx.fillStyle = "#79c0ff";
+  vCtx.fillText("IVC", toVX(-2.6), toVY(2.6));
+  vCtx.fillText("HV", toVX(-4.4), toVY(-4.4));
+  vCtx.fillStyle = "#a371f7";
+  vCtx.fillText("PV", toVX(-3.8), toVY(-0.1));
+  vCtx.fillStyle = "#a5d6ff";
+  vCtx.fillText("SV", toVX(3.6), toVY(1.3));
+  vCtx.fillText("SMV", toVX(1.6), toVY(2.8));
+
+  // 現在のプローブ位置・Yaw・ビーム向き
+  const pxV = toVX(state.px);
+  const pyV = toVY(state.py);
+  const frame = computeProbeFrame(state.yaw, state.pitch, state.roll);
+
+  vCtx.strokeStyle = "#f0883e";
+  vCtx.lineWidth = 2.6;
+  vCtx.beginPath();
+  vCtx.moveTo(pxV, pyV);
+  vCtx.lineTo(pxV + frame.bx * 36, pyV + frame.by * 36);
+  vCtx.stroke();
+
+  vCtx.save();
+  vCtx.translate(pxV, pyV);
+  vCtx.rotate((state.yaw * Math.PI) / 180);
+  vCtx.fillStyle = "#3fb950";
+  vCtx.strokeStyle = "#fff";
+  vCtx.lineWidth = 1.4;
+  vCtx.beginPath();
+  vCtx.roundRect(-14, -4.5, 28, 9, 3);
+  vCtx.fill();
+  vCtx.stroke();
+  vCtx.fillStyle = "#ff3b30";
+  vCtx.beginPath();
+  vCtx.arc(-11, 0, 4, 0, Math.PI * 2);
+  vCtx.fill();
+  vCtx.restore();
+  // 後続の script で定義される補助表示が未読込でも描画ループを止めない。
+  if (typeof enlargeVesselInner === 'function') enlargeVesselInner();
+}
+
+function renderEcho(time) {
+  if (!state.frozen) {
+    const data = imgData.data, frame = computeProbeFrame(state.yaw, state.pitch, state.roll);
+    const respY = Math.sin(time * 0.0022) * 0.16, gainFactor = state.gain / 65.0;
+    state.detectedOrgans.clear(); organCentroids.clear();
+
+    for (let rIdx = 0; rIdx < NUM_RAYS; rIdx++) {
+      const th = ((rIdx / (NUM_RAYS - 1)) * 2 - 1) * halfAngle, tanT = Math.tan(th) * 0.95;
+      let rayShadow = 0, rayEnhance = 0;
+      for (let sIdx = 0; sIdx < NUM_SAMPLES; sIdx++) {
+        const frac = sIdx / (NUM_SAMPLES - 1), dCm = frac * 15.0, lCm = dCm * tanT;
+        const wx = state.px + frame.ux * lCm + frame.bx * dCm;
+        const wy = state.py + frame.uy * lCm + frame.by * dCm + respY;
+        const wz = frame.uz * lCm + frame.bz * dCm;
+        const s = sampleVolume(wx, wy, wz);
+        if (s.organKey && (rIdx & 3) === 0 && (sIdx & 3) === 0) {
+          state.detectedOrgans.add(s.organKey);
+          const rPx = rMin + frac * (rMax - rMin);
+          let acc = organCentroids.get(s.organKey) || { sumX: 0, sumY: 0, count: 0 };
+          acc.sumX += apexX + rPx * Math.sin(th); acc.sumY += apexY + rPx * Math.cos(th); acc.count++;
+          organCentroids.set(s.organKey, acc);
+        }
+        if (s.shadow > rayShadow) rayShadow = s.shadow;
+        if (s.enhance > 0) rayEnhance = Math.min(0.45, rayEnhance + s.enhance * 0.014);
+        const sp = sampleNoise(wx * 14, wy * 14, wz * 22);
+        let lum = s.val * (0.6 + sp * 0.8) * gainFactor * (1 + rayEnhance) * (1 - rayShadow * 0.92);
+        polarBuffer[rIdx * NUM_SAMPLES + sIdx] = Math.max(0, Math.min(255, lum));
+      }
+    }
+    for (let i = 0; i < W * H; i++) {
+      const p = i * 4;
+      if (!pixelValid[i]) { data[p] = data[p+1] = data[p+2] = 0; data[p+3] = 255; continue; }
+      const lum = polarBuffer[Math.floor(pixelMapRay[i]) * NUM_SAMPLES + Math.floor(pixelMapSample[i])];
+      data[p] = lum * 0.96; data[p+1] = lum * 0.99; data[p+2] = Math.min(255, lum * 1.04); data[p+3] = 255;
+    }
+    ctx.putImageData(imgData, 0, 0);
+
+    const markX = apexX - (rMin + 14) * Math.sin(halfAngle) - 10;
+    const markY = apexY + (rMin + 14) * Math.cos(halfAngle);
+    ctx.fillStyle = '#ff3b30';
+    ctx.beginPath();
+    ctx.arc(markX, markY, 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ff7b72';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.fillText(Math.abs(state.yaw) > 45 ? t('markHead') : t('markRight'), markX - 24, markY - 10);
+
+    const landmarkKeys = ZONE_GUIDES[state.selectedZone].landmarkKeys;
+    if (state.showAnatomy) {
+      ctx.font = 'bold 12px sans-serif';
+      const placedLabels = [];
+      landmarkKeys.forEach(k => {
+        const acc = organCentroids.get(k);
+        if (acc && acc.count >= 4) {
+          let tx = acc.sumX / acc.count, ty = acc.sumY / acc.count;
+          if (k === 'ivc') { ty += 18; tx -= 18; }
+          else if (k === 'ao') { ty += 14; tx += 8; }
+          else if (k === 'liverRt') { ty -= 42; }
+          else if (k === 'liverLt') { ty -= 24; }
+          else if (k === 'kidneyCort' || k === 'ltKidneyCort') { ty += 20; }
+          else if (k === 'kidneyCec' || k === 'ltKidneyCec') { ty -= 6; }
+          const label = getOrganLabel(k);
+          const box = { x: tx + 3, y: ty - 11, w: ctx.measureText(label).width + 6, h: 15 };
+          if (placedLabels.some(other => box.x < other.x + other.w + 3 && box.x + box.w + 3 > other.x && box.y < other.y + other.h + 3 && box.y + box.h + 3 > other.y)) return;
+          placedLabels.push(box);
+          ctx.fillStyle = 'rgba(13, 17, 23, 0.75)';
+          ctx.fillRect(box.x, box.y, box.w, box.h);
+          ctx.fillStyle = (k === 'ivc' || k === 'ao' || k === 'ra') ? '#79c0ff' : '#38bdf8';
+          ctx.fillText(label, tx + 6, ty);
+        }
+      });
+    }
+    const scanMode = Math.abs(state.yaw) > 45 ? t('scanLong') : t('scanTrans');
+    document.getElementById('hudLeft').innerHTML = `CONVEX C1-5MHz<br>DEPTH: 15.0 cm<br>GAIN: ${Math.round(state.gain)} dB`;
+    document.getElementById('hudRight').innerHTML = `SOURCE: <span style="color:#58a6ff">${state.source}</span><br>POS: (${state.px.toFixed(1)}, ${state.py.toFixed(1)}) cm<br>ROT: ${Math.round(state.yaw)}° [${scanMode}]<br>TILT: P ${Math.round(state.pitch)}° / R ${Math.round(state.roll)}°`;
+    const labels = landmarkKeys.filter(k => (organCentroids.get(k)?.count || 0) >= 4).map(k => getOrganLabel(k));
+    document.getElementById('organLegend').textContent = labels.length > 0
+      ? `${state.lang === 'ja' ? '模式モデル上の描出（目標視野との一致は未検証）: ' : 'Schematic model output (target view not validated): '}${labels.join(' / ')}`
+      : (state.lang === 'ja' ? '模式モデル上の描出なし' : 'No structures in schematic model');
+  }
+
+  const bCanvas = document.getElementById('bodyCanvas');
+  if (bCanvas) {
+    drawAnatomicalBodyAndProbe(bCanvas.getContext('2d'), 286, 195, state.px, state.py, state.yaw, state.pitch, state.roll, draggingBody);
+  }
+  drawSpatialDiagram();
+  drawVascular3D();
+  drawVesselMiniMap();
+  requestAnimationFrame(renderEcho);
+}
+
+const bodyCanvas = document.getElementById('bodyCanvas');
+let draggingBody = false;
+bodyCanvas.addEventListener('mousedown', e => {
+  draggingBody = true;
+  bodyCanvas.style.cursor = 'grabbing';
+  updateBodyPos(e);
+});
+window.addEventListener('mousemove', e => { if (draggingBody) updateBodyPos(e); });
+function sendPcPosNow() {
+  relayFetch('pos', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ px: state.px, py: state.py })
+  }).catch(() => {});
+}
+window.addEventListener('mouseup', () => {
+  if (draggingBody) {
+    draggingBody = false;
+    bodyCanvas.style.cursor = 'grab';
+    sendPcPosNow();
+  }
+});
+function updateBodyPos(e) {
+  const rect = bodyCanvas.getBoundingClientRect();
+  const normX = ((e.clientX - rect.left) / rect.width) * 286;
+  const normY = ((e.clientY - rect.top) / rect.height) * 240;
+  const p = clampZonePos((normX - 143) / 8.5, (normY - 110) / 8.5);
+  state.px = p.x;
+  state.py = p.y;
+  const now = performance.now();
+  if (now - lastPosSyncSent > 40) {
+    lastPosSyncSent = now;
+    relayFetch('pos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ px: state.px, py: state.py })
+    }).catch(() => {});
+  }
+}
+
+applyLanguage();
+function startPcView() {
+  initLocalPCReceiver();
+  selectZone('epigastric');
+  if (document.readyState === 'complete') requestAnimationFrame(renderEcho);
+  else window.addEventListener('load', () => requestAnimationFrame(renderEcho), { once: true });
+}
+async function startHostedPcView() {
+  try {
+    const response = await fetch('/api/web/session', { method: 'POST', cache: 'no-store' });
+    if (!response.ok) throw new Error(`Session request failed (${response.status})`);
+    const session = await response.json();
+    if (!session.sid || !session.pc_token || !session.probe_token) throw new Error('Incomplete pairing session');
+    webSession = { sid: session.sid, token: session.pc_token, probeToken: session.probe_token };
+    state.source = 'WEB READY';
+  } catch (error) {
+    const message = state.lang === 'ja' ? 'Web接続を準備できません。ページを再読み込みしてください。' : 'Could not prepare web pairing. Reload this page.';
+    document.getElementById('modeBanner').textContent = message;
+  }
+  startPcView();
+}
+if (isMobileMode) {
+  // pcView を DOM から完全除去して古い画面やボディマークが残らないようにする
+  const pcEl = document.getElementById('pcView');
+  if (pcEl) pcEl.remove();
+  document.querySelectorAll('canvas').forEach(c => c.remove());
+  const blindEl = document.getElementById('mobileBlindRoot');
+  if (blindEl) blindEl.style.display = 'flex';
+  initMobileProbeController();
+} else {
+  const blindEl = document.getElementById('mobileBlindRoot');
+  if (blindEl) blindEl.remove();
+  if (isHostedMode) startHostedPcView();
+  else startPcView();
+}
+</script>
+
+<script>
+function drawLiverSegmentMapV43Addon() {
+  const lCanvas = document.getElementById("liverSegCanvas");
+  if (!lCanvas) return;
+  const lCtx = lCanvas.getContext("2d");
+  const lw = lCanvas.width, lh = lCanvas.height;
+  lCtx.clearRect(0, 0, lw, lh);
+
+  lCtx.strokeStyle = "#30363d";
+  lCtx.lineWidth = 1.6;
+  // lCtx.strokeRect(10, 10, lw - 20, lh - 20);
+
+  const isJa = (typeof state === "undefined" || state.lang !== "en");
+  lCtx.fillStyle = "#e6edf3";
+  lCtx.font = "bold 13px sans-serif";
+  lCtx.textAlign = "left";
+  lCtx.fillText(isJa ? "肝区域シェーマ (S1-S8)" : "LIVER SEGMENTS (S1-S8)", 18, 28);
+
+  lCtx.fillStyle = "#8b949e";
+  lCtx.font = "bold 12px sans-serif";
+  lCtx.textAlign = "left";
+  lCtx.fillText("R", 20, 162);
+  lCtx.textAlign = "right";
+  lCtx.fillText("L", lw - 20, 162);
+
+  // 肝輪郭（拡大）
+  lCtx.fillStyle = "rgba(210, 153, 34, 0.16)";
+  lCtx.strokeStyle = "#8b949e";
+  lCtx.lineWidth = 1.8;
+  lCtx.beginPath();
+  lCtx.moveTo(38, 235);
+  lCtx.quadraticCurveTo(36, 68, 128, 58);
+  lCtx.quadraticCurveTo(238, 56, 316, 106);
+  lCtx.quadraticCurveTo(326, 162, 256, 186);
+  lCtx.lineTo(192, 198);
+  lCtx.lineTo(174, 238);
+  lCtx.closePath();
+  lCtx.fill();
+  lCtx.stroke();
+
+  // S1 (尾状葉)
+  lCtx.fillStyle = "rgba(163, 113, 247, 0.28)";
+  lCtx.strokeStyle = "#d2a8ff";
+  lCtx.lineWidth = 1.5;
+  lCtx.beginPath();
+  lCtx.ellipse(176, 162, 24, 16, 0, 0, Math.PI * 2);
+  lCtx.fill();
+  lCtx.stroke();
+
+  // 肝静脈 (RHV / MHV)
+  lCtx.strokeStyle = "#38bdf8";
+  lCtx.lineWidth = 2.6;
+  lCtx.beginPath();
+  lCtx.moveTo(188, 154);
+  lCtx.lineTo(202, 58);
+  lCtx.moveTo(188, 154);
+  lCtx.lineTo(78, 78);
+  lCtx.stroke();
+
+  // 左肝静脈枝方向
+  lCtx.strokeStyle = "#79c0ff";
+  lCtx.lineWidth = 2.1;
+  lCtx.beginPath();
+  lCtx.moveTo(188, 154);
+  lCtx.lineTo(270, 94);
+  lCtx.stroke();
+
+  // 門脈 (PV) 水平ライン目安
+  lCtx.strokeStyle = "#56d364";
+  lCtx.lineWidth = 1.8;
+  lCtx.setLineDash([4, 3]);
+  lCtx.beginPath();
+  lCtx.moveTo(44, 150);
+  lCtx.lineTo(304, 132);
+  lCtx.stroke();
+  lCtx.setLineDash([]);
+
+  // 区域ラベル S1〜S8（大きめ）
+  lCtx.font = "bold 13.5px sans-serif";
+  lCtx.textAlign = "center";
+  lCtx.fillStyle = "#ffffff";
+  lCtx.fillText("S1", 176, 167);
+  lCtx.fillText("S2", 282, 108);
+  lCtx.fillText("S3", 266, 158);
+  lCtx.fillText("S4", 222, 108);
+  lCtx.fillText("S7", 78, 108);
+  lCtx.fillText("S8", 140, 108);
+  lCtx.fillText("S5", 132, 184);
+  lCtx.fillText("S6", 70, 184);
+
+  // 脈管ラベル
+  lCtx.font = "bold 11px sans-serif";
+  lCtx.fillStyle = "#38bdf8";
+  lCtx.fillText("RHV", 94, 74);
+  lCtx.fillText("MHV", 208, 72);
+  lCtx.fillStyle = "#56d364";
+  lCtx.fillText("PV", 296, 126);
+}
+
+// 静的なシェーマは起動時とガイド／言語切替時のみ描画する。
+window.addEventListener("load", drawLiverSegmentMapV43Addon);
+</script>
+
+<script>
+function scaleVesselMiniCanvasV43Addon() {
+  const vc = document.getElementById("vesselMiniCanvas");
+  if (!vc) return;
+  const vctx = vc.getContext("2d");
+  if (!vctx) return;
+  // 現在の描画内容が小さいキャンバス基準(約220x170)で描かれている場合、全体を 360x290 へ拡大コピー
+  if (!vc.dataset.v43ScaledOnce) {
+    vc.dataset.v43ScaledOnce = "1";
+  }
+}
+</script>
+
+<script>
+function enlargeVesselInner() {
+    const vc = document.getElementById("vesselMiniCanvas");
+    if (!vc || vc.width < 100 || vc.height < 100) return;
+    const ctx = vc.getContext("2d");
+    if (!ctx) return;
+
+    const w = vc.width, h = vc.height;
+    let img;
+    try {
+      img = ctx.getImageData(0, 0, w, h);
+    } catch (e) {
+      return;
+    }
+    const d = img.data;
+
+    // 中央〜やや広めの図形領域(x: 15%〜85%, y: 20%〜90%)で非透明ピクセルを探索
+    const x0 = Math.floor(w * 0.15), x1 = Math.ceil(w * 0.85);
+    const y0 = Math.floor(h * 0.20), y1 = Math.ceil(h * 0.90);
+
+    let minX = x1, minY = y1, maxX = x0, maxY = y0;
+    for (let y = y0; y < y1; y++) {
+      for (let x = x0; x < x1; x++) {
+        if (d[(y * w + x) * 4 + 3] > 15) {
+          if (x < minX) minX = x;
+          if (y < minY) minY = y;
+          if (x > maxX) maxX = x;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+
+    if (maxX <= minX || maxY <= minY) return;
+    const bw = maxX - minX + 1;
+    const bh = maxY - minY + 1;
+
+    // すでにターゲット幅(約72%)またはターゲット高(約66%)に達していればスキップ
+    const targetW = w * 0.72;
+    const targetH = h * 0.66;
+    if (bw >= targetW * 0.95 || bh >= targetH * 0.95) return;
+
+    const tmp = document.createElement("canvas");
+    tmp.width = bw;
+    tmp.height = bh;
+    tmp.getContext("2d").drawImage(vc, minX, minY, bw, bh, 0, 0, bw, bh);
+
+    const scale = Math.min(targetW / bw, targetH / bh);
+    const dw = bw * scale;
+    const dh = bh * scale;
+    const dx = (w - dw) / 2;
+    const dy = Math.floor(h * 0.22) + (targetH - dh) / 2;
+
+    ctx.save();
+    ctx.clearRect(Math.floor(w * 0.12), Math.floor(h * 0.20), Math.ceil(w * 0.76), Math.ceil(h * 0.72));
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(tmp, 0, 0, bw, bh, dx, dy, dw, dh);
+    ctx.restore();
+  }
+
+// 独立した setInterval / requestAnimationFrame は不要。
+// drawVesselMiniMap() の末尾からのみ呼び出す。
+</script>
+
+<style id="schema-borderless-style">
+#liverSegCanvas, #vesselMiniCanvas {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+</style>
+<script id="schema-borderless-script">
+(function() {
+  function clearAncestors(el) {
+    // 親の .right-panel まで透明化すると小画面で黒背景が消えるため、対象はシェーマ自身だけ。
+    if (!el) return;
+    el.style.setProperty("background", "transparent", "important");
+    el.style.setProperty("border", "none", "important");
+    el.style.setProperty("box-shadow", "none", "important");
+  }
+
+  function disableOuterRectOnSchemaCanvas() {
+    ["liverSegCanvas", "vesselMiniCanvas"].forEach(function(id) {
+      const c = document.getElementById(id);
+      if (!c) return;
+      clearAncestors(c);
+      const ctx = c.getContext && c.getContext("2d");
+      if (ctx && !ctx._borderlessPatched) {
+        ctx._borderlessPatched = true;
+        const origStrokeRect = ctx.strokeRect.bind(ctx);
+        ctx.strokeRect = function(x, y, w, h) {
+          // キャンバス全体を囲むような外枠のstrokeRectをスキップ
+          if (w >= c.width - 12 && h >= c.height - 12) return;
+          return origStrokeRect(x, y, w, h);
+        };
+      }
+    });
+  }
+
+  window.addEventListener("DOMContentLoaded", function() {
+    disableOuterRectOnSchemaCanvas();
+    setTimeout(disableOuterRectOnSchemaCanvas, 300);
+  });
+  window.addEventListener("load", disableOuterRectOnSchemaCanvas);
+})();
+</script>
+
+</body>
+</html>
