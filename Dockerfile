@@ -7,6 +7,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 COPY local_simulator.html web_server.py ./
+COPY LICENSE ./LICENSE
 COPY vendor/qrcode.min.js ./vendor/qrcode.min.js
 COPY vendor/LICENSE-qrcodejs ./vendor/LICENSE-qrcodejs
 
