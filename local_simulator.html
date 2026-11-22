@@ -48,6 +48,8 @@
   .rule-box { font-size: 11px; color: #c9d1d9; background: #0d1117; padding: 7px 8px; border-radius: 6px; border: 1px solid #30363d; line-height: 1.45; flex-shrink: 0; }
   .right-panel { flex: 1; min-width: 0; background: #000; border: 1px solid #30363d; border-radius: 8px; position: relative; display: flex; justify-content: center; align-items: center; overflow: hidden; }
   #echoCanvas { max-width: 100%; max-height: 100%; }
+  #echoCanvas.tilt-ready { cursor: grab; }
+  #echoCanvas.tilt-dragging { cursor: grabbing; }
   .hud-overlay { position: absolute; top: 14px; left: 16px; font-family: monospace; font-size: 13px; color: #3fb950; pointer-events: none; line-height: 1.55; }
   .hud-right { position: absolute; top: 14px; right: 16px; font-family: monospace; font-size: 13px; color: #8b949e; text-align: right; pointer-events: none; line-height: 1.55; }
   .freeze-badge { position: absolute; bottom: 196px; right: 20px; background: #da3633; color: #fff; font-weight: bold; padding: 4px 12px; border-radius: 4px; display: none; }
@@ -128,7 +130,7 @@
   </header>
   <main>
     <div class="left-panel">
-      <div id="modeBanner" class="mode-banner">PROBE READY<br>← → / Space：部位｜W Z A D / スマホ：角度<br>Shift＋矢印 / マウスドラッグ：位置調整</div>
+      <div id="modeBanner" class="mode-banner">PROBE READY<br>← → / Space：部位｜Shift＋エコー画像のドラッグ：チルト<br>Shift＋矢印 / ボディマークのドラッグ：位置調整</div>
       <button id="btnMobileQR" class="dev-btn" onclick="openQRModal()">📱 スマホ接続 (QR)</button>
       <div class="body-panel">
         <div id="bodyOverlayTitle" class="body-overlay-title">ボディマーク（ドラッグで位置移動）</div>
@@ -278,8 +280,8 @@ const I18N = {
     anatomyOn: '🎯 画像内ラベル: ON',
     anatomyOff: '🎯 画像内ラベル: OFF',
     langBtn: '🌐 日本語 / EN',
-    bannerReady: 'PROBE READY\n← → / Space：部位｜W Z A D / スマホ：角度\nShift＋矢印 / マウスドラッグ：位置調整',
-    bannerConn: (src) => `${src} 接続中\n← → / Space：部位｜W Z A D / スマホ：角度\nShift＋矢印 / マウスドラッグ：位置調整`,
+    bannerReady: 'PROBE READY\n← → / Space：部位｜Shift＋エコー画像のドラッグ：チルト\nShift＋矢印 / ボディマークのドラッグ：位置調整',
+    bannerConn: (src) => `${src} 接続中\n← → / Space：部位｜Shift＋エコー画像のドラッグ：チルト\nShift＋矢印 / ボディマークのドラッグ：位置調整`,
     lblYaw: '回転 (Yaw)',
     lblPitch: '頭尾煽り (Pitch)',
     lblRoll: '左右煽り (Roll)',
@@ -289,7 +291,7 @@ const I18N = {
       ・<strong>スマホの持ち方</strong>：タップした姿勢が相対0°。以後は同じ持ち方を保つ。患者に対する絶対角度ではありません<br>
       ・<strong>スマホ上半分タップ</strong>：1回目で周辺チルト開始、2回目で基準画像に戻す<br>
       ・<strong>スマホ下半分</strong>：短押しFREEZE・長押し圧迫<br>
-      ・<strong>PCチルト</strong>：<code>W</code>ビームを頭側 ／ <code>Z</code>尾側 ／ <code>A</code>患者右 ／ <code>D</code>患者左へ。離すとその角度で止まる。スマホ接続中もPC操作を優先し、スマホ上半分で探索を始め直すとスマホ操作へ戻る<br>
+      ・<strong>PCチルト</strong>：エコー画像上で<code>Shift</code>を押しながらドラッグ。上＝頭側、下＝尾側、左＝患者右、右＝患者左へビームを傾ける。離すとその角度で止まる。スマホ接続中もPC操作を優先し、スマホ上半分で探索を始め直すとスマホ操作へ戻る<br>
       ・<strong>左手(PC)</strong>：<code>←</code>前の部位 ／ <code>→</code>・<code>Space</code>次の部位 ／ <code>Shift</code>＋矢印で位置を0.5 cmずつ調整 ／ <code>F</code>=FREEZE ／ <code>P</code>長押し=圧迫<br>
       ・⚠️ <strong>画面ロック注意</strong>：スマホがロックされると操作が効かなくなるため、自動ロック解除（画面点灯）にして使用してください`,
     qrTitle: '📱 スマホをプローブとして接続 (ローカル直接通信)',
@@ -345,8 +347,8 @@ const I18N = {
     anatomyOn: '🎯 Image Labels: ON',
     anatomyOff: '🎯 Image Labels: OFF',
     langBtn: '🌐 English / JP',
-    bannerReady: 'PROBE READY\n← → / Space: region | W Z A D / phone: tilt\nShift+arrows / mouse drag: position',
-    bannerConn: (src) => `${src} Connected\n← → / Space: region | W Z A D / phone: tilt\nShift+arrows / mouse drag: position`,
+    bannerReady: 'PROBE READY\n← → / Space: region | Shift+drag echo: tilt\nShift+arrows / drag body marker: position',
+    bannerConn: (src) => `${src} Connected\n← → / Space: region | Shift+drag echo: tilt\nShift+arrows / drag body marker: position`,
     lblYaw: 'Rotation (Yaw)',
     lblPitch: 'Tilt Pitch',
     lblRoll: 'Tilt Roll',
@@ -356,7 +358,7 @@ const I18N = {
       • <strong>Phone hold</strong>: The pose at the first tap is relative 0°. Keep the same grip; this is not an absolute patient probe angle.<br>
       • <strong>Top Half Tap</strong>: Start nearby tilt; tap again to return to the reference view<br>
       • <strong>Bottom Half</strong>: Tap FREEZE, Hold Press<br>
-      • <strong>PC tilt</strong>: Hold <code>W</code> toward the head / <code>Z</code> toward the feet / <code>A</code> toward patient right / <code>D</code> toward patient left. Release to keep that angle. PC input takes priority until a new phone tilt session starts.<br>
+      • <strong>PC tilt</strong>: Hold <code>Shift</code> and drag on the echo image. Up tilts the beam toward the head, down toward the feet, left toward patient right, and right toward patient left. Release to keep that angle. PC input takes priority until a new phone tilt session starts.<br>
       • <strong>PC Left Hand</strong>: <code>←</code> previous region / <code>→</code> or <code>Space</code> next region / <code>Shift</code>+arrows adjust position by 0.5 cm / <code>F</code>=FREEZE / hold <code>P</code>=Press.<br>
       • ⚠️ <strong>Screen Lock</strong>: Controls stop when locked — keep auto-lock off / screen awake during use`,
     qrTitle: '📱 Connect Smartphone as Probe (Local Direct)',
@@ -581,7 +583,6 @@ function updatePressureState() {
 
 function toggleFreeze() {
   state.frozen = !state.frozen;
-  if (state.frozen) pressedTiltKeys.clear();
   updatePressureState();
   const badge = document.getElementById('freezeBadge');
   if (badge) badge.style.display = state.frozen ? 'block' : 'none';
@@ -741,38 +742,6 @@ async function triggerZeroReset() {
   try { await relayFetch('zero', { method: 'POST' }); } catch (e) {}
 }
 
-const pressedTiltKeys = new Set();
-const TILT_DEGREES_PER_SECOND = 36;
-let lastTiltFrameTime = null;
-
-function handlePcTiltKeyDown(e) {
-  if (e.key === 'Meta' || e.metaKey || e.ctrlKey || e.altKey) {
-    pressedTiltKeys.clear();
-    lastTiltFrameTime = null;
-  }
-  const key = e.key.toLowerCase();
-  if (!['w', 'z', 'a', 'd'].includes(key) || e.isComposing || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return false;
-  if (e.target instanceof HTMLTextAreaElement || e.target?.isContentEditable ||
-      (e.target instanceof HTMLInputElement && e.target.type !== 'range')) return false;
-  e.preventDefault();
-  pressedTiltKeys.add(key);
-  return true;
-}
-
-function updateKeyboardTilt(time) {
-  const dt = lastTiltFrameTime === null ? 0 : Math.min((time - lastTiltFrameTime) / 1000, 0.05);
-  lastTiltFrameTime = time;
-  if (state.frozen || !pressedTiltKeys.size || dt <= 0) return;
-  const pitchDirection = Number(pressedTiltKeys.has('w')) - Number(pressedTiltKeys.has('z'));
-  const rollDirection = Number(pressedTiltKeys.has('a')) - Number(pressedTiltKeys.has('d'));
-  if (!pitchDirection && !rollDirection) return;
-  state.pitch = Math.max(-45, Math.min(45, state.pitch + pitchDirection * TILT_DEGREES_PER_SECOND * dt));
-  state.roll = Math.max(-45, Math.min(45, state.roll + rollDirection * TILT_DEGREES_PER_SECOND * dt));
-  state.source = 'PC KEYBOARD';
-  state.manualAngleOverride = true;
-  syncSliders();
-}
-
 window.addEventListener('keydown', e => {
   if (isMobileMode) return;
   const schemaOpen = document.getElementById('schemaModal').classList.contains('open');
@@ -781,7 +750,6 @@ window.addEventListener('keydown', e => {
     return;
   }
   if (schemaOpen) return;
-  if (handlePcTiltKeyDown(e)) return;
   if (e.target instanceof HTMLTextAreaElement ||
       (e.target instanceof HTMLInputElement && e.target.type !== 'range')) return;
   if (e.target instanceof HTMLInputElement && e.target.type === 'range' &&
@@ -805,15 +773,12 @@ window.addEventListener('keydown', e => {
 
 window.addEventListener('keyup', e => {
   if (isMobileMode) return;
-  pressedTiltKeys.delete(e.key.toLowerCase());
   if (e.key === 'p' || e.key === 'P') {
     setPcPress(false);
   }
 });
 // ウィンドウ切替でキーアップが失われても圧迫状態を解除する。
 window.addEventListener('blur', () => {
-  pressedTiltKeys.clear();
-  lastTiltFrameTime = null;
   if (!isMobileMode && state.pcPressing) setPcPress(false);
 });
 
@@ -992,8 +957,8 @@ function openSchemaWindow() {
       if (!e.repeat) triggerZeroReset();
     }
   });
-  popup.addEventListener('keyup', e => { pressedTiltKeys.delete(e.key.toLowerCase()); if (e.key === 'p' || e.key === 'P') setPcPress(false); });
-  popup.addEventListener('blur', () => { pressedTiltKeys.clear(); if (state.pcPressing) setPcPress(false); });
+  popup.addEventListener('keyup', e => { if (e.key === 'p' || e.key === 'P') setPcPress(false); });
+  popup.addEventListener('blur', () => { if (state.pcPressing) setPcPress(false); });
   popup.setInterval(() => {
     if (popup.closed) return;
     const ja = state.lang === 'ja';
@@ -1342,7 +1307,7 @@ function ingestProbePacket(src, d) {
   const exploring = d.exploring === 1;
   if (exploring && !state.phoneExploring) state.manualAngleOverride = false;
   state.phoneExploring = exploring;
-  if (!state.frozen && !pressedTiltKeys.size && !state.manualAngleOverride) {
+  if (!state.frozen && !state.manualAngleOverride) {
     state.source = src;
     state.yaw = Math.max(-90, Math.min(90, d.yaw));
     state.pitch = Math.max(-45, Math.min(45, d.pitch));
@@ -2493,7 +2458,6 @@ function drawVesselMiniMap() {
 }
 
 function renderEcho(time) {
-  updateKeyboardTilt(time);
   if (!state.frozen) {
     const data = imgData.data, frame = computeProbeFrame(state.yaw, state.pitch, state.roll);
     const respY = Math.sin(time * 0.0022) * 0.16, gainFactor = state.gain / 65.0;
@@ -2583,6 +2547,46 @@ function renderEcho(time) {
   drawVesselMiniMap();
   requestAnimationFrame(renderEcho);
 }
+
+let echoTiltDrag = null;
+const TILT_DEGREES_PER_PIXEL = 0.25;
+function finishEchoTiltDrag() {
+  if (!echoTiltDrag) return;
+  if (echoCanvas.hasPointerCapture(echoTiltDrag.pointerId)) echoCanvas.releasePointerCapture(echoTiltDrag.pointerId);
+  echoTiltDrag = null;
+  echoCanvas.classList.remove('tilt-dragging');
+}
+echoCanvas.addEventListener('pointerdown', e => {
+  if (!e.shiftKey || e.button !== 0 || isMobileMode) return;
+  e.preventDefault();
+  echoTiltDrag = { pointerId: e.pointerId, x: e.clientX, y: e.clientY, pitch: state.pitch, roll: state.roll };
+  echoCanvas.setPointerCapture(e.pointerId);
+  echoCanvas.classList.add('tilt-dragging');
+});
+echoCanvas.addEventListener('pointermove', e => {
+  if (!echoTiltDrag || e.pointerId !== echoTiltDrag.pointerId) return;
+  e.preventDefault();
+  const dx = e.clientX - echoTiltDrag.x, dy = e.clientY - echoTiltDrag.y;
+  if (dx === 0 && dy === 0) return;
+  if (state.frozen) toggleFreeze();
+  state.pitch = Math.max(-45, Math.min(45, echoTiltDrag.pitch - dy * TILT_DEGREES_PER_PIXEL));
+  state.roll = Math.max(-45, Math.min(45, echoTiltDrag.roll - dx * TILT_DEGREES_PER_PIXEL));
+  state.source = 'PC MOUSE';
+  state.manualAngleOverride = true;
+  syncSliders();
+});
+echoCanvas.addEventListener('pointerup', e => { if (echoTiltDrag?.pointerId === e.pointerId) finishEchoTiltDrag(); });
+echoCanvas.addEventListener('pointercancel', e => { if (echoTiltDrag?.pointerId === e.pointerId) finishEchoTiltDrag(); });
+echoCanvas.addEventListener('lostpointercapture', () => {
+  echoTiltDrag = null;
+  echoCanvas.classList.remove('tilt-dragging');
+});
+window.addEventListener('blur', () => {
+  finishEchoTiltDrag();
+  echoCanvas.classList.remove('tilt-ready');
+});
+window.addEventListener('keydown', e => { if (e.key === 'Shift') echoCanvas.classList.add('tilt-ready'); });
+window.addEventListener('keyup', e => { if (e.key === 'Shift') echoCanvas.classList.remove('tilt-ready'); });
 
 const bodyCanvas = document.getElementById('bodyCanvas');
 let draggingBody = false;

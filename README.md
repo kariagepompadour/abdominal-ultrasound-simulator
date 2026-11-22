@@ -7,16 +7,16 @@ An educational prototype that renders schematic ultrasound views from a simplifi
 ## Use
 
 1. Open the [web app](https://abdominal-ultrasound-simulator.onrender.com/web) on a PC and choose the epigastric, right subcostal, right flank, left flank, or lower abdominal region. Rendering runs in each PC's browser.
-2. Hold `W` / `Z` / `A` / `D` to tilt the modeled beam toward the head / feet / patient's right / patient's left. Sliders adjust rotation and tilt. Use `←` / `→` or `Space` to change regions; use `Shift` plus an arrow key or drag the body marker to adjust position. `F` toggles FREEZE, `R` returns to the reference view, and holding `P` applies modeled compression.
+2. Hold `Shift` and drag on the echo image to tilt the modeled beam: up toward the head, down toward the feet, left toward the patient's right, and right toward the patient's left. Release the mouse to keep the angle. Sliders also adjust rotation and tilt. Use `←` / `→` or `Space` to change regions; use `Shift` plus an arrow key or drag the body marker to adjust position. `F` toggles FREEZE, `R` returns to the reference view, and holding `P` applies modeled compression.
 3. For optional phone control, open “Mobile Probe (QR)”. Compare the confirmation code on the phone and PC, then approve on the PC. A QR code alone cannot take control. PC tilt stays in effect until a new phone exploration starts.
 
 Phone control needs HTTPS and a browser with orientation sensor support. Render's free instance can take longer to respond after inactivity. Reloading the page or restarting the server requires a new QR code. The server holds pairing sessions in memory; image and 3D rendering run locally in each PC browser.
 
-## Run locally and deploy
+## Public deployment and local use
 
 For PC-only use, open `local_simulator.html` in a browser. To run the web relay, use Python 3.12 and run `python3 web_server.py`, then visit `http://127.0.0.1:8080/web`. Phone orientation sensors cannot connect through local HTTP.
 
-To deploy on Render, connect this repository as a Web Service with the Docker runtime and root `Dockerfile`. The service listens on `PORT` and exposes `/healthz` for health checks. Sessions are stored in a single process's memory, so the current design is intended for one instance during evaluation. Anyone who knows the public URL can open the app; do not enter confidential information.
+This repository is public on GitHub, and the [web app](https://abdominal-ultrasound-simulator.onrender.com/web) is live on Render. Render uses the root `Dockerfile`; the service listens on `PORT` and exposes `/healthz` for health checks. Sessions are stored in a single process's memory, so the current design is intended for one instance during evaluation. Anyone who knows the public URL can open the app; do not enter confidential information.
 
 Run the checks with `python3 -B -m unittest discover -s tests -v`.
 
