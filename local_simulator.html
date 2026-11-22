@@ -460,34 +460,33 @@ const ZONE_GUIDES = {
   }
 };
 const ZONE_ORDER = ['epigastric', 'subcostal_gb', 'right_flank', 'left_flank', 'pelvis_bladder'];
-// 添付テキストの正常解剖・断面模式図を、5つの接触部位内の観察候補へ整理。
-// PDFページはユーザー提供ファイル内のページ番号。見本の臨床的一致や到達可能性は未検証。
+// 5つの接触部位内の観察候補。見本の臨床的一致や到達可能性は未検証。
 const NORMAL_TARGETS = {
   epigastric: [
-    {id:'pancreas_trans', ja:'膵体部・脾静脈', en:'Pancreas and splenic vein', pages:'34–37, 87', keys:'膵体部 / 主膵管 / 脾静脈 / SMA / Ao / IVC', keysEn:'Pancreatic body / pancreatic duct / splenic vein / SMA / aorta / IVC'},
-    {id:'liver_hv', ja:'肝静脈面', en:'Hepatic vein plane', pages:'2–5, 85', keys:'肝左葉 / RHV / MHV / LHV / IVC', keysEn:'Left liver / RHV / MHV / LHV / IVC'},
-    {id:'liver_pv', ja:'門脈分枝面', en:'Portal branch plane', pages:'2–5, 85', keys:'S2–S4 / 門脈左枝の横部・臍部 / PV / IVC', keysEn:'S2–S4 / transverse and umbilical left portal vein / PV / IVC'},
-    {id:'aorta_long', ja:'大動脈の縦走査', en:'Aorta long axis', pages:'4, 7, 46–48', keys:'肝左葉 / Ao / 腹腔動脈（3Dモデル未対応） / SMA / 膵 / 脾静脈', keysEn:'Left liver / aorta / celiac artery (not in 3D model) / SMA / pancreas / splenic vein'}
+    {id:'pancreas_trans', ja:'膵体部・脾静脈', en:'Pancreas and splenic vein', keys:'膵体部 / 主膵管 / 脾静脈 / SMA / Ao / IVC', keysEn:'Pancreatic body / pancreatic duct / splenic vein / SMA / aorta / IVC'},
+    {id:'liver_hv', ja:'肝静脈面', en:'Hepatic vein plane', keys:'肝左葉 / RHV / MHV / LHV / IVC', keysEn:'Left liver / RHV / MHV / LHV / IVC'},
+    {id:'liver_pv', ja:'門脈分枝面', en:'Portal branch plane', keys:'S2–S4 / 門脈左枝の横部・臍部 / PV / IVC', keysEn:'S2–S4 / transverse and umbilical left portal vein / PV / IVC'},
+    {id:'aorta_long', ja:'大動脈の縦走査', en:'Aorta long axis', keys:'肝左葉 / Ao / 腹腔動脈（3Dモデル未対応） / SMA / 膵 / 脾静脈', keysEn:'Left liver / aorta / celiac artery (not in 3D model) / SMA / pancreas / splenic vein'}
   ],
   subcostal_gb: [
-    {id:'biliary_hilum', ja:'胆嚢・肝門部', en:'Gallbladder and hilum', pages:'24–26, 86', keys:'肝 / 胆嚢 / 胆管 / 門脈 / IVC', keysEn:'Liver / gallbladder / bile duct / portal vein / IVC'},
-    {id:'gb_long', ja:'胆嚢長軸', en:'Gallbladder long axis', pages:'24–27, 86', keys:'肝 / 胆嚢底部・体部・頸部 / 胆管', keysEn:'Liver / gallbladder fundus, body and neck / bile duct'},
-    {id:'right_portal', ja:'肝右葉・門脈枝', en:'Right liver and portal branches', pages:'3–6, 25, 85', keys:'右肝静脈 / 門脈右枝と前後枝 / 肝右葉 / IVC', keysEn:'RHV / right portal vein and its anterior/posterior branches / right liver / IVC'}
+    {id:'biliary_hilum', ja:'胆嚢・肝門部', en:'Gallbladder and hilum', keys:'肝 / 胆嚢 / 胆管 / 門脈 / IVC', keysEn:'Liver / gallbladder / bile duct / portal vein / IVC'},
+    {id:'gb_long', ja:'胆嚢長軸', en:'Gallbladder long axis', keys:'肝 / 胆嚢底部・体部・頸部 / 胆管', keysEn:'Liver / gallbladder fundus, body and neck / bile duct'},
+    {id:'right_portal', ja:'肝右葉・門脈枝', en:'Right liver and portal branches', keys:'右肝静脈 / 門脈右枝と前後枝 / 肝右葉 / IVC', keysEn:'RHV / right portal vein and its anterior/posterior branches / right liver / IVC'}
   ],
   right_flank: [
-    {id:'hepatorenal', ja:'肝腎境界', en:'Hepatorenal interface', pages:'53, 57, 88', keys:'肝右葉 / 右腎 / 腎皮質 / 腎中心部', keysEn:'Right liver / right kidney / cortex / renal sinus'},
-    {id:'right_kidney_long', ja:'右腎長軸', en:'Right kidney long axis', pages:'53–57, 88', keys:'肝 / 右腎皮質 / 腎中心部 / 腎門', keysEn:'Liver / right renal cortex / renal sinus / hilum'},
-    {id:'right_kidney_short', ja:'右腎短軸', en:'Right kidney short axis', pages:'56–57, 88', keys:'腎皮質 / 髄質 / 腎中心部', keysEn:'Renal cortex / medulla / renal sinus'}
+    {id:'hepatorenal', ja:'肝腎境界', en:'Hepatorenal interface', keys:'肝右葉 / 右腎 / 腎皮質 / 腎中心部', keysEn:'Right liver / right kidney / cortex / renal sinus'},
+    {id:'right_kidney_long', ja:'右腎長軸', en:'Right kidney long axis', keys:'肝 / 右腎皮質 / 腎中心部 / 腎門', keysEn:'Liver / right renal cortex / renal sinus / hilum'},
+    {id:'right_kidney_short', ja:'右腎短軸', en:'Right kidney short axis', keys:'腎皮質 / 髄質 / 腎中心部', keysEn:'Renal cortex / medulla / renal sinus'}
   ],
   left_flank: [
-    {id:'splenorenal', ja:'脾腎関係', en:'Spleen and left kidney', pages:'21, 53, 57', keys:'脾臓 / 左腎 / 腎皮質 / 腎中心部', keysEn:'Spleen / left kidney / cortex / renal sinus'},
-    {id:'spleen_long', ja:'脾臓の左肋間走査', en:'Spleen intercostal', pages:'21, 87', keys:'脾臓 / 左腎 / 脾門', keysEn:'Spleen / left kidney / splenic hilum'},
-    {id:'left_kidney_long', ja:'左腎長軸', en:'Left kidney long axis', pages:'53–57, 88', keys:'脾臓 / 左腎皮質 / 腎中心部 / 腎門', keysEn:'Spleen / left renal cortex / renal sinus / hilum'}
+    {id:'splenorenal', ja:'脾腎関係', en:'Spleen and left kidney', keys:'脾臓 / 左腎 / 腎皮質 / 腎中心部', keysEn:'Spleen / left kidney / cortex / renal sinus'},
+    {id:'spleen_long', ja:'脾臓の左肋間走査', en:'Spleen intercostal', keys:'脾臓 / 左腎 / 脾門', keysEn:'Spleen / left kidney / splenic hilum'},
+    {id:'left_kidney_long', ja:'左腎長軸', en:'Left kidney long axis', keys:'脾臓 / 左腎皮質 / 腎中心部 / 腎門', keysEn:'Spleen / left renal cortex / renal sinus / hilum'}
   ],
   pelvis_bladder: [
-    {id:'bladder_trans', ja:'膀胱横断', en:'Bladder transverse', pages:'71–72, 79–80', keys:'膀胱内腔 / 膀胱壁 / 後方組織', keysEn:'Bladder lumen / wall / posterior tissue'},
-    {id:'bladder_uterus', ja:'女性骨盤の縦断', en:'Female pelvis sagittal', pages:'71–72', keys:'膀胱 / 子宮体部 / 子宮頸部（3Dモデル未対応）', keysEn:'Bladder / uterine body / cervix (not in 3D model)'},
-    {id:'bladder_prostate', ja:'男性骨盤の横断', en:'Male pelvis transverse', pages:'79–80', keys:'膀胱 / 前立腺（3Dモデルは粗い近似）', keysEn:'Bladder / prostate (coarse 3D approximation)'}
+    {id:'bladder_trans', ja:'膀胱横断', en:'Bladder transverse', keys:'膀胱内腔 / 膀胱壁 / 後方組織', keysEn:'Bladder lumen / wall / posterior tissue'},
+    {id:'bladder_uterus', ja:'女性骨盤の縦断', en:'Female pelvis sagittal', keys:'膀胱 / 子宮体部 / 子宮頸部（3Dモデル未対応）', keysEn:'Bladder / uterine body / cervix (not in 3D model)'},
+    {id:'bladder_prostate', ja:'男性骨盤の横断', en:'Male pelvis transverse', keys:'膀胱 / 前立腺（3Dモデルは粗い近似）', keysEn:'Bladder / prostate (coarse 3D approximation)'}
   ]
 };
 const ZONE_STARTS = {
@@ -508,9 +507,20 @@ function updateZoneUI() {
     ? `接触位置は${name}の開始目安。Shift＋矢印またはドラッグで各${ZONE_ADJUST_CM} cm以内を調整。`
     : `Approximate ${name} start point. Shift+arrows or drag within ${ZONE_ADJUST_CM} cm.`;
   document.getElementById('bodyOverlayTitle').textContent = (ja ? 'ボディマーク：' : 'Body marker: ') + name;
+  updateViewStatus();
+}
+
+function updateViewStatus() {
   const status = document.getElementById('viewStatus');
+  const base = state.lang === 'ja'
+    ? '模式エコー：各視野の正常像との一致は未検証です。'
+    : 'Schematic echo: normal views have not been validated.';
+  const direction = state.yaw < -45
+    ? (state.lang === 'ja' ? '赤マーカーは尾側を向いています。画面左の方向を確認してください。' : 'The red marker points toward the feet. Check the image-left direction.')
+    : '';
+  const message = direction ? `${base} ${direction}` : base;
+  if (status.textContent !== message) status.textContent = message;
   status.style.display = 'block';
-  status.textContent = ja ? '模式エコー：各視野の正常像との一致は未検証です。' : 'Schematic echo: normal views have not been validated.';
 }
 
 function selectZone(zone) {
@@ -561,7 +571,7 @@ function setTextSafe(id, val) {
 }
 
 function updatePressureState() {
-  const active = state.pcPressing || state.mobilePressing;
+  const active = !state.frozen && (state.pcPressing || state.mobilePressing);
   state.pressure = active ? 1.0 : 0.0;
   const btn = document.getElementById('btnPcPress');
   if (btn) btn.classList.toggle('press-active', active);
@@ -572,6 +582,7 @@ function updatePressureState() {
 function toggleFreeze() {
   state.frozen = !state.frozen;
   if (state.frozen) pressedTiltKeys.clear();
+  updatePressureState();
   const badge = document.getElementById('freezeBadge');
   if (badge) badge.style.display = state.frozen ? 'block' : 'none';
   const btn = document.getElementById('btnPcFreeze');
@@ -735,6 +746,10 @@ const TILT_DEGREES_PER_SECOND = 36;
 let lastTiltFrameTime = null;
 
 function handlePcTiltKeyDown(e) {
+  if (e.key === 'Meta' || e.metaKey || e.ctrlKey || e.altKey) {
+    pressedTiltKeys.clear();
+    lastTiltFrameTime = null;
+  }
   const key = e.key.toLowerCase();
   if (!['w', 'z', 'a', 'd'].includes(key) || e.isComposing || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return false;
   if (e.target instanceof HTMLTextAreaElement || e.target?.isContentEditable ||
@@ -1015,26 +1030,26 @@ function openSchemaWindow() {
     });
     const target = targets[targetIndex];
     popup.document.getElementById('schemaTargets').textContent = kind === 'reference'
-      ? (ja ? `教本PDF p.${target.pages} · 確認構造：${target.keys} · 独立した模式見本（到達判定なし）`
-            : `Textbook PDF pp.${target.pages} · Landmarks: ${target.keysEn} · Fixed schematic, not an attainment test`)
+      ? (ja ? `確認構造：${target.keys} · 独立した模式見本（到達判定なし）`
+            : `Landmarks: ${target.keysEn} · Fixed schematic, not an attainment test`)
       : (ja ? 'この部位で今後照合する観察候補：' : 'Views to validate for this region: ') +
         (ja ? ZONE_GUIDES[state.selectedZone].viewsJa : ZONE_GUIDES[state.selectedZone].viewsEn).join(' / ');
     popup.document.getElementById('diagramGrid').classList.toggle('two', kind === 'anatomy');
     popup.document.getElementById('firstTitle').textContent = ja ? '肝区域の断面例（手動切替）' : 'Liver section examples (manual selection)';
     popup.document.getElementById('secondTitle').textContent = ja ? '肝区域S1–S8・血管・現在の走査面' : 'Liver S1–S8, vessels and current scan plane';
     popup.document.getElementById('liverViewHint').textContent = ja
-      ? '添付テキストの断面区分を参考に独自作図した学習用草案です。スマホ角度とは自動対応せず、区域境界と正常所見は専門医確認前です。'
-      : 'Original learning draft based on the reference text’s scan planes. It does not follow phone tilt; segment boundaries and normal findings need specialist review.';
+      ? '独自作図した学習用の模式草案です。スマホ角度とは自動対応せず、区域境界と正常所見は専門医確認前です。'
+      : 'Original schematic learning draft. It does not follow phone tilt; segment boundaries and normal findings need specialist review.';
     popup.document.getElementById('schemaCaution').textContent = ja
       ? (kind === 'section'
         ? '模式図です。エコーと同じ簡略3Dモデル・位置・角度から作成しています。実際の正常エコー像との一致は未検証です。'
         : kind === 'reference'
-          ? '教本の構造関係を参考に独自作図した固定見本です。実際のエコー写真ではなく、現在の角度とも自動対応しません。位置関係は専門医確認前です。'
+          ? '独自作図した固定の模式見本です。実際のエコー写真ではなく、現在の角度とも自動対応しません。位置関係は専門医確認前です。'
           : '左は固定の断面草案、右は同じ3D区域・血管モデルと現在の走査面です。区域境界と正常所見は未検証です。')
       : (kind === 'section'
         ? 'Schematic only. This section uses the same simplified 3D model, position, and angle as the echo. Clinical image matching has not been validated.'
         : kind === 'reference'
-          ? 'Original fixed schematic based on anatomical relationships in the reference text. It is not an ultrasound photo and does not follow the current angle. Specialist review is pending.'
+          ? 'Original fixed schematic. It is not an ultrasound photo and does not follow the current angle. Specialist review is pending.'
           : 'Left: fixed section draft. Right: the shared 3D liver-segment and vessel model with the current scan plane. Segment boundaries and clinical appearance remain unvalidated.');
     const mirror = (sourceId, targetId) => {
       const source = document.getElementById(sourceId);
@@ -2535,8 +2550,7 @@ function renderEcho(time) {
           let tx = acc.sumX / acc.count, ty = acc.sumY / acc.count;
           if (k === 'ivc') { ty += 18; tx -= 18; }
           else if (k === 'ao') { ty += 14; tx += 8; }
-          else if (k === 'liverRt') { ty -= 42; }
-          else if (k === 'liverLt') { ty -= 24; }
+          else if (k === 'liverRt' || k === 'liverLt') { ty -= 12; }
           else if (k === 'kidneyCort' || k === 'ltKidneyCort') { ty += 20; }
           else if (k === 'kidneyCec' || k === 'ltKidneyCec') { ty -= 6; }
           const label = getOrganLabel(k);
@@ -2551,7 +2565,8 @@ function renderEcho(time) {
       });
     }
     const scanMode = Math.abs(state.yaw) > 45 ? t('scanLong') : t('scanTrans');
-    document.getElementById('hudLeft').innerHTML = `CONVEX C1-5MHz<br>DEPTH: 15.0 cm<br>GAIN: ${Math.round(state.gain)} dB`;
+    updateViewStatus();
+    document.getElementById('hudLeft').innerHTML = `SCHEMATIC PROBE<br>DEPTH: 15.0 cm<br>GAIN: ${Math.round(state.gain)} (simulated)`;
     document.getElementById('hudRight').innerHTML = `SOURCE: <span style="color:#58a6ff">${state.source}</span><br>POS: (${state.px.toFixed(1)}, ${state.py.toFixed(1)}) cm<br>ROT: ${Math.round(state.yaw)}° [${scanMode}]<br>TILT: P ${Math.round(state.pitch)}° / R ${Math.round(state.roll)}°`;
     const labels = landmarkKeys.filter(k => (organCentroids.get(k)?.count || 0) >= 4).map(k => getOrganLabel(k));
     document.getElementById('organLegend').textContent = labels.length > 0

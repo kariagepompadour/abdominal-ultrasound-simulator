@@ -26,6 +26,11 @@ MAX_SESSIONS = 200
 MAX_SESSIONS_PER_CLIENT = 20
 MAX_NEW_SESSIONS_PER_MINUTE = 30
 MAX_BODY = 2048
+MAX_CONNECTIONS = 64
+SENSOR_FIELDS = frozenset({
+    'seq', 'px', 'py', 'yaw', 'pitch', 'roll', 'press', 'freeze',
+    'freeze_count', 'exploring',
+})
 sessions = {}
 session_creation_times = []
 sessions_lock = threading.Lock()
@@ -73,6 +78,15 @@ class WebHandler(BaseHTTPRequestHandler):
         self.send_header('Referrer-Policy', 'no-referrer')
         self.send_header('X-Content-Type-Options', 'nosniff')
         self.send_header('X-Frame-Options', 'DENY')
+        self.send_header('Content-Security-Policy',
+                         "default-src 'self'; script-src 'self' 'unsafe-inline'; "
+                         "style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
+                         "connect-src 'self'; object-src 'none'; base-uri 'none'; "
+                         "frame-ancestors 'none'; form-action 'none'")
+        self.send_header('Strict-Transport-Security', 'max-age=31536000')
+        self.send_header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+        if self.close_connection:
+            self.send_header('Connection', 'close')
         self.end_headers()
         if self.command != 'HEAD':
             self.wfile.write(payload)
@@ -337,7 +351,9 @@ class WebHandler(BaseHTTPRequestHandler):
                 # Server-side sequence survives a phone page reload, whose
                 # client-side counter starts again at zero.
                 entry['sensor_seq'] += 1
-                entry['latest_data'] = {**data, 'seq': entry['sensor_seq']}
+                entry['latest_data'] = {key: value for key, value in data.items()
+                                        if key in SENSOR_FIELDS}
+                entry['latest_data']['seq'] = entry['sensor_seq']
                 result = {'ok': True, 'zero_seq': entry['zero_seq'], 'pc_pos': dict(entry['pc_pos'])}
             self.send_json(200, result)
         except ValueError as exc:
@@ -348,6 +364,26 @@ class WebHandler(BaseHTTPRequestHandler):
 
 class WebHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
+
+    def __init__(self, *args, **kwargs):
+        self.connection_slots = threading.BoundedSemaphore(MAX_CONNECTIONS)
+        super().__init__(*args, **kwargs)
+
+    def process_request(self, request, client_address):
+        if not self.connection_slots.acquire(blocking=False):
+            request.close()
+            return
+        try:
+            super().process_request(request, client_address)
+        except BaseException:
+            self.connection_slots.release()
+            raise
+
+    def process_request_thread(self, request, client_address):
+        try:
+            super().process_request_thread(request, client_address)
+        finally:
+            self.connection_slots.release()
 
 
 def serve():

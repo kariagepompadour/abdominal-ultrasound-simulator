@@ -4,6 +4,7 @@ import json
 import threading
 import time
 import unittest
+from http.client import HTTPConnection
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -175,6 +176,33 @@ class WebRelayTest(unittest.TestCase):
             self.assertEqual(self.request('/api/web/session', method='POST')[0], 429)
         finally:
             web_server.MAX_NEW_SESSIONS_PER_MINUTE = original_limit
+
+    def test_unknown_sensor_fields_do_not_reach_pc(self):
+        pair = self.create_session()
+        probe_token = self.approve_phone(pair)
+        path = f"/api/web/sensor?sid={pair['sid']}"
+        packet = {'seq': 1, 'px': 0, 'py': 0, 'yaw': 0, 'pitch': 0, 'roll': 0,
+                  'freeze_count': 1, 'unexpected': 'untrusted value'}
+        self.assertEqual(self.request(path, 'POST', probe_token, packet)[0], 200)
+        received = self.request(path, token=pair['pc_token'])[1]
+        self.assertEqual(received['freeze_count'], 1)
+        self.assertNotIn('unexpected', received)
+
+    def test_security_headers_and_unread_body_close(self):
+        with urlopen(self.base + '/web', timeout=3) as response:
+            self.assertIn("default-src 'self'", response.headers['Content-Security-Policy'])
+            self.assertEqual(response.headers['Strict-Transport-Security'], 'max-age=31536000')
+            self.assertIn('camera=()', response.headers['Permissions-Policy'])
+        connection = HTTPConnection('127.0.0.1', self.server.server_address[1], timeout=3)
+        try:
+            connection.request('POST', '/api/web/session', body=b'{"unexpected":true}',
+                               headers={'Content-Type': 'application/json'})
+            response = connection.getresponse()
+            self.assertEqual(response.status, 400)
+            self.assertEqual(response.getheader('Connection'), 'close')
+            response.read()
+        finally:
+            connection.close()
 
 
 if __name__ == '__main__':
