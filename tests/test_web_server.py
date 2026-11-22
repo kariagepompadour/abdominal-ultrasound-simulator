@@ -27,6 +27,7 @@ class WebRelayTest(unittest.TestCase):
     def setUp(self):
         with web_server.sessions_lock:
             web_server.sessions.clear()
+            web_server.session_creation_times.clear()
 
     def request(self, path, method='GET', token=None, body=None, extra_headers=None):
         headers = dict(extra_headers or {})
@@ -91,6 +92,40 @@ class WebRelayTest(unittest.TestCase):
                                  extra_headers={'Origin': 'https://another.example'})
         self.assertEqual(status, 403)
         self.assertEqual(len(web_server.sessions), 0)
+
+    def test_session_creation_is_limited_and_unpaired_sessions_expire(self):
+        first = self.create_session()
+        for _ in range(web_server.MAX_SESSIONS_PER_CLIENT - 1):
+            self.create_session()
+        self.assertEqual(self.request('/api/web/session', method='POST')[0], 429)
+        with web_server.sessions_lock:
+            web_server.sessions[first['sid']]['created_at'] -= web_server.UNPAIRED_TTL + 1
+        self.assertEqual(self.request(f"/api/web/sensor?sid={first['sid']}",
+                                      token=first['pc_token'])[0], 403)
+        self.assertEqual(self.request('/api/web/session', method='POST')[0], 201)
+
+    def test_freeze_counter_and_exploring_state_are_validated(self):
+        pair = self.create_session()
+        path = f"/api/web/sensor?sid={pair['sid']}"
+        packet = {'seq': 1, 'px': 0, 'py': 0, 'yaw': 0, 'pitch': 0, 'roll': 0,
+                  'press': 0, 'freeze_count': 2, 'exploring': 1}
+        self.assertEqual(self.request(path, 'POST', pair['probe_token'], packet)[0], 200)
+        received = self.request(path, token=pair['pc_token'])[1]
+        self.assertEqual(received['freeze_count'], 2)
+        self.assertEqual(received['exploring'], 1)
+        for invalid in ({'freeze_count': -1}, {'freeze_count': True}, {'exploring': True}):
+            self.assertEqual(self.request(path, 'POST', pair['probe_token'],
+                                          {**packet, **invalid})[0], 400)
+
+    def test_global_creation_limit(self):
+        original_limit = web_server.MAX_NEW_SESSIONS_PER_MINUTE
+        try:
+            web_server.MAX_NEW_SESSIONS_PER_MINUTE = 2
+            self.create_session()
+            self.create_session()
+            self.assertEqual(self.request('/api/web/session', method='POST')[0], 429)
+        finally:
+            web_server.MAX_NEW_SESSIONS_PER_MINUTE = original_limit
 
 
 if __name__ == '__main__':

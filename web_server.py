@@ -6,6 +6,7 @@ The existing LAN HTTPS server remains in server.py.
 """
 
 import hmac
+import ipaddress
 import json
 import math
 import os
@@ -19,9 +20,13 @@ from urllib.parse import parse_qs, urlsplit
 
 ROOT = Path(__file__).resolve().parent
 SESSION_TTL = 60 * 60
+UNPAIRED_TTL = 3 * 60
 MAX_SESSIONS = 200
+MAX_SESSIONS_PER_CLIENT = 20
+MAX_NEW_SESSIONS_PER_MINUTE = 30
 MAX_BODY = 2048
 sessions = {}
+session_creation_times = []
 sessions_lock = threading.Lock()
 
 
@@ -30,13 +35,30 @@ def finite_number(value):
 
 
 def prune_sessions(now):
-    expired = [sid for sid, entry in sessions.items() if now - entry['last_seen'] > SESSION_TTL]
+    expired = [sid for sid, entry in sessions.items()
+               if now - entry['last_seen'] > SESSION_TTL
+               or (not entry['paired'] and now - entry['created_at'] > UNPAIRED_TTL)]
     for sid in expired:
         del sessions[sid]
+    session_creation_times[:] = [t for t in session_creation_times if now - t < 60]
 
 
 class WebHandler(BaseHTTPRequestHandler):
     protocol_version = 'HTTP/1.1'
+
+    def setup(self):
+        super().setup()
+        self.connection.settimeout(10)
+
+    def client_key(self):
+        # Render adds X-Forwarded-For at its trusted ingress. Ignore it locally.
+        if os.environ.get('RENDER') == 'true':
+            forwarded = self.headers.get('X-Forwarded-For', '').split(',')[0].strip()
+            try:
+                return str(ipaddress.ip_address(forwarded))
+            except ValueError:
+                pass
+        return self.client_address[0]
 
     def log_message(self, format, *args):
         # The phone pairing token never belongs in a URL or access log.
@@ -55,6 +77,9 @@ class WebHandler(BaseHTTPRequestHandler):
             self.wfile.write(payload)
 
     def send_json(self, status, value):
+        # Error requests may have an unread body. Never parse it as another request.
+        if status >= 400:
+            self.close_connection = True
         self.send_body(status, json.dumps(value, allow_nan=False, separators=(',', ':')).encode(),
                        'application/json; charset=utf-8')
 
@@ -81,11 +106,14 @@ class WebHandler(BaseHTTPRequestHandler):
         if len(sid) > 80 or len(token) > 80:
             return None
         entry = sessions.get(sid)
-        if not entry or time.monotonic() - entry['last_seen'] > SESSION_TTL:
+        now = time.monotonic()
+        if not entry or now - entry['last_seen'] > SESSION_TTL or (
+            not entry['paired'] and now - entry['created_at'] > UNPAIRED_TTL
+        ):
             return None
         if not token or not hmac.compare_digest(token, entry[role + '_token']):
             return None
-        entry['last_seen'] = time.monotonic()
+        entry['last_seen'] = now
         return entry
 
     def static(self, path):
@@ -149,6 +177,12 @@ class WebHandler(BaseHTTPRequestHandler):
             with sessions_lock:
                 now = time.monotonic()
                 prune_sessions(now)
+                client = self.client_key()
+                client_sessions = sum(entry['client'] == client for entry in sessions.values())
+                if (len(session_creation_times) >= MAX_NEW_SESSIONS_PER_MINUTE
+                        or client_sessions >= MAX_SESSIONS_PER_CLIENT):
+                    self.send_json(429, {'error': 'Session creation rate limit reached'})
+                    return
                 if len(sessions) >= MAX_SESSIONS:
                     self.send_json(503, {'error': 'Session capacity reached'})
                     return
@@ -159,8 +193,9 @@ class WebHandler(BaseHTTPRequestHandler):
                     'pc_token': pc_token, 'probe_token': probe_token,
                     'latest_data': {}, 'sensor_seq': 0, 'zero_seq': 0,
                     'pc_pos': {'seq': 0, 'px': 0.2, 'py': 0.5},
-                    'last_seen': now,
+                    'last_seen': now, 'created_at': now, 'paired': False, 'client': client,
                 }
+                session_creation_times.append(now)
             self.send_json(201, {'sid': sid, 'pc_token': pc_token, 'probe_token': probe_token})
             return
         if parsed.path not in ('/api/web/sensor', '/api/web/pos', '/api/web/zero'):
@@ -204,6 +239,12 @@ class WebHandler(BaseHTTPRequestHandler):
                 raise ValueError('Orientation out of range')
             if data.get('press', 0) not in (0, 1) or data.get('freeze', 0) not in (0, 1):
                 raise ValueError('Invalid control value')
+            if type(data.get('exploring', 0)) is not int or data.get('exploring', 0) not in (0, 1):
+                raise ValueError('Invalid exploration state')
+            if 'freeze_count' in data and (
+                type(data['freeze_count']) is not int or not 0 <= data['freeze_count'] < (1 << 53)
+            ):
+                raise ValueError('Invalid freeze count')
             with sessions_lock:
                 entry = self.session(query, 'probe')
                 if not entry:
@@ -212,11 +253,14 @@ class WebHandler(BaseHTTPRequestHandler):
                 # Server-side sequence survives a phone page reload, whose
                 # client-side counter starts again at zero.
                 entry['sensor_seq'] += 1
+                entry['paired'] = True
                 entry['latest_data'] = {**data, 'seq': entry['sensor_seq']}
                 result = {'ok': True, 'zero_seq': entry['zero_seq'], 'pc_pos': dict(entry['pc_pos'])}
             self.send_json(200, result)
         except ValueError as exc:
             self.send_json(400, {'error': str(exc)})
+        except TimeoutError:
+            self.send_json(408, {'error': 'Request timed out'})
 
 
 class WebHTTPServer(ThreadingHTTPServer):

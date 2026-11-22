@@ -272,7 +272,7 @@ const I18N = {
       ・<strong>スマホの持ち方</strong>：タップした姿勢が相対0°。以後は同じ持ち方を保つ。患者に対する絶対角度ではありません<br>
       ・<strong>スマホ上半分タップ</strong>：1回目で周辺チルト開始、2回目で基準画像に戻す<br>
       ・<strong>スマホ下半分</strong>：短押しFREEZE・長押し圧迫<br>
-      ・<strong>PCチルト</strong>：<code>W</code>上方向 ／ <code>Z</code>下方向 ／ <code>A</code>左方向 ／ <code>D</code>右方向。押している間だけ傾き、離すとその角度で止まる。スマホ接続は不要<br>
+      ・<strong>PCチルト</strong>：<code>W</code>ビームを頭側 ／ <code>Z</code>尾側 ／ <code>A</code>患者右 ／ <code>D</code>患者左へ。離すとその角度で止まる。スマホ接続中もPC操作を優先し、スマホ上半分で探索を始め直すとスマホ操作へ戻る<br>
       ・<strong>左手(PC)</strong>：<code>←</code>前の部位 ／ <code>→</code>・<code>Space</code>次の部位 ／ <code>Shift</code>＋矢印で位置を0.5 cmずつ調整 ／ <code>F</code>=FREEZE ／ <code>P</code>長押し=圧迫<br>
       ・⚠️ <strong>画面ロック注意</strong>：スマホがロックされると操作が効かなくなるため、自動ロック解除（画面点灯）にして使用してください`,
     qrTitle: '📱 スマホをプローブとして接続 (ローカル直接通信)',
@@ -281,6 +281,7 @@ const I18N = {
     scanLong: '縦走査 (Long)',
     scanTrans: '横走査 (Trans)',
     markHead: 'H (頭側)',
+    markFoot: 'F (尾側)',
     markRight: 'R (患者右)',
     legendPrefix: '描出中: ',
     legendEmpty: '描出中: なし',
@@ -334,7 +335,7 @@ const I18N = {
       • <strong>Phone hold</strong>: The pose at the first tap is relative 0°. Keep the same grip; this is not an absolute patient probe angle.<br>
       • <strong>Top Half Tap</strong>: Start nearby tilt; tap again to return to the reference view<br>
       • <strong>Bottom Half</strong>: Tap FREEZE, Hold Press<br>
-      • <strong>PC tilt</strong>: Hold <code>W</code> up / <code>Z</code> down / <code>A</code> left / <code>D</code> right. Release to keep that angle. No phone required.<br>
+      • <strong>PC tilt</strong>: Hold <code>W</code> toward the head / <code>Z</code> toward the feet / <code>A</code> toward patient right / <code>D</code> toward patient left. Release to keep that angle. PC input takes priority until a new phone tilt session starts.<br>
       • <strong>PC Left Hand</strong>: <code>←</code> previous region / <code>→</code> or <code>Space</code> next region / <code>Shift</code>+arrows adjust position by 0.5 cm / <code>F</code>=FREEZE / hold <code>P</code>=Press.<br>
       • ⚠️ <strong>Screen Lock</strong>: Controls stop when locked — keep auto-lock off / screen awake during use`,
     qrTitle: '📱 Connect Smartphone as Probe (Local Direct)',
@@ -343,6 +344,7 @@ const I18N = {
     scanLong: 'Longitudinal',
     scanTrans: 'Transverse',
     markHead: 'H (Head)',
+    markFoot: 'F (Foot)',
     markRight: 'R (Pt. Right)',
     legendPrefix: 'Visible: ',
     legendEmpty: 'Visible: None',
@@ -396,9 +398,9 @@ const ORGAN_NAMES = {
 const state = {
   lang: initialLang, source: 'PC LOCAL', mobileConnected: false, px: 0.2, py: 0.5, yaw: 0, pitch: 0, roll: 0,
   gain: 65, pressure: 0, pcPressing: false, mobilePressing: false, isMoving: false, hasStone: false, showAnatomy: true, frozen: false, detectedOrgans: new Set(),
-  selectedZone: 'epigastric'
+  selectedZone: 'epigastric', manualAngleOverride: false, phoneExploring: false
 };
-let prevFreezeSignal = 0, lastPosSyncSent = 0;
+let prevFreezeSignal = 0, lastFreezeCount = 0, lastPosSyncSent = 0;
 
 // 体表の5領域から入り、観察候補を示す。各視野の正常像との一致は未検証。
 const ZONE_GUIDES = {
@@ -440,7 +442,7 @@ const NORMAL_TARGETS = {
     {id:'pancreas_trans', ja:'膵体部・脾静脈', en:'Pancreas and splenic vein', pages:'34–37, 87', keys:'膵体部 / 主膵管 / 脾静脈 / SMA / Ao / IVC', keysEn:'Pancreatic body / pancreatic duct / splenic vein / SMA / aorta / IVC'},
     {id:'liver_hv', ja:'肝静脈面', en:'Hepatic vein plane', pages:'2–5, 85', keys:'肝左葉 / RHV / MHV / LHV / IVC', keysEn:'Left liver / RHV / MHV / LHV / IVC'},
     {id:'liver_pv', ja:'門脈分枝面', en:'Portal branch plane', pages:'2–5, 85', keys:'S2–S4 / 門脈左枝の横部・臍部 / PV / IVC', keysEn:'S2–S4 / transverse and umbilical left portal vein / PV / IVC'},
-    {id:'aorta_long', ja:'大動脈の縦走査', en:'Aorta long axis', pages:'4, 7, 46–48', keys:'肝左葉 / Ao / 腹腔動脈 / SMA / 膵 / 脾静脈', keysEn:'Left liver / aorta / celiac artery / SMA / pancreas / splenic vein'}
+    {id:'aorta_long', ja:'大動脈の縦走査', en:'Aorta long axis', pages:'4, 7, 46–48', keys:'肝左葉 / Ao / 腹腔動脈（3Dモデル未対応） / SMA / 膵 / 脾静脈', keysEn:'Left liver / aorta / celiac artery (not in 3D model) / SMA / pancreas / splenic vein'}
   ],
   subcostal_gb: [
     {id:'biliary_hilum', ja:'胆嚢・肝門部', en:'Gallbladder and hilum', pages:'24–26, 86', keys:'肝 / 胆嚢 / 胆管 / 門脈 / IVC', keysEn:'Liver / gallbladder / bile duct / portal vein / IVC'},
@@ -488,6 +490,7 @@ function updateZoneUI() {
 
 function selectZone(zone) {
   if (!ZONE_GUIDES[zone]) return;
+  if (state.frozen) toggleFreeze();
   state.selectedZone = zone;
   moveXY(zone);
   triggerZeroReset();
@@ -510,6 +513,7 @@ function clampZonePos(x, y) {
   );
 }
 function nudgeZonePosition(dx, dy) {
+  if (state.frozen) toggleFreeze();
   const p = clampZonePos(state.px + dx * ZONE_KEY_STEP_CM, state.py + dy * ZONE_KEY_STEP_CM);
   if (p.x === state.px && p.y === state.py) return;
   state.px = p.x;
@@ -542,6 +546,7 @@ function updatePressureState() {
 
 function toggleFreeze() {
   state.frozen = !state.frozen;
+  if (state.frozen) pressedTiltKeys.clear();
   const badge = document.getElementById('freezeBadge');
   if (badge) badge.style.display = state.frozen ? 'block' : 'none';
   const btn = document.getElementById('btnPcFreeze');
@@ -681,7 +686,9 @@ function updateQRCodeUrl() {
 }
 
 async function triggerZeroReset() {
+  if (state.frozen) toggleFreeze();
   state.yaw = 0; state.pitch = 0; state.roll = 0;
+  state.manualAngleOverride = true;
   syncSliders();
   try { await relayFetch('zero', { method: 'POST' }); } catch (e) {}
 }
@@ -703,13 +710,14 @@ function handlePcTiltKeyDown(e) {
 function updateKeyboardTilt(time) {
   const dt = lastTiltFrameTime === null ? 0 : Math.min((time - lastTiltFrameTime) / 1000, 0.05);
   lastTiltFrameTime = time;
-  if (!pressedTiltKeys.size || dt <= 0) return;
+  if (state.frozen || !pressedTiltKeys.size || dt <= 0) return;
   const pitchDirection = Number(pressedTiltKeys.has('w')) - Number(pressedTiltKeys.has('z'));
   const rollDirection = Number(pressedTiltKeys.has('a')) - Number(pressedTiltKeys.has('d'));
   if (!pitchDirection && !rollDirection) return;
   state.pitch = Math.max(-45, Math.min(45, state.pitch + pitchDirection * TILT_DEGREES_PER_SECOND * dt));
   state.roll = Math.max(-45, Math.min(45, state.roll + rollDirection * TILT_DEGREES_PER_SECOND * dt));
   state.source = 'PC KEYBOARD';
+  state.manualAngleOverride = true;
   syncSliders();
 }
 
@@ -722,7 +730,10 @@ window.addEventListener('keydown', e => {
   }
   if (schemaOpen) return;
   if (handlePcTiltKeyDown(e)) return;
-  if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+  if (e.target instanceof HTMLTextAreaElement ||
+      (e.target instanceof HTMLInputElement && e.target.type !== 'range')) return;
+  if (e.target instanceof HTMLInputElement && e.target.type === 'range' &&
+      !e.shiftKey && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
   if (handleZoneNudgeKey(e)) return;
   if (e.key === 'ArrowRight' || e.code === 'Space') {
     e.preventDefault();
@@ -824,6 +835,7 @@ function openSchemaWindow() {
     });
   });
   popup.addEventListener('keydown', e => {
+    if (handlePcTiltKeyDown(e)) return;
     if (handleZoneNudgeKey(e)) return;
     if (e.key === 'ArrowRight' || e.code === 'Space' || e.key === 'ArrowLeft') {
       e.preventDefault();
@@ -836,8 +848,8 @@ function openSchemaWindow() {
       if (!e.repeat) triggerZeroReset();
     }
   });
-  popup.addEventListener('keyup', e => { if (e.key === 'p' || e.key === 'P') setPcPress(false); });
-  popup.addEventListener('blur', () => { if (state.pcPressing) setPcPress(false); });
+  popup.addEventListener('keyup', e => { pressedTiltKeys.delete(e.key.toLowerCase()); if (e.key === 'p' || e.key === 'P') setPcPress(false); });
+  popup.addEventListener('blur', () => { pressedTiltKeys.clear(); if (state.pcPressing) setPcPress(false); });
   popup.setInterval(() => {
     if (popup.closed) return;
     const ja = state.lang === 'ja';
@@ -1086,7 +1098,7 @@ function drawSpatialDiagram() {
   ctx.textAlign = 'left';
   ctx.font = 'bold 10px monospace';
   ctx.fillStyle = '#ff7b72';
-  ctx.fillText(Math.abs(state.yaw) > 45 ? '●赤=頭側(H)' : '●赤=患者右(R)', 8, 14);
+  ctx.fillText(state.yaw > 45 ? '●赤=頭側(H)' : state.yaw < -45 ? '●赤=尾側(F)' : '●赤=患者右(R)', 8, 14);
   ctx.textAlign = 'right';
   ctx.fillStyle = '#58a6ff';
   ctx.fillText(`P:${Math.round(state.pitch)}° R:${Math.round(state.roll)}°`, W - 8, 14);
@@ -1182,8 +1194,11 @@ function isValidProbePacket(d) {
 function ingestProbePacket(src, d) {
   if (!isValidProbePacket(d)) return;
   // スマホは姿勢と操作信号だけを送る。接触位置はPCで選択した部位内に固定する。
-  // PCのチルトキーを押している間は、後着したスマホ姿勢で角度を上書きしない。
-  if (!pressedTiltKeys.size) {
+  // PCの角度操作は保持し、スマホで新たに探索を始めたときに操作権を戻す。
+  const exploring = d.exploring === 1;
+  if (exploring && !state.phoneExploring) state.manualAngleOverride = false;
+  state.phoneExploring = exploring;
+  if (!state.frozen && !pressedTiltKeys.size && !state.manualAngleOverride) {
     state.source = src;
     state.yaw = Math.max(-90, Math.min(90, d.yaw));
     state.pitch = Math.max(-45, Math.min(45, d.pitch));
@@ -1191,9 +1206,11 @@ function ingestProbePacket(src, d) {
   }
   state.mobilePressing = (d.press === 1);
   updatePressureState();
-  if (d.freeze === 1 && prevFreezeSignal === 0) {
-    toggleFreeze();
-  }
+  if (Number.isSafeInteger(d.freeze_count) && d.freeze_count >= 0) {
+    if (d.freeze_count < lastFreezeCount) lastFreezeCount = 0;
+    if ((d.freeze_count - lastFreezeCount) % 2 === 1) toggleFreeze();
+    lastFreezeCount = d.freeze_count;
+  } else if (d.freeze === 1 && prevFreezeSignal === 0) toggleFreeze();
   prevFreezeSignal = d.freeze;
   const L = I18N[state.lang];
   const b = document.getElementById('modeBanner');
@@ -1202,12 +1219,18 @@ function ingestProbePacket(src, d) {
 }
 
 function initLocalPCReceiver() {
-  let lastSeq = -1, lastTime = 0, polling = false;
+  let lastSeq = -1, lastTime = 0, polling = false, nextRecoveryAt = 0;
   setInterval(async () => {
     // ネットワーク遅延時にも GET を重ねない。
     if (polling) return;
     polling = true;
     try {
+      if (isHostedMode && !webSession && performance.now() >= nextRecoveryAt) {
+        nextRecoveryAt = performance.now() + 5000;
+        await requestHostedSession();
+        updateQRCodeUrl();
+        document.getElementById('modeBanner').textContent = t('bannerReady');
+      }
       const res = await relayFetch('sensor', { cache: 'no-store' });
       if (res.ok) {
         const d = await res.json();
@@ -1225,9 +1248,24 @@ function initLocalPCReceiver() {
           }
           ingestProbePacket(isHostedMode ? 'WEB MOBILE (v43)' : 'MOBILE (v43)', d);
         }
+      } else if (isHostedMode && res.status === 403 && performance.now() >= nextRecoveryAt) {
+        nextRecoveryAt = performance.now() + 5000;
+        await requestHostedSession();
+        lastSeq = -1;
+        lastTime = 0;
+        state.phoneExploring = false;
+        lastFreezeCount = 0;
+        prevFreezeSignal = 0;
+        updateQRCodeUrl();
+        if (state.mobileConnected) openQRModal();
       }
     } catch (e) {
       // サーバー停止・通信断も finally で切断判定する。
+      if (isHostedMode && !webSession) {
+        document.getElementById('modeBanner').textContent = state.lang === 'ja'
+          ? 'Web接続を準備できません。再試行しています。'
+          : 'Could not prepare web pairing. Retrying.';
+      }
     } finally {
       polling = false;
       if (state.mobileConnected && performance.now() - lastTime > 3000) {
@@ -1240,7 +1278,9 @@ function initLocalPCReceiver() {
         btn.classList.remove('connected');
         state.source = isHostedMode ? 'WEB READY' : 'PC LOCAL';
         const b = document.getElementById('modeBanner');
-        if (b) b.textContent = t('bannerReady');
+        if (b) b.textContent = isHostedMode
+          ? (state.lang === 'ja' ? '接続が切れました。スマホで新しいQRを読み取ってください。' : 'Connection ended. Scan the new QR with your phone.')
+          : t('bannerReady');
       }
     }
   }, isHostedMode ? 60 : 30);
@@ -1277,7 +1317,7 @@ function initMobileProbeController() {
   let rawAlpha = 0, rawBeta = 90, rawGamma = 0;
   let R0 = getRotationMatrix(0, 90, 0);
   let hasSensorSample = false, exploring = false;
-  let probeX = 0.2, probeY = 0.5, isPressing = false, freezePulse = 0, seq = 0, isSending = false, lastZeroSeq = -1, lastPcPosSeq = 0;
+  let probeX = 0.2, probeY = 0.5, isPressing = false, freezeCount = 0, seq = 0, isSending = false, sessionExpired = false, lastZeroSeq = -1, lastPcPosSeq = 0;
   let audioCtx = null;
 
   function playTone(freq, durationMs, delayMs = 0) {
@@ -1382,8 +1422,7 @@ function initMobileProbeController() {
       isHoldMode = false;
       if (!cancelled) playTone(440, 60);
     } else if (!cancelled) {
-      freezePulse = 1;
-      setTimeout(() => { freezePulse = 0; }, 120);
+      freezeCount++;
       playTone(784, 70, 0);
       playTone(784, 70, 95);
     }
@@ -1427,14 +1466,18 @@ function initMobileProbeController() {
     const roll = exploring ? outRoll : 0;
     document.getElementById('mTelemetry').textContent = `${t('zeroTelemetry')} ROT:${Math.round(yaw)}°(${exploring ? scanMode : t('scanTrans')}) | P:${Math.round(pitch)}° R:${Math.round(roll)}°`;
 
-    if (isSending) return;
+    if (isSending || sessionExpired) return;
     isSending = true; seq++;
     try {
       const res = await relayFetch('sensor', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ seq, ack_pos_seq: lastPcPosSeq, px: probeX, py: probeY, yaw, pitch, roll, move: 0, press: isPressing ? 1 : 0, freeze: freezePulse })
+        body: JSON.stringify({ seq, ack_pos_seq: lastPcPosSeq, px: probeX, py: probeY, yaw, pitch, roll, move: 0, press: isPressing ? 1 : 0, freeze_count: freezeCount, exploring: exploring ? 1 : 0 })
       });
-      if (res.ok) {
+      if (res.status === 403 && isHostedMode) {
+        sessionExpired = true;
+        statusEl.textContent = state.lang === 'ja' ? '接続が切れました。PCの新しいQRを読み取ってください。' : 'Connection ended. Scan the new QR on the PC.';
+        statusEl.style.color = '#f85149';
+      } else if (res.ok) {
         const ack = await res.json();
         if (ack && typeof ack.zero_seq === 'number') {
           if (lastZeroSeq !== -1 && ack.zero_seq !== lastZeroSeq) resetZeroPose();
@@ -1478,14 +1521,20 @@ function setPreset(n) {
   else if (n === 'epigastric_long') moveXY('epigastric');
   else moveXY(n);
 }
-function toggleStone() { state.hasStone = !state.hasStone; document.getElementById('btnStone').textContent = state.hasStone ? t('stoneOn') : t('stoneOff'); }
+function toggleStone() { if (state.frozen) toggleFreeze(); state.hasStone = !state.hasStone; document.getElementById('btnStone').textContent = state.hasStone ? t('stoneOn') : t('stoneOff'); }
 function toggleAnatomy() {
+  if (state.frozen) toggleFreeze();
   state.showAnatomy = !state.showAnatomy;
   const btn = document.getElementById('btnAnatomy');
   btn.textContent = state.showAnatomy ? t('anatomyOn') : t('anatomyOff');
   btn.classList.toggle('active', state.showAnatomy);
 }
-['Yaw', 'Pitch', 'Roll', 'Gain'].forEach(n => document.getElementById('slider' + n).addEventListener('input', e => { state[n.toLowerCase()] = parseFloat(e.target.value); syncSliders(); }));
+['Yaw', 'Pitch', 'Roll', 'Gain'].forEach(n => document.getElementById('slider' + n).addEventListener('input', e => {
+  if (state.frozen) toggleFreeze();
+  state[n.toLowerCase()] = parseFloat(e.target.value);
+  if (n !== 'Gain') { state.manualAngleOverride = true; state.source = 'PC SLIDER'; }
+  syncSliders();
+}));
 function syncSliders() {
   ['Yaw', 'Pitch', 'Roll'].forEach(n => { document.getElementById('slider' + n).value = state[n.toLowerCase()]; document.getElementById('val' + n).textContent = `${Math.round(state[n.toLowerCase()])}°`; });
   document.getElementById('sliderGain').value = state.gain; document.getElementById('valGain').textContent = Math.round(state.gain);
@@ -1693,7 +1742,7 @@ function sampleVolume(x, y, z) {
   // 10. 肝実質
   const segmentKey = liverSegmentAt(x, y, z);
   if (segmentKey) {
-    return { val: 100, shadow: 0, enhance: 0, organKey: x < -1.5 ? 'liverRt' : 'liverLt', segmentKey };
+    return { val: 100, shadow: 0, enhance: 0, organKey: segmentKey === 'S1' ? null : ['S2', 'S3', 'S4'].includes(segmentKey) ? 'liverLt' : 'liverRt', segmentKey };
   }
 
   // 10. 右腎
@@ -2283,7 +2332,7 @@ function renderEcho(time) {
     ctx.fill();
     ctx.fillStyle = '#ff7b72';
     ctx.font = 'bold 11px sans-serif';
-    ctx.fillText(Math.abs(state.yaw) > 45 ? t('markHead') : t('markRight'), markX - 24, markY - 10);
+    ctx.fillText(state.yaw > 45 ? t('markHead') : state.yaw < -45 ? t('markFoot') : t('markRight'), markX - 24, markY - 10);
 
     const landmarkKeys = ZONE_GUIDES[state.selectedZone].landmarkKeys;
     if (state.showAnatomy) {
@@ -2332,6 +2381,7 @@ function renderEcho(time) {
 const bodyCanvas = document.getElementById('bodyCanvas');
 let draggingBody = false;
 bodyCanvas.addEventListener('mousedown', e => {
+  if (state.frozen) toggleFreeze();
   draggingBody = true;
   bodyCanvas.style.cursor = 'grabbing';
   updateBodyPos(e);
@@ -2370,6 +2420,14 @@ function updateBodyPos(e) {
 }
 
 applyLanguage();
+async function requestHostedSession() {
+  const response = await fetch('/api/web/session', { method: 'POST', cache: 'no-store' });
+  if (!response.ok) throw new Error(`Session request failed (${response.status})`);
+  const session = await response.json();
+  if (!session.sid || !session.pc_token || !session.probe_token) throw new Error('Incomplete pairing session');
+  webSession = { sid: session.sid, token: session.pc_token, probeToken: session.probe_token };
+  state.source = 'WEB READY';
+}
 function startPcView() {
   initLocalPCReceiver();
   selectZone('epigastric');
@@ -2378,14 +2436,9 @@ function startPcView() {
 }
 async function startHostedPcView() {
   try {
-    const response = await fetch('/api/web/session', { method: 'POST', cache: 'no-store' });
-    if (!response.ok) throw new Error(`Session request failed (${response.status})`);
-    const session = await response.json();
-    if (!session.sid || !session.pc_token || !session.probe_token) throw new Error('Incomplete pairing session');
-    webSession = { sid: session.sid, token: session.pc_token, probeToken: session.probe_token };
-    state.source = 'WEB READY';
+    await requestHostedSession();
   } catch (error) {
-    const message = state.lang === 'ja' ? 'Web接続を準備できません。ページを再読み込みしてください。' : 'Could not prepare web pairing. Reload this page.';
+    const message = state.lang === 'ja' ? 'Web接続を準備できません。再試行しています。' : 'Could not prepare web pairing. Retrying.';
     document.getElementById('modeBanner').textContent = message;
   }
   startPcView();
