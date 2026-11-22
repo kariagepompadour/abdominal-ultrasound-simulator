@@ -1,4 +1,4 @@
-"""Session-isolated HTTP relay for a future hosted v43 web version.
+"""Session-isolated HTTP relay for the hosted web version.
 
 Run behind an HTTPS reverse proxy. This is a single-process prototype:
 sessions are kept in memory and are not shared across server instances.

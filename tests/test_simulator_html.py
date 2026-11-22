@@ -54,6 +54,14 @@ def is_defined(name):
     return re.search(pattern, HTML) is not None
 
 
+class VisibleVersionLabelTest(unittest.TestCase):
+    """The page shows no fixed version number; internal identifiers may keep old names."""
+
+    def test_no_v43_in_visible_text(self):
+        visible = re.sub(r'V43Addon|abdominal_v43_anatomy|v43ScaledOnce', '', HTML)
+        self.assertNotRegex(visible, r'(?i)\bv43\b')
+
+
 class KeyboardHandlerStaticTest(unittest.TestCase):
     HANDLERS = {
         'main keydown': "window.addEventListener('keydown', e => {\n  if (isMobileMode) return;",
@@ -305,7 +313,7 @@ class EchoTiltBrowserTest(BrowserTestBase):
         hint = self.page.locator('#echoTiltHint')
         self.assertTrue(hint.is_visible())
         text = hint.inner_text()
-        for word in ('エコー画像', 'Option', 'Mac', 'Alt', 'Windows', 'ドラッグ'):
+        for word in ('エコー画像', 'Option', 'Mac', 'Alt', 'Windows', 'ドラッグ', 'スクロール'):
             self.assertIn(word, text)
         self.page.mouse.move(self.cx, self.cy)
         self.page.keyboard.down('Alt')
@@ -316,7 +324,7 @@ class EchoTiltBrowserTest(BrowserTestBase):
         self.assertNotIn('active', hint.get_attribute('class'))
         self.page.click('#btnLang')
         text = hint.inner_text()
-        for word in ('echo image', 'Option', 'Mac', 'Alt', 'Windows', 'drag'):
+        for word in ('echo image', 'Option', 'Mac', 'Alt', 'Windows', 'drag', 'scroll'):
             self.assertIn(word, text)
         banner = self.page.locator('#modeBanner').inner_text()
         for word in ('region', 'Fine position', 'Tilt', 'echo image', 'Option', 'Alt'):
@@ -324,12 +332,224 @@ class EchoTiltBrowserTest(BrowserTestBase):
         self.assertEqual(self.errors, [])
 
 
+class EchoWheelTiltBrowserTest(BrowserTestBase):
+    """Option (Mac) / Alt (Windows) + scroll on the echo image.
+
+    Defaults: 0.15 degrees per pixel, at most 3 degrees per wheel event, and the decaying
+    tail after a fast swipe (peak >= 120 px per event) is ignored as inertia. Synthetic
+    events check the rules; the feel of real trackpads, natural scrolling, Shift+wheel on
+    each OS and real momentum need real devices.
+    """
+
+    query = ''
+
+    def setUp(self):
+        self.open_page(query=self.query)
+        box = self.page.locator('#echoCanvas').bounding_box()
+        self.page.mouse.move(box['x'] + box['width'] / 2, box['y'] + box['height'] / 2)
+
+    def angles(self):
+        return self.state('[state.pitch, state.roll]')
+
+    def wheel(self, dx, dy, *modifiers):
+        for key in modifiers:
+            self.page.keyboard.down(key)
+        self.page.mouse.wheel(dx, dy)
+        self.page.wait_for_timeout(80)
+        for key in reversed(modifiers):
+            self.page.keyboard.up(key)
+
+    def fire_sequence(self, deltas_y):
+        """Dispatch Alt+wheel events back to back, as one gesture."""
+        self.page.evaluate("""deltas => {
+            for (const deltaY of deltas) {
+                echoCanvas.dispatchEvent(new WheelEvent('wheel', { deltaY, altKey: true, cancelable: true }));
+            }
+        }""", deltas_y)
+
+    def test_alt_scroll_moves_like_dragging_the_image(self):
+        self.wheel(0, 10, 'Alt')
+        self.assertEqual(self.angles(), [1.5, 0], 'content moves up = drag up = toward the head')
+        self.wheel(10, 0, 'Alt')
+        self.assertEqual(self.angles(), [1.5, 1.5], 'content moves left = drag left = toward patient right')
+        self.wheel(0, -20, 'Alt')
+        self.wheel(-20, 0, 'Alt')
+        self.assertEqual(self.angles(), [-1.5, -1.5])
+        self.assertEqual(self.state('state.source'), 'PC SCROLL')
+        self.assertEqual(self.errors, [])
+
+    def test_each_event_is_limited_to_three_degrees_and_angles_clamp(self):
+        self.wheel(0, 10000, 'Alt')
+        self.assertEqual(self.angles(), [3, 0])
+        self.fire_sequence([10000] * 20)
+        self.assertEqual(self.angles(), [45, 0])
+
+    def test_line_delta_mode_is_scaled(self):
+        self.page.evaluate("""echoCanvas.dispatchEvent(new WheelEvent('wheel',
+            { altKey: true, cancelable: true, deltaY: 1, deltaMode: 1 }))""")
+        self.assertAlmostEqual(self.angles()[0], 2.4)
+
+    def test_steady_slow_scroll_is_fully_applied(self):
+        self.fire_sequence([10, 12, 9, 11, 10, 12, 8, 10])
+        self.assertAlmostEqual(self.angles()[0], 82 * 0.15)
+
+    def test_decaying_inertia_after_a_fast_swipe_is_ignored(self):
+        self.fire_sequence([60, 100, 150, 135, 120, 105, 90, 75, 60, 45, 30, 15])
+        self.assertEqual(self.angles(), [15, 0], 'five events before the decay is detected, 3 degrees each')
+
+    def test_new_finger_movement_after_inertia_tilts_again(self):
+        self.fire_sequence([200, 180, 160, 130, 110, 200, 200])
+        self.assertEqual(self.angles(), [15, 0])
+
+    def test_inertia_with_repeated_values_is_ignored(self):
+        self.fire_sequence([60, 100, 150, 150, 135, 135, 120, 120, 105, 105, 90, 90])
+        self.assertEqual(self.angles(), [24, 0])
+
+    def test_intentional_slow_deceleration_is_kept(self):
+        self.fire_sequence([100, 90, 80, 70])
+        self.assertEqual(self.angles(), [12, 0], 'peak below 120 px: never treated as inertia')
+        self.page.wait_for_timeout(350)
+        self.fire_sequence([30, 28, 24, 20, 16, 12, 8, 4])
+        self.assertAlmostEqual(self.angles()[0], 12 + 18)
+
+    def test_scroll_without_alt_or_with_ctrl_or_meta_does_not_tilt(self):
+        self.wheel(0, 100)
+        self.wheel(0, 100, 'Control', 'Alt')
+        self.wheel(0, 100, 'Meta', 'Alt')
+        self.wheel(0, 100, 'Shift')
+        self.assertEqual(self.angles(), [0, 0])
+        self.assertEqual(self.errors, [])
+
+    def test_shift_alt_wheel_tilts_left_right_in_the_documented_direction(self):
+        # Wheel toward the user with Shift = scroll right = content moves left = like dragging left = patient right (+).
+        self.wheel(0, 10, 'Alt', 'Shift')
+        self.assertEqual(self.angles(), [0, 1.5])
+        self.wheel(0, -20, 'Alt', 'Shift')
+        self.assertEqual(self.angles(), [0, -1.5])
+
+    def test_shift_fallback_and_horizontal_delta_signs(self):
+        fire = """init => echoCanvas.dispatchEvent(new WheelEvent('wheel', { altKey: true, cancelable: true, ...init }))"""
+        self.page.evaluate(fire, {'deltaY': 10, 'shiftKey': True})
+        self.assertEqual(self.angles(), [0, 1.5], 'Shift with vertical delta only becomes roll, same sign')
+        self.page.evaluate(fire, {'deltaY': -20, 'shiftKey': True})
+        self.assertEqual(self.angles(), [0, -1.5])
+        self.page.wait_for_timeout(350)
+        self.page.evaluate(fire, {'deltaX': 20, 'deltaY': 0, 'shiftKey': True})
+        self.assertEqual(self.angles(), [0, 1.5], 'a browser-converted horizontal delta is used as is')
+
+    def test_default_scroll_is_blocked_only_for_tilt(self):
+        self.page.evaluate("""window.__wheel = [];
+            echoCanvas.addEventListener('wheel', e => __wheel.push(e.defaultPrevented));
+            window.__altUps = [];
+            window.addEventListener('keyup', e => { if (e.key === 'Alt') __altUps.push(e.defaultPrevented); });""")
+        self.wheel(0, 10)
+        self.wheel(0, 10, 'Alt')
+        self.assertEqual(self.state('__wheel'), [False, True])
+        self.assertEqual(self.state('__altUps'), [True])
+
+    def test_keyboard_works_after_scroll_tilt(self):
+        self.wheel(0, 10, 'Alt')
+        x0 = self.state('state.px')
+        self.page.keyboard.press('Shift+ArrowRight')
+        self.assertAlmostEqual(self.state('state.px'), x0 + 0.5)
+        self.page.keyboard.press('ArrowRight')
+        self.assertEqual(self.state('state.selectedZone'), 'subcostal_gb')
+        self.assertEqual(self.errors, [])
+
+
+class EchoWheelInertiaKeptBrowserTest(EchoWheelTiltBrowserTest):
+    """?wheelInertia=keep applies the decaying tail too (for comparison on real devices)."""
+
+    query = '?wheelInertia=keep'
+
+    def test_decaying_inertia_after_a_fast_swipe_is_ignored(self):
+        self.fire_sequence([60, 100, 150, 135, 120, 105, 90, 75, 60, 45, 30, 15])
+        self.assertEqual(self.angles(), [35.25, 0])
+
+    def test_new_finger_movement_after_inertia_tilts_again(self):
+        self.skipTest('Only meaningful with the inertia filter on')
+
+    def test_inertia_with_repeated_values_is_ignored(self):
+        self.skipTest('Only meaningful with the inertia filter on')
+
+
+class InputDebugBrowserTest(BrowserTestBase):
+    """Opt-in measurement panel (?debug=input) and test-only wheel parameters."""
+
+    def wheel_at_center(self, dx, dy, alt=True):
+        box = self.page.locator('#echoCanvas').bounding_box()
+        self.page.mouse.move(box['x'] + box['width'] / 2, box['y'] + box['height'] / 2)
+        if alt:
+            self.page.keyboard.down('Alt')
+        self.page.mouse.wheel(dx, dy)
+        self.page.wait_for_timeout(80)
+        if alt:
+            self.page.keyboard.up('Alt')
+
+    def test_debug_panel_is_absent_by_default(self):
+        self.open_page()
+        self.assertEqual(self.page.locator('#inputDebugPanel').count(), 0)
+
+    def test_debug_panel_reports_a_gesture_and_wheel_params(self):
+        self.open_page(query='?debug=input&wheelTilt=0.2&wheelMaxDeg=10')
+        panel = self.page.locator('#inputDebugPanel')
+        self.assertIn('wheelTilt=0.2°/px  max=10°/event  inertia ignored after peak≥120px', panel.inner_text())
+        box = self.page.locator('#echoCanvas').bounding_box()
+        self.page.mouse.move(box['x'] + box['width'] / 2, box['y'] + box['height'] / 2)
+        self.page.keyboard.down('Alt')
+        self.page.mouse.wheel(0, 50)
+        self.page.mouse.wheel(0, 50)
+        self.page.wait_for_timeout(80)
+        self.page.keyboard.up('Alt')
+        self.assertEqual(self.state('state.pitch'), 20)
+        self.page.wait_for_timeout(350)
+        self.wheel_at_center(0, 40, alt=False)
+        text = panel.inner_text()
+        self.assertIn('#2 events 1 (Option/Alt 0, none 1)', text)
+        self.assertIn('#1 events 2 (Option/Alt 2, none 0)', text)
+        self.assertIn('sum ΔX +0.0  ΔY +100.0 px  max|Δ| 50.0  capped 0  inertia 0', text)
+        self.assertIn('angle P +20.0°', text)
+        self.assertEqual(self.errors, [])
+
+    def test_debug_panel_counts_ignored_inertia(self):
+        self.open_page(query='?debug=input')
+        self.page.evaluate("""() => {
+            for (const deltaY of [60, 100, 150, 135, 120, 105, 90, 75, 60, 45, 30, 15]) {
+                echoCanvas.dispatchEvent(new WheelEvent('wheel', { deltaY, altKey: true, cancelable: true }));
+            }
+        }""")
+        text = self.page.locator('#inputDebugPanel').inner_text()
+        self.assertIn('events 12 (Option/Alt 12, none 0)', text)
+        self.assertIn('inertia 7', text)
+        self.assertIn('angle P +15.0°', text)
+
+    def test_inertia_peak_param(self):
+        self.open_page(query='?wheelInertiaPeak=50')
+        self.page.evaluate("""() => { for (const deltaY of [100, 90, 80, 70])
+            echoCanvas.dispatchEvent(new WheelEvent('wheel', { deltaY, altKey: true, cancelable: true })); }""")
+        self.assertEqual(self.state('state.pitch'), 9)
+
+    def test_invalid_wheel_params_fall_back_to_defaults(self):
+        for query, delta, expected in (('?wheelTilt=abc', 10, 1.5), ('?wheelTilt=0', 10, 1.5), ('?wheelTilt=5', 10, 1.5),
+                                       ('?wheelMaxDeg=0', 100, 3), ('?wheelMaxDeg=50', 100, 3), ('?wheelMaxDeg=x', 100, 3)):
+            with self.subTest(query=query):
+                self.open_page(query=query)
+                self.wheel_at_center(0, delta)
+                self.assertEqual(self.state('state.pitch'), expected)
+                self.context.close()
+        self.context = self.browser.new_context()
+
+
 class EchoTiltHintLayoutTest(BrowserTestBase):
     """The tilt hint, the caution label and the organ legend under the echo image must not overlap.
 
-    Checked for all five regions, Japanese and English, at three window sizes. The legend
+    Checked for all five regions, Japanese and English, with and without Option/Alt held
+    (the hint switches to the direction guide), at three common window sizes and just
+    below and above the width where the caution label moves to the right. The legend
     wraps to several lines in some of these cases.
     """
+
+    CAUTION_BREAKPOINT = 980  # .right-panel container width in @container (max-width: 980px)
 
     def boxes(self):
         return self.page.evaluate("""() => {
@@ -341,7 +561,8 @@ class EchoTiltHintLayoutTest(BrowserTestBase):
             };
             const p = document.querySelector('.right-panel').getBoundingClientRect();
             return { hint: box('echoTiltHint'), caution: box('viewStatus'), legend: box('organLegend'),
-                     panel: { x: p.left, y: p.top, w: p.width, h: p.height } };
+                     panel: { x: p.left, y: p.top, w: p.width, h: p.height },
+                     active: document.getElementById('echoTiltHint').classList.contains('active') };
         }""")
 
     @staticmethod
@@ -351,31 +572,62 @@ class EchoTiltHintLayoutTest(BrowserTestBase):
         return not (a['x'] + a['w'] <= b['x'] or b['x'] + b['w'] <= a['x'] or
                     a['y'] + a['h'] <= b['y'] or b['y'] + b['h'] <= a['y'])
 
+    def check_layout(self, b):
+        self.assertIsNotNone(b['hint'])
+        self.assertIsNotNone(b['legend'])
+        for first, second in (('hint', 'caution'), ('hint', 'legend'), ('caution', 'legend')):
+            self.assertFalse(self.overlap(b[first], b[second]), f'{first} overlaps {second}: {b}')
+        for name in ('hint', 'caution', 'legend'):
+            if b[name]:
+                self.assertGreaterEqual(b[name]['x'], b['panel']['x'])
+                self.assertGreaterEqual(b[name]['y'], b['panel']['y'])
+                self.assertLessEqual(b[name]['x'] + b[name]['w'], b['panel']['x'] + b['panel']['w'])
+                self.assertLessEqual(b[name]['y'] + b[name]['h'], b['panel']['y'] + b['panel']['h'])
+
+    def breakpoint_sizes(self):
+        self.open_page(1400, 900)
+        panel_width = self.page.evaluate("document.querySelector('.right-panel').clientWidth")
+        self.context.close()
+        offset = 1400 - panel_width
+        return [(self.CAUTION_BREAKPOINT + offset - 10, 800), (self.CAUTION_BREAKPOINT + offset + 10, 800)]
+
     def test_hint_caution_and_legend_do_not_overlap(self):
         multiline_cases = 0
-        for width, height in ((1400, 900), (1280, 720), (1024, 700)):
+        sizes = [(1400, 900), (1280, 720), (1024, 700)] + self.breakpoint_sizes()
+        for width, height in sizes:
             for query in ('', '?lang=en'):
                 self.open_page(width, height, query)
+                box = self.page.locator('#echoCanvas').bounding_box()
+                self.page.mouse.move(box['x'] + box['width'] / 2, box['y'] + box['height'] / 2)
                 for zone in range(5):
-                    with self.subTest(size=f'{width}x{height}', query=query, zone=zone):
-                        self.page.wait_for_timeout(150)
-                        b = self.boxes()
-                        self.assertIsNotNone(b['hint'])
-                        self.assertIsNotNone(b['legend'])
-                        for first, second in (('hint', 'caution'), ('hint', 'legend'), ('caution', 'legend')):
-                            self.assertFalse(self.overlap(b[first], b[second]), f'{first} overlaps {second}: {b}')
-                        for name in ('hint', 'caution', 'legend'):
-                            if b[name]:
-                                self.assertGreaterEqual(b[name]['x'], b['panel']['x'])
-                                self.assertGreaterEqual(b[name]['y'], b['panel']['y'])
-                                self.assertLessEqual(b[name]['y'] + b[name]['h'], b['panel']['y'] + b['panel']['h'])
-                        if b['legend']['h'] > 36:
-                            multiline_cases += 1
+                    for alt in (False, True):
+                        with self.subTest(size=f'{width}x{height}', query=query, zone=zone, alt=alt):
+                            if alt:
+                                self.page.keyboard.down('Alt')
+                            self.page.wait_for_timeout(120)
+                            b = self.boxes()
+                            self.assertEqual(b['active'], alt)
+                            self.check_layout(b)
+                            if b['legend']['h'] > 36:
+                                multiline_cases += 1
+                            if alt:
+                                self.page.keyboard.up('Alt')
                     self.page.keyboard.press('ArrowRight')
                 self.assertEqual(self.errors, [])
                 self.context.close()
         self.context = self.browser.new_context()
         self.assertGreater(multiline_cases, 0, 'expected at least one case with a multi-line legend')
+
+    def test_caution_moves_right_below_the_breakpoint(self):
+        below, above = self.breakpoint_sizes()
+        positions = []
+        for width, height in (below, above):
+            self.open_page(width, height)
+            positions.append(self.page.evaluate("getComputedStyle(document.getElementById('viewStatus')).transform"))
+            self.context.close()
+        self.context = self.browser.new_context()
+        self.assertEqual(positions[0], 'none', 'narrow panel: caution aligned right, no centering transform')
+        self.assertNotEqual(positions[1], 'none', 'wide panel: caution centered with translateX(-50%)')
 
 
 if __name__ == '__main__':
