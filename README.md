@@ -7,7 +7,11 @@ An educational prototype that renders schematic ultrasound views from a simplifi
 ## Use
 
 1. Open the [web app](https://abdominal-ultrasound-simulator.onrender.com/web) on a PC and choose the epigastric, right subcostal, right flank, left flank, or lower abdominal region. Rendering runs in each PC's browser.
-2. Hold `Option` on Mac or `Alt` on Windows and drag the mouse over the echo image to tilt the modeled beam: up toward the head, down toward the feet, left toward the patient's right, and right toward the patient's left. Release the mouse to keep the angle. Sliders also adjust rotation and tilt. Use `←` / `→` or `Space` to change regions; use `Shift` plus an arrow key or drag the body marker to adjust position. `F` toggles FREEZE, `R` returns to the reference view, and holding `P` applies modeled compression.
+2. The PC alone supports these controls (no phone needed):
+   - **Change region**: `←` / `→` or `Space`
+   - **Fine position**: `Shift` plus an arrow key (0.5 cm per press, within ±1.5 cm of the selected region), or drag the body marker
+   - **Tilt**: **on the echo image** on the right, hold `Option` on Mac or `Alt` on Windows and drag with the mouse. Up tilts the modeled beam toward the head, down toward the feet, left toward the patient's right, and right toward the patient's left. Release the mouse to keep the angle. Once a drag starts, it continues until the mouse is released, even if the key is released first. While the key is held, the hint at the lower left of the echo image switches to a direction guide. The Pitch and Roll sliders change the same angles.
+   - **Other**: `F` toggles FREEZE, `R` returns to the reference view, and holding `P` applies modeled compression.
 3. For optional phone control, open “Mobile Probe (QR)”. Compare the confirmation code on the phone and PC, then approve on the PC. A QR code alone cannot take control. PC tilt stays in effect until a new phone exploration starts.
 
 Phone control needs HTTPS and a browser with orientation sensor support. Render's free instance can take longer to respond after inactivity. Reloading the page or restarting the server requires a new QR code. The server holds pairing sessions in memory; image and 3D rendering run locally in each PC browser.
@@ -18,7 +22,7 @@ For PC-only use, open `local_simulator.html` in a browser. To run the web relay,
 
 This repository is public on GitHub, and the [web app](https://abdominal-ultrasound-simulator.onrender.com/web) is live on Render. Render uses the root `Dockerfile`; the service listens on `PORT` and exposes `/healthz` for health checks. Sessions are stored in a single process's memory, so the current design is intended for one instance during evaluation. Anyone who knows the public URL can open the app; do not enter confidential information.
 
-Run the checks with `python3 -B -m unittest discover -s tests -v`.
+Run the checks with `python3 -B -m unittest discover -s tests -v`. The browser checks in `tests/test_simulator_html.py` (anatomy-window keys, PC tilt operations, and the layout of the on-screen hints) run only when Playwright and a Chromium-based browser are installed. Without them, all of these browser checks are skipped and only the static checks run.
 
 ## Clinical review
 

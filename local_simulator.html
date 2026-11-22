@@ -35,7 +35,7 @@
   .body-stage { position: relative; width: min(100%, 286px); margin: 0 auto; }
   #bodyCanvas { width: 100%; height: auto; background: transparent; cursor: grab; display: block; }
   .body-panel .body-step-hint { margin-top: 4px; }
-  .view-status { display: none; position: absolute; left: 50%; bottom: 52px; transform: translateX(-50%); z-index: 30; width: max-content; max-width: min(85%, 540px); background: rgba(13,17,23,0.91); border: 1px solid #e3b341; border-radius: 6px; color: #e3b341; text-align: center; padding: 6px 10px; line-height: 1.35; font-size: 11px; pointer-events: none; }
+  .view-status { display: none; position: absolute; left: 50%; bottom: calc(22px + var(--legend-offset, 30px)); transform: translateX(-50%); z-index: 30; width: max-content; max-width: min(85%, 540px); background: rgba(13,17,23,0.91); border: 1px solid #e3b341; border-radius: 6px; color: #e3b341; text-align: center; padding: 6px 10px; line-height: 1.35; font-size: 11px; pointer-events: none; }
   .controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; font-size: 11px; flex-shrink: 0; }
   .control-box { background: #0d1117; padding: 5px 8px; border-radius: 6px; border: 1px solid #21262d; }
   .control-box label { display: block; color: #8b949e; margin-bottom: 2px; }
@@ -50,6 +50,18 @@
   #echoCanvas { max-width: 100%; max-height: 100%; }
   #echoCanvas.tilt-ready { cursor: grab; }
   #echoCanvas.tilt-dragging { cursor: grabbing; }
+  .echo-tilt-hint { position: absolute; left: 16px; bottom: calc(22px + var(--legend-offset, 30px)); z-index: 25; max-width: min(42%, 310px); background: rgba(13,17,23,0.88); border: 1px solid #388bfd; border-radius: 6px; color: #c9d1d9; font-size: 11px; line-height: 1.45; padding: 5px 9px; pointer-events: none; }
+  .echo-tilt-hint strong { color: #79c0ff; }
+  .echo-tilt-hint kbd { font: 600 11px/1.2 -apple-system, BlinkMacSystemFont, sans-serif; color: #e6edf3; background: #21262d; border: 1px solid #484f58; border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; }
+  .echo-tilt-hint .tilt-dirs { display: none; }
+  .echo-tilt-hint.active { border-color: #3fb950; }
+  .echo-tilt-hint.active .tilt-how { display: none; }
+  .echo-tilt-hint.active .tilt-dirs { display: block; }
+  .echo-tilt-hint.active .tilt-dirs strong { color: #3fb950; }
+  .echo-tilt-hint.pulse { animation: echoTiltHintPulse 0.45s ease-in-out 3; border-color: #e3b341; }
+  @keyframes echoTiltHintPulse { 50% { background: rgba(227,179,65,0.28); } }
+  .right-panel { container-type: inline-size; }
+  @container (max-width: 980px) { .view-status { left: auto; right: 16px; transform: none; max-width: 45%; } }
   .hud-overlay { position: absolute; top: 14px; left: 16px; font-family: monospace; font-size: 13px; color: #3fb950; pointer-events: none; line-height: 1.55; }
   .hud-right { position: absolute; top: 14px; right: 16px; font-family: monospace; font-size: 13px; color: #8b949e; text-align: right; pointer-events: none; line-height: 1.55; }
   .freeze-badge { position: absolute; bottom: 196px; right: 20px; background: #da3633; color: #fff; font-weight: bold; padding: 4px 12px; border-radius: 4px; display: none; }
@@ -130,13 +142,13 @@
   </header>
   <main>
     <div class="left-panel">
-      <div id="modeBanner" class="mode-banner">PROBE READY<br>← → / Space：部位<br>Shift＋矢印 / ボディマーク：位置<br>Option(Mac) / Alt(Win)＋画像ドラッグ：チルト</div>
+      <div id="modeBanner" class="mode-banner">PROBE READY<br>部位の切替：← → / Space<br>位置の微調整：Shift＋矢印 / ボディマークをドラッグ<br>チルト：エコー画像の上で<br>Option(Mac) / Alt(Win)＋ドラッグ</div>
       <button id="btnMobileQR" class="dev-btn" onclick="openQRModal()">📱 スマホ接続 (QR)</button>
       <div class="body-panel">
         <div id="bodyOverlayTitle" class="body-overlay-title">ボディマーク（ドラッグで位置移動）</div>
         <div class="body-stage">
           <canvas id="bodyCanvas" width="286" height="195"></canvas>
-          <div id="bodyMouseHint" style="position:absolute; top:6px; right:6px; background:rgba(22,27,34,0.88); border:1px solid #484f58; color:#8b949e; font-size:10px; padding:2px 6px; border-radius:4px; pointer-events:none; display:flex; align-items:center; gap:3px;">🖱️ <span>移動</span></div>
+          <div id="bodyMouseHint" style="position:absolute; top:6px; right:6px; background:rgba(22,27,34,0.88); border:1px solid #484f58; color:#8b949e; font-size:10px; padding:2px 6px; border-radius:4px; pointer-events:none; display:flex; align-items:center; gap:3px;">🖱️ <span id="bodyMouseHintText">移動</span></div>
         </div>
         <div id="bodyStepHint" class="body-step-hint">接触位置は選んだ部位の暫定的な目安です。</div>
       </div>
@@ -155,6 +167,7 @@
       <div class="hud-right" id="hudRight"></div>
       <div class="organ-legend" id="organLegend"></div>
       <div id="viewStatus" class="view-status"></div>
+      <div id="echoTiltHint" class="echo-tilt-hint"><div class="tilt-how" id="echoTiltHow"></div><div class="tilt-dirs" id="echoTiltDirs"></div></div>
       <div class="press-badge" id="pressBadge">PRESS (ガス排除)</div>
       <div class="freeze-badge" id="freezeBadge">FREEZE</div>
     </div>
@@ -280,19 +293,27 @@ const I18N = {
     anatomyOn: '🎯 画像内ラベル: ON',
     anatomyOff: '🎯 画像内ラベル: OFF',
     langBtn: '🌐 日本語 / EN',
-    bannerReady: 'PROBE READY\n← → / Space：部位\nShift＋矢印 / ボディマーク：位置\nOption(Mac) / Alt(Win)＋画像ドラッグ：チルト',
-    bannerConn: (src) => `${src} 接続中\n← → / Space：部位\nShift＋矢印 / ボディマーク：位置\nOption(Mac) / Alt(Win)＋画像ドラッグ：チルト`,
+    bannerReady: 'PROBE READY\n部位の切替：← → / Space\n位置の微調整：Shift＋矢印 / ボディマークをドラッグ\nチルト：エコー画像の上で\nOption(Mac) / Alt(Win)＋ドラッグ',
+    bannerConn: (src) => `${src} 接続中\n部位の切替：← → / Space\n位置の微調整：Shift＋矢印 / ボディマークをドラッグ\nチルト：エコー画像の上で\nOption(Mac) / Alt(Win)＋ドラッグ`,
+    tiltHintHtml: '<strong>チルト</strong>：この<strong>エコー画像</strong>の上で<br><kbd>Option</kbd>（Mac）／<kbd>Alt</kbd>（Windows）＋ドラッグ',
+    tiltDirsHtml: '<strong>チルト中</strong>　↑頭側　↓尾側　←患者右　→患者左',
+    echoCanvasTitle: 'チルト：Option（Mac）／Alt（Windows）を押しながら、このエコー画像をドラッグ',
+    bodyMouseHint: '移動',
     lblYaw: '回転 (Yaw)',
     lblPitch: '頭尾煽り (Pitch)',
     lblRoll: '左右煽り (Roll)',
     lblGain: 'ゲイン (Gain)',
     spatialTitle: '🧭 相対チルトとビーム軸（模式図）',
-    ruleHtml: `<strong>【操作ガイド】</strong><br>
-      ・<strong>スマホの持ち方</strong>：タップした姿勢が相対0°。以後は同じ持ち方を保つ。患者に対する絶対角度ではありません<br>
-      ・<strong>スマホ上半分タップ</strong>：1回目で周辺チルト開始、2回目で基準画像に戻す<br>
-      ・<strong>スマホ下半分</strong>：短押しFREEZE・長押し圧迫<br>
-      ・<strong>PCチルト</strong>：エコー画像上でMacは<code>Option</code>、Windowsは<code>Alt</code>を押しながらマウスでドラッグ。上＝頭側、下＝尾側、左＝患者右、右＝患者左へビームを傾ける。離すとその角度で止まる。スマホ接続中もPC操作を優先し、スマホ上半分で探索を始め直すとスマホ操作へ戻る<br>
-      ・<strong>左手(PC)</strong>：<code>←</code>前の部位 ／ <code>→</code>・<code>Space</code>次の部位 ／ <code>Shift</code>＋矢印で位置を0.5 cmずつ調整 ／ <code>F</code>=FREEZE ／ <code>P</code>長押し=圧迫<br>
+    ruleHtml: `<strong>【PCの操作】</strong><br>
+      ・<strong>部位の切替</strong>：<code>←</code>前の部位 ／ <code>→</code>・<code>Space</code>次の部位<br>
+      ・<strong>位置の微調整</strong>：<code>Shift</code>＋矢印で0.5 cmずつ（選んだ部位の±1.5 cm以内）／ボディマークをドラッグ<br>
+      ・<strong>チルト</strong>：右の<strong>エコー画像</strong>の上で、Macは<code>Option</code>、Windowsは<code>Alt</code>を押しながらマウスでドラッグ。上＝頭側、下＝尾側、左＝患者右、右＝患者左へビームを傾け、マウスを離すとその角度で止まる。ドラッグを始めた後は、キーを先に離してもマウスを離すまでチルトが続く。キー操作がうまくいかない場合は、左の「頭尾煽り」「左右煽り」スライダーでも同じ角度を変えられる<br>
+      ・<strong>その他</strong>：<code>F</code>=FREEZE ／ <code>P</code>長押し=圧迫 ／ <code>R</code>=基準画像に戻す<br>
+      <strong>【スマホ（任意）】</strong><br>
+      ・<strong>持ち方</strong>：タップした姿勢が相対0°。以後は同じ持ち方を保つ。患者に対する絶対角度ではありません<br>
+      ・<strong>上半分タップ</strong>：1回目で周辺チルト開始、2回目で基準画像に戻す<br>
+      ・<strong>下半分</strong>：短押しFREEZE・長押し圧迫<br>
+      ・<strong>PC操作との関係</strong>：スマホ接続中もPCのチルトを優先し、スマホ上半分で探索を始め直すとスマホ操作へ戻る<br>
       ・⚠️ <strong>画面ロック注意</strong>：スマホがロックされると操作が効かなくなるため、自動ロック解除（画面点灯）にして使用してください`,
     qrTitle: '📱 スマホをプローブとして接続 (ローカル直接通信)',
     qrDesc: 'スマホとPCを同じネットワークに接続し、信頼済みHTTPS証明書で開いてからQRを読み取ってください。',
@@ -347,19 +368,27 @@ const I18N = {
     anatomyOn: '🎯 Image Labels: ON',
     anatomyOff: '🎯 Image Labels: OFF',
     langBtn: '🌐 English / JP',
-    bannerReady: 'PROBE READY\n← → / Space: region\nShift+arrows / body marker: position\nOption(Mac) / Alt(Win)+drag echo: tilt',
-    bannerConn: (src) => `${src} Connected\n← → / Space: region\nShift+arrows / body marker: position\nOption(Mac) / Alt(Win)+drag echo: tilt`,
+    bannerReady: 'PROBE READY\nChange region: ← → / Space\nFine position: Shift+arrows / drag body marker\nTilt: on the echo image,\nOption (Mac) / Alt (Win) + drag',
+    bannerConn: (src) => `${src} Connected\nChange region: ← → / Space\nFine position: Shift+arrows / drag body marker\nTilt: on the echo image,\nOption (Mac) / Alt (Win) + drag`,
+    tiltHintHtml: '<strong>Tilt</strong>: on this <strong>echo image</strong>,<br><kbd>Option</kbd> (Mac) / <kbd>Alt</kbd> (Windows) + drag',
+    tiltDirsHtml: '<strong>Tilting</strong>  ↑ head  ↓ feet  ← patient right  → patient left',
+    echoCanvasTitle: 'Tilt: hold Option (Mac) / Alt (Windows) and drag this echo image',
+    bodyMouseHint: 'Move',
     lblYaw: 'Rotation (Yaw)',
     lblPitch: 'Tilt Pitch',
     lblRoll: 'Tilt Roll',
     lblGain: 'Gain',
     spatialTitle: '🧭 Relative Tilt and Beam Axis (Schematic)',
-    ruleHtml: `<strong>[Control Guide]</strong><br>
-      • <strong>Phone hold</strong>: The pose at the first tap is relative 0°. Keep the same grip; this is not an absolute patient probe angle.<br>
-      • <strong>Top Half Tap</strong>: Start nearby tilt; tap again to return to the reference view<br>
-      • <strong>Bottom Half</strong>: Tap FREEZE, Hold Press<br>
-      • <strong>PC tilt</strong>: Hold <code>Option</code> on Mac or <code>Alt</code> on Windows and drag on the echo image with the mouse. Up tilts the beam toward the head, down toward the feet, left toward patient right, and right toward patient left. Release to keep that angle. PC input takes priority until a new phone tilt session starts.<br>
-      • <strong>PC Left Hand</strong>: <code>←</code> previous region / <code>→</code> or <code>Space</code> next region / <code>Shift</code>+arrows adjust position by 0.5 cm / <code>F</code>=FREEZE / hold <code>P</code>=Press.<br>
+    ruleHtml: `<strong>[PC Controls]</strong><br>
+      • <strong>Change region</strong>: <code>←</code> previous region / <code>→</code> or <code>Space</code> next region<br>
+      • <strong>Fine position</strong>: <code>Shift</code>+arrows move 0.5 cm per press (within ±1.5 cm of the selected region) / drag the body marker<br>
+      • <strong>Tilt</strong>: On the <strong>echo image</strong> on the right, hold <code>Option</code> on Mac or <code>Alt</code> on Windows and drag with the mouse. Up tilts the beam toward the head, down toward the feet, left toward patient right, and right toward patient left. Release the mouse to keep that angle. Once the drag starts, it continues until the mouse is released, even if the key is released first. If the key does not work, the Pitch and Roll sliders on the left change the same angles.<br>
+      • <strong>Other</strong>: <code>F</code>=FREEZE / hold <code>P</code>=Press / <code>R</code>=return to the reference view<br>
+      <strong>[Phone (optional)]</strong><br>
+      • <strong>Hold</strong>: The pose at the first tap is relative 0°. Keep the same grip; this is not an absolute patient probe angle.<br>
+      • <strong>Top half tap</strong>: Start nearby tilt; tap again to return to the reference view<br>
+      • <strong>Bottom half</strong>: Tap FREEZE, hold Press<br>
+      • <strong>With PC input</strong>: PC tilt takes priority while a phone is connected; start a new phone exploration with the top half to return control to the phone.<br>
       • ⚠️ <strong>Screen Lock</strong>: Controls stop when locked — keep auto-lock off / screen awake during use`,
     qrTitle: '📱 Connect Smartphone as Probe (Local Direct)',
     qrDesc: 'Connect the phone and PC to the same network and use a trusted HTTPS certificate before scanning.',
@@ -660,6 +689,13 @@ function applyLanguage() {
   setTextSafe('vascular3DTitle', state.lang === 'ja' ? '血管3D・チルト断面（模式図）' : '3D Vessels and Tilt Plane (Schematic)');
   const rb = document.getElementById('ruleBox');
   if (rb) rb.innerHTML = L.ruleHtml;
+  const tiltHow = document.getElementById('echoTiltHow');
+  if (tiltHow) tiltHow.innerHTML = L.tiltHintHtml;
+  const tiltDirs = document.getElementById('echoTiltDirs');
+  if (tiltDirs) tiltDirs.innerHTML = L.tiltDirsHtml;
+  const echoEl = document.getElementById('echoCanvas');
+  if (echoEl) { echoEl.title = L.echoCanvasTitle; echoEl.setAttribute('aria-label', L.echoCanvasTitle); }
+  setTextSafe('bodyMouseHintText', L.bodyMouseHint);
 
   setTextSafe('qrTitle', L.qrTitle);
   setTextSafe('qrDesc', L.qrDesc);
@@ -945,7 +981,8 @@ function openSchemaWindow() {
     });
   });
   popup.addEventListener('keydown', e => {
-    if (handlePcTiltKeyDown(e)) return;
+    // メイン画面と同じく、Alt/Option・Ctrl・Meta付きのキーは部位選択・位置調整に使わない。
+    if (e.altKey || e.ctrlKey || e.metaKey) return;
     if (handleZoneNudgeKey(e)) return;
     if (e.key === 'ArrowRight' || e.code === 'Space' || e.key === 'ArrowLeft') {
       e.preventDefault();
@@ -2551,20 +2588,73 @@ function renderEcho(time) {
 
 let echoTiltDrag = null;
 const TILT_DEGREES_PER_PIXEL = 0.25;
+// Option/Alt を押している間とチルト中は、画像上の案内を方向表示に切り替える。
+let tiltModifierHeld = false;
+let tiltDraggedSinceModifier = false;
+let plainEchoDrag = null;
+let tiltHintPulseTimer = null;
+// 画像下の「描出中」表示は言語・部位・画面幅で1〜数行に変わる。高さを測って、
+// チルト案内と注意書きを常にその8px上に置く（CSSの --legend-offset）。
+(() => {
+  const legend = document.getElementById('organLegend');
+  const panel = legend && legend.parentElement;
+  if (!legend || !panel) return;
+  let lastHeight = -1;
+  const update = () => {
+    const height = Math.ceil(legend.getBoundingClientRect().height);
+    if (height === lastHeight) return;
+    lastHeight = height;
+    panel.style.setProperty('--legend-offset', `${height}px`);
+  };
+  update();
+  if (window.ResizeObserver) new ResizeObserver(update).observe(legend);
+  else window.addEventListener('resize', update);
+})();
+function updateEchoTiltHint() {
+  const active = tiltModifierHeld || !!echoTiltDrag;
+  echoCanvas.classList.toggle('tilt-ready', tiltModifierHeld);
+  const hint = document.getElementById('echoTiltHint');
+  if (hint) hint.classList.toggle('active', active);
+}
+function pulseEchoTiltHint() {
+  const hint = document.getElementById('echoTiltHint');
+  if (!hint) return;
+  hint.classList.remove('pulse');
+  void hint.offsetWidth;
+  hint.classList.add('pulse');
+  clearTimeout(tiltHintPulseTimer);
+  tiltHintPulseTimer = setTimeout(() => hint.classList.remove('pulse'), 1500);
+}
 function finishEchoTiltDrag() {
   if (!echoTiltDrag) return;
   if (echoCanvas.hasPointerCapture(echoTiltDrag.pointerId)) echoCanvas.releasePointerCapture(echoTiltDrag.pointerId);
   echoTiltDrag = null;
   echoCanvas.classList.remove('tilt-dragging');
+  updateEchoTiltHint();
 }
 echoCanvas.addEventListener('pointerdown', e => {
-  if (!e.altKey || e.button !== 0 || isMobileMode) return;
+  if (e.button !== 0 || isMobileMode) return;
+  if (!e.altKey) {
+    // 修飾キーなしのドラッグは角度を変えず、案内を目立たせるだけにする。
+    plainEchoDrag = { pointerId: e.pointerId, x: e.clientX, y: e.clientY };
+    return;
+  }
   e.preventDefault();
+  plainEchoDrag = null;
   echoTiltDrag = { pointerId: e.pointerId, x: e.clientX, y: e.clientY, pitch: state.pitch, roll: state.roll };
   echoCanvas.setPointerCapture(e.pointerId);
   echoCanvas.classList.add('tilt-dragging');
+  updateEchoTiltHint();
 });
 echoCanvas.addEventListener('pointermove', e => {
+  if (plainEchoDrag && e.pointerId === plainEchoDrag.pointerId) {
+    if (!(e.buttons & 1)) { plainEchoDrag = null; return; }
+    if (Math.hypot(e.clientX - plainEchoDrag.x, e.clientY - plainEchoDrag.y) > 12) {
+      plainEchoDrag = null;
+      pulseEchoTiltHint();
+    }
+    return;
+  }
   if (!echoTiltDrag || e.pointerId !== echoTiltDrag.pointerId) return;
   e.preventDefault();
   const dx = e.clientX - echoTiltDrag.x, dy = e.clientY - echoTiltDrag.y;
@@ -2574,20 +2664,44 @@ echoCanvas.addEventListener('pointermove', e => {
   state.roll = Math.max(-45, Math.min(45, echoTiltDrag.roll - dx * TILT_DEGREES_PER_PIXEL));
   state.source = 'PC MOUSE';
   state.manualAngleOverride = true;
+  tiltDraggedSinceModifier = true;
   syncSliders();
 });
-echoCanvas.addEventListener('pointerup', e => { if (echoTiltDrag?.pointerId === e.pointerId) finishEchoTiltDrag(); });
-echoCanvas.addEventListener('pointercancel', e => { if (echoTiltDrag?.pointerId === e.pointerId) finishEchoTiltDrag(); });
+echoCanvas.addEventListener('pointerup', e => {
+  if (plainEchoDrag?.pointerId === e.pointerId) plainEchoDrag = null;
+  if (echoTiltDrag?.pointerId === e.pointerId) finishEchoTiltDrag();
+});
+echoCanvas.addEventListener('pointercancel', e => {
+  if (plainEchoDrag?.pointerId === e.pointerId) plainEchoDrag = null;
+  if (echoTiltDrag?.pointerId === e.pointerId) finishEchoTiltDrag();
+});
 echoCanvas.addEventListener('lostpointercapture', () => {
   echoTiltDrag = null;
   echoCanvas.classList.remove('tilt-dragging');
+  updateEchoTiltHint();
 });
 window.addEventListener('blur', () => {
   finishEchoTiltDrag();
-  echoCanvas.classList.remove('tilt-ready');
+  plainEchoDrag = null;
+  tiltModifierHeld = false;
+  tiltDraggedSinceModifier = false;
+  updateEchoTiltHint();
 });
-window.addEventListener('keydown', e => { if (e.key === 'Alt') echoCanvas.classList.add('tilt-ready'); });
-window.addEventListener('keyup', e => { if (e.key === 'Alt') echoCanvas.classList.remove('tilt-ready'); });
+window.addEventListener('keydown', e => {
+  if (e.key !== 'Alt' || isMobileMode) return;
+  if (!e.repeat) tiltDraggedSinceModifier = false;
+  tiltModifierHeld = true;
+  updateEchoTiltHint();
+});
+window.addEventListener('keyup', e => {
+  if (e.key !== 'Alt' || isMobileMode) return;
+  // Windows では Alt 単独の離鍵でブラウザのメニューにフォーカスが移ることがある。
+  // チルトに使った Alt の離鍵だけ既定動作を止める（効果は実機で要確認）。
+  if (tiltDraggedSinceModifier) e.preventDefault();
+  tiltDraggedSinceModifier = false;
+  tiltModifierHeld = false;
+  updateEchoTiltHint();
+});
 
 const bodyCanvas = document.getElementById('bodyCanvas');
 let draggingBody = false;
