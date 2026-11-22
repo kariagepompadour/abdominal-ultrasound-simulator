@@ -60,6 +60,12 @@
   .qr-card p { font-size: 12px; color: #8b949e; margin-bottom: 16px; line-height: 1.5; }
   #qrcode { background: #fff; padding: 14px; border-radius: 8px; display: inline-block; margin-bottom: 14px; }
   .qr-url { font-size: 11px; color: #58a6ff; word-break: break-all; background: #0d1117; padding: 8px; border-radius: 4px; margin-bottom: 14px; font-family: monospace; user-select: text; -webkit-user-select: text; }
+  #pairingRequest { padding: 12px; border: 1px solid #d29922; border-radius: 8px; margin-bottom: 12px; }
+  #pairingCode, #mPairCode { display: block; font: bold 30px monospace; letter-spacing: 4px; color: #f2cc60; margin: 8px 0; }
+  .pairing-actions { display: flex; gap: 8px; }
+  .pairing-actions button { flex: 1; min-height: 40px; }
+  #pairingStatus { min-height: 18px; }
+  [hidden] { display: none !important; }
   .schema-modal { display: none; position: fixed; inset: 0; z-index: 115; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; }
   .schema-modal.open { display: flex; }
   .schema-card { width: min(92vw, 520px); max-height: 90dvh; overflow-y: auto; padding: 16px; background: #161b22; border: 1px solid #484f58; border-radius: 12px; text-align: center; }
@@ -190,6 +196,16 @@
     <p id="qrDesc">スマホとPCを同じネットワークに接続し、信頼済みHTTPS証明書で開いてからQRを読み取ってください。</p>
     <div id="qrcode"></div>
     <div class="qr-url" id="qrUrlText"></div>
+    <div id="pairingRequest" hidden>
+      <p id="pairingPrompt">スマホの確認番号と一致する場合だけ承認してください。</p>
+      <strong id="pairingCode"></strong>
+      <div class="pairing-actions">
+        <button id="btnPairApprove" onclick="respondToPairing(true)">接続を承認</button>
+        <button id="btnPairReject" onclick="respondToPairing(false)">拒否してQRを更新</button>
+      </div>
+    </div>
+    <p id="pairingStatus" aria-live="polite"></p>
+    <button id="btnPairReset" onclick="resetHostedPairing()" hidden style="width:100%; padding:8px; margin-bottom:8px;">スマホ接続を解除</button>
     <button id="qrCloseBtn" onclick="closeQRModal()" style="width:100%; padding:8px;">閉じる</button>
   </div>
 </div>
@@ -200,6 +216,7 @@
     <span id="mConnStatus" class="m-status">接続待機</span>
   </div>
   <button id="btnSensorStart" onclick="startMobileSensors()">センサー ＆ 操作音を有効にして開始</button>
+  <div id="mPairCode" hidden></div>
   <div class="blind-pad-container">
     <div id="blindZoneTop" class="blind-zone blind-zone-top">
       <div class="bz-title" id="bzTopTitle">🎯 上半分タップ：チルト開始／基準に戻す</div>
@@ -278,6 +295,10 @@ const I18N = {
     qrTitle: '📱 スマホをプローブとして接続 (ローカル直接通信)',
     qrDesc: 'スマホとPCを同じネットワークに接続し、信頼済みHTTPS証明書で開いてからQRを読み取ってください。',
     qrClose: '閉じる',
+    pairingPrompt: 'スマホに表示された確認番号と一致する場合だけ承認してください。',
+    pairApprove: '接続を承認',
+    pairReject: '拒否してQRを更新',
+    pairReset: 'スマホ接続を解除',
     scanLong: '縦走査 (Long)',
     scanTrans: '横走査 (Trans)',
     markHead: 'H (頭側)',
@@ -341,6 +362,10 @@ const I18N = {
     qrTitle: '📱 Connect Smartphone as Probe (Local Direct)',
     qrDesc: 'Connect the phone and PC to the same network and use a trusted HTTPS certificate before scanning.',
     qrClose: 'Close',
+    pairingPrompt: 'Approve only if this code matches the code on your phone.',
+    pairApprove: 'Approve connection',
+    pairReject: 'Reject and renew QR',
+    pairReset: 'Disconnect phone',
     scanLong: 'Longitudinal',
     scanTrans: 'Transverse',
     markHead: 'H (Head)',
@@ -396,7 +421,7 @@ const ORGAN_NAMES = {
 };
 
 const state = {
-  lang: initialLang, source: 'PC LOCAL', mobileConnected: false, px: 0.2, py: 0.5, yaw: 0, pitch: 0, roll: 0,
+  lang: initialLang, source: isHostedMode ? 'PC STANDALONE' : 'PC LOCAL', mobileConnected: false, px: 0.2, py: 0.5, yaw: 0, pitch: 0, roll: 0,
   gain: 65, pressure: 0, pcPressing: false, mobilePressing: false, isMoving: false, hasStone: false, showAnatomy: true, frozen: false, detectedOrgans: new Set(),
   selectedZone: 'epigastric', manualAngleOverride: false, phoneExploring: false
 };
@@ -627,6 +652,10 @@ function applyLanguage() {
   setTextSafe('qrTitle', L.qrTitle);
   setTextSafe('qrDesc', L.qrDesc);
   setTextSafe('qrCloseBtn', L.qrClose);
+  setTextSafe('pairingPrompt', L.pairingPrompt);
+  setTextSafe('btnPairApprove', L.pairApprove);
+  setTextSafe('btnPairReject', L.pairReject);
+  setTextSafe('btnPairReset', L.pairReset);
 
   const b = document.getElementById('modeBanner');
   if (b) b.textContent = state.mobileConnected ? L.bannerConn(state.source) : L.bannerReady;
@@ -640,17 +669,25 @@ function applyLanguage() {
   const botT = document.getElementById('bzBotTitle');
   if (botT) botT.innerHTML = L.bzBotTitle.replace('\n', '<br>');
   setTextSafe('bzBotSub', L.bzBotSub);
+  if (!isMobileMode && document.getElementById('qrModal').style.display === 'flex') updateQRCodeUrl();
 }
 
 function updateQRCodeUrl() {
   const qrEl = document.getElementById('qrcode');
   if (!qrEl) return;
+  // The QR library attaches the invitation URL as a title attribute.
+  // Clear it when the invitation is consumed or rotated.
+  qrEl.removeAttribute('title');
+  document.getElementById('btnPairReset').hidden = !isHostedMode || !webSession?.paired;
   if (isHostedMode) setTextSafe('qrTitle', state.lang === 'ja' ? '📱 スマホをWeb接続に参加させる' : '📱 Pair Phone with Web Session');
   const host = window.location.hostname;
-  if (isHostedMode && (!webSession || !webSession.probeToken)) {
-    const message = state.lang === 'ja' ? 'Web接続を準備しています。少し待ってから開き直してください。' : 'Preparing the web pairing session. Please reopen shortly.';
+  if (isHostedMode && (!webSession || !webSession.pairToken)) {
+    const message = webSession?.paired
+      ? (state.lang === 'ja' ? 'スマホは接続済みです。別のスマホに切り替える場合は接続を解除してください。' : 'A phone is paired. Disconnect it before pairing another phone.')
+      : (state.lang === 'ja' ? 'スマホ接続を準備しています。' : 'Preparing phone pairing.');
     setTextSafe('qrDesc', message);
-    setTextSafe('qrUrlText', message);
+    setTextSafe('qrUrlText', '');
+    qrEl.innerHTML = '';
     qrEl.textContent = message;
     return;
   }
@@ -668,12 +705,12 @@ function updateQRCodeUrl() {
     return;
   }
   setTextSafe('qrDesc', isHostedMode
-    ? (state.lang === 'ja' ? 'スマホでQRを読み取り、同じWeb接続に参加してください。Wi-Fiは別でも使えます。QRを読み取った端末は操作できるため、QRは公開しないでください。' : 'Scan this QR on your phone to join this web session. The devices may use different networks. Anyone who scans the QR can control this session, so keep the QR private.')
+    ? (state.lang === 'ja' ? 'スマホでQRを読み取り、表示された確認番号をPCと照合して承認してください。QRだけでは操作を開始できません。' : 'Scan the QR with your phone. Compare the confirmation codes and approve on this PC. The QR alone cannot start control.')
     : t('qrDesc'));
   qrEl.style.color = '';
   const baseUrl = window.location.href.split('?')[0];
   const connectUrl = isHostedMode
-    ? `${baseUrl}?probe=local&sid=${encodeURIComponent(webSession.sid)}&lang=${state.lang}#token=${encodeURIComponent(webSession.probeToken)}`
+    ? `${baseUrl}?probe=local&sid=${encodeURIComponent(webSession.sid)}&lang=${state.lang}#token=${encodeURIComponent(webSession.pairToken)}`
     : `${baseUrl}?probe=local&lang=${state.lang}&v=${Date.now()}`;
   setTextSafe('qrUrlText', connectUrl);
   qrEl.innerHTML = '';
@@ -765,7 +802,99 @@ window.addEventListener('blur', () => {
   if (!isMobileMode && state.pcPressing) setPcPress(false);
 });
 
-function openQRModal() { updateQRCodeUrl(); document.getElementById('qrModal').style.display = 'flex'; }
+async function openQRModal() {
+  document.getElementById('qrModal').style.display = 'flex';
+  updateQRCodeUrl();
+  if (isHostedMode && !webSession) {
+    try {
+      await requestHostedSession();
+      initLocalPCReceiver();
+      updateQRCodeUrl();
+    } catch (error) {
+      setTextSafe('pairingStatus', state.lang === 'ja'
+        ? '接続を準備できませんでした。閉じてからもう一度開いてください。'
+        : 'Could not prepare pairing. Close and reopen this dialog.');
+    }
+  }
+}
+function showHostedPairingRequest(pairing) {
+  if (!isHostedMode || !webSession || webSession.paired) return;
+  const box = document.getElementById('pairingRequest');
+  if (!pairing?.claim_id) {
+    if (webSession.pendingClaimId) {
+      webSession.pendingClaimId = null;
+      box.hidden = true;
+      setTextSafe('pairingStatus', state.lang === 'ja' ? '確認の期限が切れました。スマホでQRを読み取り直してください。' : 'Approval expired. Scan the QR again.');
+    }
+    return;
+  }
+  if (webSession.pendingClaimId === pairing.claim_id) return;
+  webSession.pendingClaimId = pairing.claim_id;
+  setTextSafe('pairingCode', pairing.code);
+  setTextSafe('pairingStatus', state.lang === 'ja' ? 'スマホから接続申請が届きました。' : 'A phone requested access.');
+  box.hidden = false;
+  document.getElementById('qrModal').style.display = 'flex';
+}
+async function respondToPairing(approve) {
+  if (!isHostedMode || !webSession?.pendingClaimId) return;
+  const claimId = webSession.pendingClaimId;
+  const buttons = ['btnPairApprove', 'btnPairReject'].map(id => document.getElementById(id));
+  buttons.forEach(button => { button.disabled = true; });
+  try {
+    const response = await relayFetch('pairing', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: approve ? 'approve' : 'reject', claim_id: claimId }),
+    });
+    if (!response.ok) throw new Error('Pairing request failed');
+    const result = await response.json();
+    webSession.pendingClaimId = null;
+    document.getElementById('pairingRequest').hidden = true;
+    if (approve) {
+      webSession.paired = true;
+      webSession.pairToken = null;
+      closeQRModal();
+      setTextSafe('pairingStatus', state.lang === 'ja' ? 'スマホを承認しました。' : 'Phone approved.');
+      document.getElementById('modeBanner').textContent = state.lang === 'ja'
+        ? 'スマホを承認しました。センサー開始を待っています。'
+        : 'Phone approved. Waiting for its sensors.';
+    } else {
+      webSession.pairToken = result.pair_token;
+      setTextSafe('pairingStatus', state.lang === 'ja' ? '申請を拒否し、QRを更新しました。' : 'Request rejected and QR renewed.');
+    }
+    updateQRCodeUrl();
+  } catch (error) {
+    setTextSafe('pairingStatus', state.lang === 'ja' ? '処理できませんでした。もう一度お試しください。' : 'Could not complete this action. Try again.');
+  } finally {
+    buttons.forEach(button => { button.disabled = false; });
+  }
+}
+async function resetHostedPairing() {
+  if (!isHostedMode || !webSession) return;
+  try {
+    const response = await relayFetch('pairing', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'reset' }),
+    });
+    if (!response.ok) throw new Error('Reset failed');
+    const result = await response.json();
+    webSession.paired = false;
+    webSession.pairToken = result.pair_token;
+    webSession.pendingClaimId = null;
+    state.mobileConnected = false;
+    state.mobilePressing = false;
+    state.phoneExploring = false;
+    lastFreezeCount = 0;
+    updatePressureState();
+    state.source = 'PC STANDALONE';
+    document.getElementById('btnMobileQR').classList.remove('connected');
+    document.getElementById('pairingRequest').hidden = true;
+    setTextSafe('pairingStatus', state.lang === 'ja' ? 'スマホ接続を解除しました。' : 'Phone disconnected.');
+    applyLanguage();
+    updateQRCodeUrl();
+  } catch (error) {
+    setTextSafe('pairingStatus', state.lang === 'ja' ? '接続を解除できませんでした。' : 'Could not disconnect the phone.');
+  }
+}
 function selectSchemaTab(kind) {
   const liver = kind === 'liver';
   const vessel = kind === 'vessel';
@@ -1218,11 +1347,14 @@ function ingestProbePacket(src, d) {
   syncSliders();
 }
 
+let receiverStarted = false;
 function initLocalPCReceiver() {
+  if (receiverStarted) return;
+  receiverStarted = true;
   let lastSeq = -1, lastTime = 0, polling = false, nextRecoveryAt = 0, nextIdlePollAt = 0;
   setInterval(async () => {
     // ネットワーク遅延時にも GET を重ねない。
-    if (polling) return;
+    if (polling || (isHostedMode && !webSession)) return;
     if (!state.mobileConnected) {
       const now = performance.now();
       if (now < nextIdlePollAt) return;
@@ -1230,15 +1362,10 @@ function initLocalPCReceiver() {
     }
     polling = true;
     try {
-      if (isHostedMode && !webSession && performance.now() >= nextRecoveryAt) {
-        nextRecoveryAt = performance.now() + 5000;
-        await requestHostedSession();
-        updateQRCodeUrl();
-        document.getElementById('modeBanner').textContent = t('bannerReady');
-      }
       const res = await relayFetch('sensor', { cache: 'no-store' });
       if (res.ok) {
         const d = await res.json();
+        if (isHostedMode) showHostedPairingRequest(d.pairing);
         if (isValidProbePacket(d) && Number.isSafeInteger(d.seq) && d.seq !== lastSeq) {
           lastSeq = d.seq;
           lastTime = performance.now();
@@ -1255,14 +1382,17 @@ function initLocalPCReceiver() {
         }
       } else if (isHostedMode && res.status === 403 && performance.now() >= nextRecoveryAt) {
         nextRecoveryAt = performance.now() + 5000;
-        await requestHostedSession();
+        webSession = null;
+        state.source = 'PC STANDALONE';
         lastSeq = -1;
-        lastTime = 0;
+        lastTime = -Infinity;
         state.phoneExploring = false;
         lastFreezeCount = 0;
         prevFreezeSignal = 0;
-        updateQRCodeUrl();
-        if (state.mobileConnected) openQRModal();
+        if (document.getElementById('qrModal').style.display === 'flex') {
+          await requestHostedSession();
+          updateQRCodeUrl();
+        }
       }
     } catch (e) {
       // サーバー停止・通信断も finally で切断判定する。
@@ -1281,10 +1411,10 @@ function initLocalPCReceiver() {
         const btn = document.getElementById('btnMobileQR');
         btn.textContent = t('btnMobileQR');
         btn.classList.remove('connected');
-        state.source = isHostedMode ? 'WEB READY' : 'PC LOCAL';
+        state.source = isHostedMode ? (webSession ? 'WEB READY' : 'PC STANDALONE') : 'PC LOCAL';
         const b = document.getElementById('modeBanner');
         if (b) b.textContent = isHostedMode
-          ? (state.lang === 'ja' ? '接続が切れました。スマホで新しいQRを読み取ってください。' : 'Connection ended. Scan the new QR with your phone.')
+          ? (state.lang === 'ja' ? 'スマホ接続が切れました。再接続するにはQRを開いてください。' : 'Phone connection ended. Open the QR to pair again.')
           : t('bannerReady');
       }
     }
@@ -1323,7 +1453,62 @@ function initMobileProbeController() {
   let R0 = getRotationMatrix(0, 90, 0);
   let hasSensorSample = false, exploring = false;
   let probeX = 0.2, probeY = 0.5, isPressing = false, freezeCount = 0, seq = 0, isSending = false, sessionExpired = false, lastZeroSeq = -1, lastPcPosSeq = 0;
+  // A reset issues a new invitation for the same session. Keep its stored
+  // phone credential separate so rescanning the new QR starts a fresh claim.
+  const savedTokenKey = isHostedMode ? `probe-token:${webSession.sid}:${webSession.token}` : '';
+  let restoredProbeToken = '';
+  try { if (savedTokenKey) restoredProbeToken = sessionStorage.getItem(savedTokenKey) || ''; } catch (error) {}
+  if (restoredProbeToken) webSession.token = restoredProbeToken;
+  let pairingApproved = !isHostedMode || !!restoredProbeToken;
   let audioCtx = null;
+
+  if (restoredProbeToken) {
+    statusEl.textContent = state.lang === 'ja' ? '前回の接続を復元しました' : 'Previous connection restored';
+  } else if (isHostedMode) {
+    const startButton = document.getElementById('btnSensorStart');
+    const codeEl = document.getElementById('mPairCode');
+    startButton.disabled = true;
+    (async () => {
+      try {
+        const response = await relayFetch('join', { method: 'POST' });
+        if (!response.ok) throw new Error('Pairing request failed');
+        const claim = await response.json();
+        webSession.token = claim.claim_token;
+        codeEl.textContent = claim.code;
+        codeEl.hidden = false;
+        statusEl.textContent = state.lang === 'ja' ? 'この番号をPCで確認して承認してください' : 'Compare this code and approve on the PC';
+        let checking = false;
+        const timer = setInterval(async () => {
+          if (checking) return;
+          checking = true;
+          try {
+            const check = await relayFetch('join', { cache: 'no-store' });
+            if (check.status === 403) throw new Error('Pairing expired');
+            if (!check.ok) return;
+            const result = await check.json();
+            if (result.status !== 'approved') return;
+            clearInterval(timer);
+            webSession.token = result.probe_token;
+            try { sessionStorage.setItem(savedTokenKey, result.probe_token); } catch (error) {}
+            pairingApproved = true;
+            codeEl.hidden = true;
+            startButton.disabled = false;
+            statusEl.textContent = state.lang === 'ja' ? '✅ PCで承認されました' : '✅ Approved on the PC';
+          } catch (error) {
+            clearInterval(timer);
+            codeEl.hidden = true;
+            statusEl.textContent = state.lang === 'ja' ? '承認できませんでした。PCの新しいQRを読み取ってください。' : 'Pairing failed. Scan a new QR on the PC.';
+            statusEl.style.color = '#f85149';
+          } finally {
+            checking = false;
+          }
+        }, 500);
+      } catch (error) {
+        statusEl.textContent = state.lang === 'ja' ? '接続申請を送れませんでした。PCのQRを確認してください。' : 'Could not request access. Check the QR on the PC.';
+        statusEl.style.color = '#f85149';
+      }
+    })();
+  }
 
   function playTone(freq, durationMs, delayMs = 0) {
     try {
@@ -1453,7 +1638,7 @@ function initMobileProbeController() {
   });
 
   setInterval(async () => {
-    if (!hasSensorSample) return;
+    if (!hasSensorSample || !pairingApproved) return;
     const R = getRotationMatrix(rawAlpha, rawBeta, rawGamma);
     const Rrel = multiplyTranspose(R0, R);
 
@@ -1480,6 +1665,7 @@ function initMobileProbeController() {
       });
       if (res.status === 403 && isHostedMode) {
         sessionExpired = true;
+        try { sessionStorage.removeItem(savedTokenKey); } catch (error) {}
         statusEl.textContent = state.lang === 'ja' ? '接続が切れました。PCの新しいQRを読み取ってください。' : 'Connection ended. Scan the new QR on the PC.';
         statusEl.style.color = '#f85149';
       } else if (res.ok) {
@@ -2429,24 +2615,16 @@ async function requestHostedSession() {
   const response = await fetch('/api/web/session', { method: 'POST', cache: 'no-store' });
   if (!response.ok) throw new Error(`Session request failed (${response.status})`);
   const session = await response.json();
-  if (!session.sid || !session.pc_token || !session.probe_token) throw new Error('Incomplete pairing session');
-  webSession = { sid: session.sid, token: session.pc_token, probeToken: session.probe_token };
+  if (!session.sid || !session.pc_token || !session.pair_token) throw new Error('Incomplete pairing session');
+  webSession = { sid: session.sid, token: session.pc_token, pairToken: session.pair_token, paired: false, pendingClaimId: null };
   state.source = 'WEB READY';
+  sendPcPosNow();
 }
 function startPcView() {
-  initLocalPCReceiver();
+  if (!isHostedMode) initLocalPCReceiver();
   selectZone('epigastric');
   if (document.readyState === 'complete') requestAnimationFrame(renderEcho);
   else window.addEventListener('load', () => requestAnimationFrame(renderEcho), { once: true });
-}
-async function startHostedPcView() {
-  try {
-    await requestHostedSession();
-  } catch (error) {
-    const message = state.lang === 'ja' ? 'Web接続を準備できません。再試行しています。' : 'Could not prepare web pairing. Retrying.';
-    document.getElementById('modeBanner').textContent = message;
-  }
-  startPcView();
 }
 if (isMobileMode) {
   // pcView を DOM から完全除去して古い画面やボディマークが残らないようにする
@@ -2459,8 +2637,7 @@ if (isMobileMode) {
 } else {
   const blindEl = document.getElementById('mobileBlindRoot');
   if (blindEl) blindEl.remove();
-  if (isHostedMode) startHostedPcView();
-  else startPcView();
+  startPcView();
 }
 </script>
 

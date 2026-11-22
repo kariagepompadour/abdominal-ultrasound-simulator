@@ -54,29 +54,48 @@ class WebRelayTest(unittest.TestCase):
         self.assertEqual(status, 201)
         return data
 
+    def approve_phone(self, pair):
+        join_path = f"/api/web/join?sid={pair['sid']}"
+        status, claim = self.request(join_path, 'POST', pair['pair_token'])
+        self.assertEqual(status, 201)
+        pending = self.request(f"/api/web/sensor?sid={pair['sid']}",
+                               token=pair['pc_token'])[1]['pairing']
+        self.assertEqual(pending['claim_id'], claim['claim_id'])
+        self.assertEqual(pending['code'], claim['code'])
+        status, _ = self.request(f"/api/web/pairing?sid={pair['sid']}", 'POST',
+                                 pair['pc_token'],
+                                 {'action': 'approve', 'claim_id': claim['claim_id']})
+        self.assertEqual(status, 200)
+        status, result = self.request(join_path, token=claim['claim_token'])
+        self.assertEqual(status, 200)
+        self.assertEqual(result['status'], 'approved')
+        return result['probe_token']
+
     def test_two_pairs_are_isolated_and_roles_are_enforced(self):
         first = self.create_session()
         second = self.create_session()
+        first_probe = self.approve_phone(first)
+        second_probe = self.approve_phone(second)
         packet = {'seq': 1, 'px': -2.0, 'py': 1.0, 'yaw': 18, 'pitch': 7, 'roll': -5, 'press': 0, 'freeze': 0}
         first_path = f"/api/web/sensor?sid={first['sid']}"
         second_path = f"/api/web/sensor?sid={second['sid']}"
 
-        self.assertEqual(self.request(first_path, 'POST', first['probe_token'], packet)[0], 200)
+        self.assertEqual(self.request(first_path, 'POST', first_probe, packet)[0], 200)
         self.assertEqual(self.request(first_path, token=first['pc_token'])[1]['yaw'], 18)
         self.assertEqual(self.request(second_path, token=second['pc_token'])[1], {})
         self.assertEqual(self.request(first_path, token=second['pc_token'])[0], 403)
         self.assertEqual(self.request(first_path, 'POST', first['pc_token'], packet)[0], 403)
-        self.assertEqual(self.request(first_path, token=first['probe_token'])[0], 403)
+        self.assertEqual(self.request(first_path, token=first_probe)[0], 403)
 
         # A phone reload restarts its counter; PC updates must still advance.
         reloaded = {**packet, 'seq': 0, 'yaw': -12}
-        self.assertEqual(self.request(first_path, 'POST', first['probe_token'], reloaded)[0], 200)
+        self.assertEqual(self.request(first_path, 'POST', first_probe, reloaded)[0], 200)
         self.assertEqual(self.request(first_path, token=first['pc_token'])[1]['yaw'], -12)
         self.assertEqual(self.request(first_path, token=first['pc_token'])[1]['seq'], 2)
 
         self.assertEqual(self.request(f"/api/web/zero?sid={first['sid']}", 'POST', first['pc_token'])[1]['zero_seq'], 1)
         self.assertEqual(self.request(f"/api/web/pos?sid={first['sid']}", 'POST', first['pc_token'], {'px': 3, 'py': 4})[1]['pc_pos']['px'], 3)
-        self.assertEqual(self.request(second_path, 'POST', second['probe_token'], packet)[1]['zero_seq'], 0)
+        self.assertEqual(self.request(second_path, 'POST', second_probe, packet)[1]['zero_seq'], 0)
 
     def test_static_allowlist_and_expiry(self):
         session = self.create_session()
@@ -106,16 +125,46 @@ class WebRelayTest(unittest.TestCase):
 
     def test_freeze_counter_and_exploring_state_are_validated(self):
         pair = self.create_session()
+        probe_token = self.approve_phone(pair)
         path = f"/api/web/sensor?sid={pair['sid']}"
         packet = {'seq': 1, 'px': 0, 'py': 0, 'yaw': 0, 'pitch': 0, 'roll': 0,
                   'press': 0, 'freeze_count': 2, 'exploring': 1}
-        self.assertEqual(self.request(path, 'POST', pair['probe_token'], packet)[0], 200)
+        self.assertEqual(self.request(path, 'POST', probe_token, packet)[0], 200)
         received = self.request(path, token=pair['pc_token'])[1]
         self.assertEqual(received['freeze_count'], 2)
         self.assertEqual(received['exploring'], 1)
         for invalid in ({'freeze_count': -1}, {'freeze_count': True}, {'exploring': True}):
-            self.assertEqual(self.request(path, 'POST', pair['probe_token'],
+            self.assertEqual(self.request(path, 'POST', probe_token,
                                           {**packet, **invalid})[0], 400)
+
+    def test_qr_requires_pc_approval_and_reset_revokes_phone(self):
+        pair = self.create_session()
+        sensor_path = f"/api/web/sensor?sid={pair['sid']}"
+        join_path = f"/api/web/join?sid={pair['sid']}"
+        pairing_path = f"/api/web/pairing?sid={pair['sid']}"
+        packet = {'seq': 1, 'px': 0, 'py': 0, 'yaw': 0, 'pitch': 0, 'roll': 0}
+        self.assertNotIn('probe_token', pair)
+        self.assertEqual(self.request(sensor_path, 'POST', pair['pair_token'], packet)[0], 403)
+        claim = self.request(join_path, 'POST', pair['pair_token'])[1]
+        self.assertEqual(self.request(sensor_path, 'POST', claim['claim_token'], packet)[0], 403)
+        self.assertEqual(self.request(pairing_path, 'POST', pair['pc_token'],
+                                      {'action': 'approve', 'claim_id': 'wrong'})[0], 409)
+        self.assertEqual(self.request(join_path, 'POST', pair['pair_token'])[0], 409)
+        rejected = self.request(pairing_path, 'POST', pair['pc_token'],
+                                {'action': 'reject', 'claim_id': claim['claim_id']})[1]
+        self.assertEqual(self.request(join_path, token=claim['claim_token'])[0], 403)
+        self.assertEqual(self.request(join_path, 'POST', pair['pair_token'])[0], 403)
+        pair['pair_token'] = rejected['pair_token']
+        probe_token = self.approve_phone(pair)
+        self.assertEqual(self.request(sensor_path, 'POST', probe_token, packet)[0], 200)
+        self.assertEqual(self.request(join_path, 'POST', pair['pair_token'])[0], 403)
+        reset = self.request(pairing_path, 'POST', pair['pc_token'], {'action': 'reset'})[1]
+        self.assertEqual(self.request(sensor_path, 'POST', probe_token, packet)[0], 403)
+        self.assertTrue(reset['pair_token'])
+
+    def test_loading_web_page_does_not_create_a_session(self):
+        self.assertEqual(self.request('/web')[0], 200)
+        self.assertEqual(web_server.sessions, {})
 
     def test_global_creation_limit(self):
         original_limit = web_server.MAX_NEW_SESSIONS_PER_MINUTE

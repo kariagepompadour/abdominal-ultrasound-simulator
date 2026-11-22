@@ -21,6 +21,7 @@ from urllib.parse import parse_qs, urlsplit
 ROOT = Path(__file__).resolve().parent
 SESSION_TTL = 60 * 60
 UNPAIRED_TTL = 3 * 60
+CLAIM_TTL = 90
 MAX_SESSIONS = 200
 MAX_SESSIONS_PER_CLIENT = 20
 MAX_NEW_SESSIONS_PER_MINUTE = 30
@@ -111,7 +112,8 @@ class WebHandler(BaseHTTPRequestHandler):
             not entry['paired'] and now - entry['created_at'] > UNPAIRED_TTL
         ):
             return None
-        if not token or not hmac.compare_digest(token, entry[role + '_token']):
+        expected = entry.get(role + '_token')
+        if not token or not expected or not hmac.compare_digest(token, expected):
             return None
         entry['last_seen'] = now
         return entry
@@ -148,7 +150,7 @@ class WebHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urlsplit(self.path)
-        if parsed.path != '/api/web/sensor':
+        if parsed.path not in ('/api/web/sensor', '/api/web/join'):
             self.static(parsed.path)
             return
         try:
@@ -157,11 +159,29 @@ class WebHandler(BaseHTTPRequestHandler):
             self.send_json(400, {'error': 'Invalid query'})
             return
         with sessions_lock:
+            if parsed.path == '/api/web/join':
+                sid = query.get('sid', [''])[0]
+                entry = sessions.get(sid)
+                claim = entry.get('claim') if entry else None
+                token = self.headers.get('X-Simulator-Token', '')
+                now = time.monotonic()
+                if (not claim or now - claim['created_at'] > CLAIM_TTL
+                        or not token or not hmac.compare_digest(token, claim['token'])):
+                    self.send_json(403, {'error': 'Pairing request expired'})
+                    return
+                result = {'status': claim['status']}
+                if claim['status'] == 'approved':
+                    result['probe_token'] = entry['probe_token']
+                self.send_json(200, result)
+                return
             entry = self.session(query, 'pc')
             if not entry:
                 self.send_json(403, {'error': 'Invalid session'})
                 return
             packet = dict(entry['latest_data'])
+            claim = entry['claim']
+            if claim and claim['status'] == 'pending' and time.monotonic() - claim['created_at'] <= CLAIM_TTL:
+                packet['pairing'] = {'claim_id': claim['id'], 'code': claim['code']}
         self.send_json(200, packet)
 
     def do_POST(self):
@@ -188,21 +208,85 @@ class WebHandler(BaseHTTPRequestHandler):
                     return
                 sid = secrets.token_urlsafe(18)
                 pc_token = secrets.token_urlsafe(32)
-                probe_token = secrets.token_urlsafe(32)
+                pair_token = secrets.token_urlsafe(32)
                 sessions[sid] = {
-                    'pc_token': pc_token, 'probe_token': probe_token,
+                    'pc_token': pc_token, 'pair_token': pair_token,
+                    'probe_token': None, 'claim': None,
                     'latest_data': {}, 'sensor_seq': 0, 'zero_seq': 0,
                     'pc_pos': {'seq': 0, 'px': 0.2, 'py': 0.5},
                     'last_seen': now, 'created_at': now, 'paired': False, 'client': client,
                 }
                 session_creation_times.append(now)
-            self.send_json(201, {'sid': sid, 'pc_token': pc_token, 'probe_token': probe_token})
+            self.send_json(201, {'sid': sid, 'pc_token': pc_token, 'pair_token': pair_token})
             return
-        if parsed.path not in ('/api/web/sensor', '/api/web/pos', '/api/web/zero'):
+        if parsed.path not in ('/api/web/sensor', '/api/web/pos', '/api/web/zero',
+                               '/api/web/join', '/api/web/pairing'):
             self.send_json(404, {'error': 'Not found'})
             return
         try:
             query = parse_qs(parsed.query, max_num_fields=4)
+            if parsed.path == '/api/web/join':
+                if self.headers.get('Content-Length', '0') != '0':
+                    raise ValueError('Expected empty body')
+                with sessions_lock:
+                    entry = self.session(query, 'pair')
+                    if not entry or entry['paired']:
+                        self.send_json(403, {'error': 'Pairing invitation unavailable'})
+                        return
+                    claim = entry['claim']
+                    now = time.monotonic()
+                    if claim and now - claim['created_at'] <= CLAIM_TTL:
+                        self.send_json(409, {'error': 'Another phone is awaiting approval'})
+                        return
+                    claim = {
+                        'id': secrets.token_urlsafe(18),
+                        'token': secrets.token_urlsafe(32),
+                        'code': f'{secrets.randbelow(1000000):06d}',
+                        'created_at': now, 'status': 'pending',
+                    }
+                    entry['claim'] = claim
+                    result = {'claim_id': claim['id'], 'claim_token': claim['token'],
+                              'code': claim['code']}
+                self.send_json(201, result)
+                return
+            if parsed.path == '/api/web/pairing':
+                data = self.read_json()
+                action = data.get('action')
+                if action not in ('approve', 'reject', 'reset'):
+                    raise ValueError('Invalid pairing action')
+                with sessions_lock:
+                    entry = self.session(query, 'pc')
+                    if not entry:
+                        self.send_json(403, {'error': 'Invalid session'})
+                        return
+                    if action == 'reset':
+                        entry['paired'] = False
+                        entry['probe_token'] = None
+                        entry['claim'] = None
+                        entry['latest_data'] = {}
+                        entry['pair_token'] = secrets.token_urlsafe(32)
+                        entry['created_at'] = time.monotonic()
+                        result = {'status': 'reset', 'pair_token': entry['pair_token']}
+                    else:
+                        claim = entry['claim']
+                        if (not claim or claim['status'] != 'pending'
+                                or time.monotonic() - claim['created_at'] > CLAIM_TTL
+                                or data.get('claim_id') != claim['id']):
+                            self.send_json(409, {'error': 'Pairing request unavailable'})
+                            return
+                        if action == 'approve':
+                            entry['probe_token'] = secrets.token_urlsafe(32)
+                            entry['pair_token'] = None
+                            entry['paired'] = True
+                            claim['status'] = 'approved'
+                            result = {'status': 'approved'}
+                        else:
+                            entry['claim'] = None
+                            entry['pair_token'] = secrets.token_urlsafe(32)
+                            entry['created_at'] = time.monotonic()
+                            result = {'status': 'rejected', 'pair_token': entry['pair_token']}
+                self.send_json(200, result)
+                return
             if parsed.path == '/api/web/zero':
                 if self.headers.get('Content-Length', '0') != '0':
                     raise ValueError('Expected empty body')
@@ -253,7 +337,6 @@ class WebHandler(BaseHTTPRequestHandler):
                 # Server-side sequence survives a phone page reload, whose
                 # client-side counter starts again at zero.
                 entry['sensor_seq'] += 1
-                entry['paired'] = True
                 entry['latest_data'] = {**data, 'seq': entry['sensor_seq']}
                 result = {'ok': True, 'zero_seq': entry['zero_seq'], 'pc_pos': dict(entry['pc_pos'])}
             self.send_json(200, result)
