@@ -1373,7 +1373,7 @@ function initLocalPCReceiver() {
     if (!state.mobileConnected) {
       const now = performance.now();
       if (now < nextIdlePollAt) return;
-      nextIdlePollAt = now + 250;
+      nextIdlePollAt = now + 1000;
     }
     polling = true;
     try {
@@ -1517,7 +1517,7 @@ function initMobileProbeController() {
           } finally {
             checking = false;
           }
-        }, 500);
+        }, 1000);
       } catch (error) {
         statusEl.textContent = state.lang === 'ja' ? '接続申請を送れませんでした。PCのQRを確認してください。' : 'Could not request access. Check the QR on the PC.';
         statusEl.style.color = '#f85149';
