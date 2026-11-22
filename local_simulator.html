@@ -130,7 +130,7 @@
   </header>
   <main>
     <div class="left-panel">
-      <div id="modeBanner" class="mode-banner">PROBE READY<br>← → / Space：部位｜Shift＋エコー画像のドラッグ：チルト<br>Shift＋矢印 / ボディマークのドラッグ：位置調整</div>
+      <div id="modeBanner" class="mode-banner">PROBE READY<br>← → / Space：部位<br>Shift＋矢印 / ボディマーク：位置<br>Option(Mac) / Alt(Win)＋画像ドラッグ：チルト</div>
       <button id="btnMobileQR" class="dev-btn" onclick="openQRModal()">📱 スマホ接続 (QR)</button>
       <div class="body-panel">
         <div id="bodyOverlayTitle" class="body-overlay-title">ボディマーク（ドラッグで位置移動）</div>
@@ -280,8 +280,8 @@ const I18N = {
     anatomyOn: '🎯 画像内ラベル: ON',
     anatomyOff: '🎯 画像内ラベル: OFF',
     langBtn: '🌐 日本語 / EN',
-    bannerReady: 'PROBE READY\n← → / Space：部位｜Shift＋エコー画像のドラッグ：チルト\nShift＋矢印 / ボディマークのドラッグ：位置調整',
-    bannerConn: (src) => `${src} 接続中\n← → / Space：部位｜Shift＋エコー画像のドラッグ：チルト\nShift＋矢印 / ボディマークのドラッグ：位置調整`,
+    bannerReady: 'PROBE READY\n← → / Space：部位\nShift＋矢印 / ボディマーク：位置\nOption(Mac) / Alt(Win)＋画像ドラッグ：チルト',
+    bannerConn: (src) => `${src} 接続中\n← → / Space：部位\nShift＋矢印 / ボディマーク：位置\nOption(Mac) / Alt(Win)＋画像ドラッグ：チルト`,
     lblYaw: '回転 (Yaw)',
     lblPitch: '頭尾煽り (Pitch)',
     lblRoll: '左右煽り (Roll)',
@@ -291,7 +291,7 @@ const I18N = {
       ・<strong>スマホの持ち方</strong>：タップした姿勢が相対0°。以後は同じ持ち方を保つ。患者に対する絶対角度ではありません<br>
       ・<strong>スマホ上半分タップ</strong>：1回目で周辺チルト開始、2回目で基準画像に戻す<br>
       ・<strong>スマホ下半分</strong>：短押しFREEZE・長押し圧迫<br>
-      ・<strong>PCチルト</strong>：エコー画像上で<code>Shift</code>を押しながらドラッグ。上＝頭側、下＝尾側、左＝患者右、右＝患者左へビームを傾ける。離すとその角度で止まる。スマホ接続中もPC操作を優先し、スマホ上半分で探索を始め直すとスマホ操作へ戻る<br>
+      ・<strong>PCチルト</strong>：エコー画像上でMacは<code>Option</code>、Windowsは<code>Alt</code>を押しながらマウスでドラッグ。上＝頭側、下＝尾側、左＝患者右、右＝患者左へビームを傾ける。離すとその角度で止まる。スマホ接続中もPC操作を優先し、スマホ上半分で探索を始め直すとスマホ操作へ戻る<br>
       ・<strong>左手(PC)</strong>：<code>←</code>前の部位 ／ <code>→</code>・<code>Space</code>次の部位 ／ <code>Shift</code>＋矢印で位置を0.5 cmずつ調整 ／ <code>F</code>=FREEZE ／ <code>P</code>長押し=圧迫<br>
       ・⚠️ <strong>画面ロック注意</strong>：スマホがロックされると操作が効かなくなるため、自動ロック解除（画面点灯）にして使用してください`,
     qrTitle: '📱 スマホをプローブとして接続 (ローカル直接通信)',
@@ -347,8 +347,8 @@ const I18N = {
     anatomyOn: '🎯 Image Labels: ON',
     anatomyOff: '🎯 Image Labels: OFF',
     langBtn: '🌐 English / JP',
-    bannerReady: 'PROBE READY\n← → / Space: region | Shift+drag echo: tilt\nShift+arrows / drag body marker: position',
-    bannerConn: (src) => `${src} Connected\n← → / Space: region | Shift+drag echo: tilt\nShift+arrows / drag body marker: position`,
+    bannerReady: 'PROBE READY\n← → / Space: region\nShift+arrows / body marker: position\nOption(Mac) / Alt(Win)+drag echo: tilt',
+    bannerConn: (src) => `${src} Connected\n← → / Space: region\nShift+arrows / body marker: position\nOption(Mac) / Alt(Win)+drag echo: tilt`,
     lblYaw: 'Rotation (Yaw)',
     lblPitch: 'Tilt Pitch',
     lblRoll: 'Tilt Roll',
@@ -358,7 +358,7 @@ const I18N = {
       • <strong>Phone hold</strong>: The pose at the first tap is relative 0°. Keep the same grip; this is not an absolute patient probe angle.<br>
       • <strong>Top Half Tap</strong>: Start nearby tilt; tap again to return to the reference view<br>
       • <strong>Bottom Half</strong>: Tap FREEZE, Hold Press<br>
-      • <strong>PC tilt</strong>: Hold <code>Shift</code> and drag on the echo image. Up tilts the beam toward the head, down toward the feet, left toward patient right, and right toward patient left. Release to keep that angle. PC input takes priority until a new phone tilt session starts.<br>
+      • <strong>PC tilt</strong>: Hold <code>Option</code> on Mac or <code>Alt</code> on Windows and drag on the echo image with the mouse. Up tilts the beam toward the head, down toward the feet, left toward patient right, and right toward patient left. Release to keep that angle. PC input takes priority until a new phone tilt session starts.<br>
       • <strong>PC Left Hand</strong>: <code>←</code> previous region / <code>→</code> or <code>Space</code> next region / <code>Shift</code>+arrows adjust position by 0.5 cm / <code>F</code>=FREEZE / hold <code>P</code>=Press.<br>
       • ⚠️ <strong>Screen Lock</strong>: Controls stop when locked — keep auto-lock off / screen awake during use`,
     qrTitle: '📱 Connect Smartphone as Probe (Local Direct)',
@@ -750,6 +750,7 @@ window.addEventListener('keydown', e => {
     return;
   }
   if (schemaOpen) return;
+  if (e.altKey || e.ctrlKey || e.metaKey) return;
   if (e.target instanceof HTMLTextAreaElement ||
       (e.target instanceof HTMLInputElement && e.target.type !== 'range')) return;
   if (e.target instanceof HTMLInputElement && e.target.type === 'range' &&
@@ -2557,7 +2558,7 @@ function finishEchoTiltDrag() {
   echoCanvas.classList.remove('tilt-dragging');
 }
 echoCanvas.addEventListener('pointerdown', e => {
-  if (!e.shiftKey || e.button !== 0 || isMobileMode) return;
+  if (!e.altKey || e.button !== 0 || isMobileMode) return;
   e.preventDefault();
   echoTiltDrag = { pointerId: e.pointerId, x: e.clientX, y: e.clientY, pitch: state.pitch, roll: state.roll };
   echoCanvas.setPointerCapture(e.pointerId);
@@ -2585,8 +2586,8 @@ window.addEventListener('blur', () => {
   finishEchoTiltDrag();
   echoCanvas.classList.remove('tilt-ready');
 });
-window.addEventListener('keydown', e => { if (e.key === 'Shift') echoCanvas.classList.add('tilt-ready'); });
-window.addEventListener('keyup', e => { if (e.key === 'Shift') echoCanvas.classList.remove('tilt-ready'); });
+window.addEventListener('keydown', e => { if (e.key === 'Alt') echoCanvas.classList.add('tilt-ready'); });
+window.addEventListener('keyup', e => { if (e.key === 'Alt') echoCanvas.classList.remove('tilt-ready'); });
 
 const bodyCanvas = document.getElementById('bodyCanvas');
 let draggingBody = false;
