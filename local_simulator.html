@@ -668,7 +668,7 @@ function updateQRCodeUrl() {
     return;
   }
   setTextSafe('qrDesc', isHostedMode
-    ? (state.lang === 'ja' ? 'スマホでQRを読み取り、同じWeb接続に参加してください。Wi-Fiは別でも使えます。' : 'Scan this QR on your phone to join this web session. The devices may use different networks.')
+    ? (state.lang === 'ja' ? 'スマホでQRを読み取り、同じWeb接続に参加してください。Wi-Fiは別でも使えます。QRを読み取った端末は操作できるため、QRは公開しないでください。' : 'Scan this QR on your phone to join this web session. The devices may use different networks. Anyone who scans the QR can control this session, so keep the QR private.')
     : t('qrDesc'));
   qrEl.style.color = '';
   const baseUrl = window.location.href.split('?')[0];
@@ -1219,10 +1219,15 @@ function ingestProbePacket(src, d) {
 }
 
 function initLocalPCReceiver() {
-  let lastSeq = -1, lastTime = 0, polling = false, nextRecoveryAt = 0;
+  let lastSeq = -1, lastTime = 0, polling = false, nextRecoveryAt = 0, nextIdlePollAt = 0;
   setInterval(async () => {
     // ネットワーク遅延時にも GET を重ねない。
     if (polling) return;
+    if (!state.mobileConnected) {
+      const now = performance.now();
+      if (now < nextIdlePollAt) return;
+      nextIdlePollAt = now + 250;
+    }
     polling = true;
     try {
       if (isHostedMode && !webSession && performance.now() >= nextRecoveryAt) {
