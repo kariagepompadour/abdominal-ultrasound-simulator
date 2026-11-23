@@ -540,6 +540,164 @@ class InputDebugBrowserTest(BrowserTestBase):
         self.context = self.browser.new_context()
 
 
+class YawKeyBrowserTest(BrowserTestBase):
+    """Q / E rotate the probe (yaw) by 5 degrees, from the main window and the anatomy window."""
+
+    def setUp(self):
+        self.open_page()
+        self.page.click('#appTitle')
+
+    def yaw(self):
+        return self.state('state.yaw')
+
+    def test_q_and_e_rotate_in_steps_and_clamp(self):
+        self.page.keyboard.press('e')
+        self.assertEqual(self.yaw(), 5, 'E = clockwise on the body marker (yaw +)')
+        self.page.keyboard.press('q')
+        self.page.keyboard.press('q')
+        self.assertEqual(self.yaw(), -5)
+        self.page.keyboard.press('Shift+E')
+        self.assertEqual(self.yaw(), 0, 'upper case (Shift or Caps Lock) works the same')
+        for _ in range(25):
+            self.page.keyboard.press('e')
+        self.assertEqual(self.yaw(), 90)
+        self.assertEqual(self.state("[document.getElementById('valYaw').textContent, state.source]"), ['90°', 'PC KEY'])
+        self.page.keyboard.press('r')
+        self.assertEqual(self.yaw(), 0, 'R returns to the reference view')
+        self.assertEqual(self.errors, [])
+
+    def test_held_key_repeats(self):
+        self.page.keyboard.down('e')
+        self.page.evaluate("""() => { for (let i = 0; i < 3; i++)
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'e', repeat: true, cancelable: true })); }""")
+        self.page.keyboard.up('e')
+        self.assertEqual(self.yaw(), 20)
+
+    def test_modified_q_e_do_nothing_and_zone_keys_are_unchanged(self):
+        for key in ('Alt+e', 'Control+e', 'Meta+e', 'Alt+q'):
+            with self.subTest(key=key):
+                self.page.keyboard.press(key)
+                self.assertEqual(self.yaw(), 0)
+        self.page.keyboard.press('e')
+        self.page.keyboard.press('Shift+ArrowRight')
+        self.assertEqual(self.yaw(), 5)
+        self.page.keyboard.press('ArrowRight')
+        self.assertEqual(self.state('state.selectedZone'), 'subcostal_gb')
+        self.assertEqual(self.errors, [])
+
+    def test_rotation_unfreezes_and_works_from_the_anatomy_window(self):
+        self.page.keyboard.press('f')
+        self.assertTrue(self.state('state.frozen'))
+        self.page.keyboard.press('e')
+        self.assertFalse(self.state('state.frozen'))
+        with self.context.expect_page() as popup_info:
+            self.page.click('#btnSchemata')
+        popup = popup_info.value
+        popup.wait_for_load_state()
+        popup.keyboard.press('q')
+        popup.keyboard.press('q')
+        popup.wait_for_timeout(60)
+        self.assertEqual(self.yaw(), -5)
+        self.assertEqual(self.errors, [])
+
+    def test_guides_mention_the_rotation_keys(self):
+        for query, words in (('', ('回転', 'Q', 'E')), ('?lang=en', ('Rotate', 'Q', 'E'))):
+            with self.subTest(query=query):
+                self.context.close()
+                self.open_page(query=query)
+                banner = self.page.locator('#modeBanner').inner_text()
+                guide = self.page.locator('#ruleBox').inner_text()
+                for word in words:
+                    self.assertIn(word, banner)
+                    self.assertIn(word, guide)
+
+
+class BodyMarkPositionTest(BrowserTestBase):
+    """Probe marker positions on the body mark (display only; echo images use the 3D model).
+
+    Body-mark drawing coordinates: costal arch apex (xiphoid) about y=47-55, lateral ends of the
+    costal arch at (80, 99) and (206, 99), umbilicus at (143, 158).
+    """
+
+    def setUp(self):
+        self.open_page()
+
+    def marker(self):
+        return self.state('bodyMarkFromModel(state.px, state.py)')
+
+    def select(self, zone):
+        self.page.evaluate(f"selectZone('{zone}')")
+        self.page.wait_for_timeout(100)
+
+    @staticmethod
+    def right_costal_margin_y(x):
+        return 49 + (132 - x) * 50 / 52
+
+    def test_epigastric_marker_is_just_below_the_xiphoid_inside_the_costal_arch(self):
+        self.select('epigastric')
+        x, y = self.marker()
+        self.assertGreater(y - 5, 55, 'below the xiphoid notch')
+        self.assertLess(y, 99, 'above the lateral ends of the costal arch')
+        self.assertLess(y, (55 + 158) / 2, 'closer to the xiphoid than to the umbilicus')
+        self.assertGreater(x - 18, 132 - (y - 49) * 52 / 50, 'inside the right costal line')
+        self.assertLess(x + 18, 154 + (y - 49) * 52 / 50, 'inside the left costal line')
+
+    def test_right_subcostal_marker_is_below_the_right_costal_margin_and_caudal_to_epigastric(self):
+        self.select('epigastric')
+        epigastric_y = self.marker()[1]
+        self.select('subcostal_gb')
+        x, y = self.marker()
+        self.assertLess(x, 143, 'patient right side')
+        self.assertGreater(y - 5, self.right_costal_margin_y(x - 18), 'whole marker below the right costal margin')
+        self.assertGreater(y, epigastric_y, 'epigastric is cranial to the right subcostal position')
+
+    def test_flank_markers_are_at_the_lateral_costal_arch_level_and_caudal_to_epigastric(self):
+        self.select('epigastric')
+        epigastric_y = self.marker()[1]
+        for zone, side in (('right_flank', -1), ('left_flank', 1)):
+            with self.subTest(zone=zone):
+                self.select(zone)
+                x, y = self.marker()
+                self.assertEqual((x > 143) - (x < 143), side)
+                self.assertLessEqual(abs(y - 99), 12, 'near the lateral end of the costal arch (y = 99)')
+                self.assertGreater(y, epigastric_y)
+
+    def test_lower_abdomen_keeps_the_model_mapping(self):
+        self.select('pelvis_bladder')
+        px, py = self.state('[state.px, state.py]')
+        self.assertEqual(self.marker(), [143 + px * 8.5, 110 + py * 8.5])
+
+    def test_nudge_moves_marker_by_the_same_scale_and_round_trips(self):
+        for zone in ('epigastric', 'subcostal_gb', 'right_flank', 'left_flank', 'pelvis_bladder'):
+            with self.subTest(zone=zone):
+                self.select(zone)
+                x0, y0 = self.marker()
+                self.page.keyboard.press('Shift+ArrowUp')
+                x1, y1 = self.marker()
+                self.assertAlmostEqual(x1, x0)
+                self.assertAlmostEqual(y1, y0 - 0.5 * 8.5)
+                back = self.state('modelFromBodyMark(...bodyMarkFromModel(state.px, state.py))')
+                now = self.state('[state.px, state.py]')
+                self.assertAlmostEqual(back[0], now[0])
+                self.assertAlmostEqual(back[1], now[1])
+
+    def test_pressing_on_the_drawn_marker_does_not_move_the_probe(self):
+        for zone in ('epigastric', 'subcostal_gb', 'right_flank', 'left_flank'):
+            with self.subTest(zone=zone):
+                self.select(zone)
+                before = self.state('[state.px, state.py]')
+                x, y = self.marker()
+                box = self.page.locator('#bodyCanvas').bounding_box()
+                self.page.mouse.move(box['x'] + x / 286 * box['width'], box['y'] + y / 240 * box['height'])
+                self.page.mouse.down()
+                self.page.mouse.up()
+                after = self.state('[state.px, state.py]')
+                # Mouse positions are rounded to whole CSS pixels (about 0.12 cm on the body mark).
+                self.assertAlmostEqual(after[0], before[0], delta=0.2)
+                self.assertAlmostEqual(after[1], before[1], delta=0.2)
+        self.assertEqual(self.errors, [])
+
+
 class EchoTiltHintLayoutTest(BrowserTestBase):
     """The tilt hint, the caution label and the organ legend under the echo image must not overlap.
 

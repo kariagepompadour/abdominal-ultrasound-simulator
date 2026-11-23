@@ -143,7 +143,7 @@
   </header>
   <main>
     <div class="left-panel">
-      <div id="modeBanner" class="mode-banner">PROBE READY<br>部位の切替：← → / Space<br>位置の微調整：Shift＋矢印<br>／ボディマークをドラッグ<br>チルト：エコー画像の上で<br>Option(Mac) / Alt(Win)＋ドラッグ／スクロール</div>
+      <div id="modeBanner" class="mode-banner">PROBE READY<br>部位の切替：← → / Space<br>位置の微調整：Shift＋矢印<br>／ボディマークをドラッグ<br>回転：Q / E<br>チルト：エコー画像の上で<br>Option(Mac) / Alt(Win)＋ドラッグ／スクロール</div>
       <button id="btnMobileQR" class="dev-btn" onclick="openQRModal()">📱 スマホ接続 (QR)</button>
       <div class="body-panel">
         <div id="bodyOverlayTitle" class="body-overlay-title">ボディマーク（ドラッグで位置移動）</div>
@@ -294,8 +294,8 @@ const I18N = {
     anatomyOn: '🎯 画像内ラベル: ON',
     anatomyOff: '🎯 画像内ラベル: OFF',
     langBtn: '🌐 日本語 / EN',
-    bannerReady: 'PROBE READY\n部位の切替：← → / Space\n位置の微調整：Shift＋矢印\n／ボディマークをドラッグ\nチルト：エコー画像の上で\nOption(Mac) / Alt(Win)＋ドラッグ／スクロール',
-    bannerConn: (src) => `${src} 接続中\n部位の切替：← → / Space\n位置の微調整：Shift＋矢印\n／ボディマークをドラッグ\nチルト：エコー画像の上で\nOption(Mac) / Alt(Win)＋ドラッグ／スクロール`,
+    bannerReady: 'PROBE READY\n部位の切替：← → / Space\n位置の微調整：Shift＋矢印\n／ボディマークをドラッグ\n回転：Q / E\nチルト：エコー画像の上で\nOption(Mac) / Alt(Win)＋ドラッグ／スクロール',
+    bannerConn: (src) => `${src} 接続中\n部位の切替：← → / Space\n位置の微調整：Shift＋矢印\n／ボディマークをドラッグ\n回転：Q / E\nチルト：エコー画像の上で\nOption(Mac) / Alt(Win)＋ドラッグ／スクロール`,
     tiltHintHtml: '<strong>チルト</strong>：この<strong>エコー画像</strong>の上で<br><kbd>Option</kbd>（Mac）／<kbd>Alt</kbd>（Windows）<span class="nowrap">＋ドラッグ／スクロール</span>',
     tiltDirsHtml: '<strong>チルト中</strong>　↑頭側　↓尾側　←患者右　→患者左',
     echoCanvasTitle: 'チルト：Option（Mac）／Alt（Windows）を押しながら、このエコー画像をドラッグまたはスクロール',
@@ -308,6 +308,7 @@ const I18N = {
     ruleHtml: `<strong>【PCの操作】</strong><br>
       ・<strong>部位の切替</strong>：<code>←</code>前の部位 ／ <code>→</code>・<code>Space</code>次の部位<br>
       ・<strong>位置の微調整</strong>：<code>Shift</code>＋矢印で0.5 cmずつ（選んだ部位の±1.5 cm以内）／ボディマークをドラッグ<br>
+      ・<strong>回転</strong>：<code>Q</code>＝反時計回り ／ <code>E</code>＝時計回り（ボディマーク上。1回5°、押し続けると連続、±90°まで）<br>
       ・<strong>チルト</strong>：右の<strong>エコー画像</strong>の上で、Macは<code>Option</code>、Windowsは<code>Alt</code>を押しながらマウスでドラッグ。上＝頭側、下＝尾側、左＝患者右、右＝患者左へビームを傾け、マウスを離すとその角度で止まる。ドラッグを始めた後は、キーを先に離してもマウスを離すまでチルトが続く。同じキーを押しながら、トラックパッドの2本指スクロールやマウスホイールでも傾けられる（画像を指でずらす向きと同じ。マウスホイールで左右に傾けるときは<code>Shift</code>も押す）。キー操作がうまくいかない場合は、左の「頭尾煽り」「左右煽り」スライダーでも同じ角度を変えられる<br>
       ・<strong>その他</strong>：<code>F</code>=FREEZE ／ <code>P</code>長押し=圧迫 ／ <code>R</code>=基準画像に戻す<br>
       <strong>【スマホ（任意）】</strong><br>
@@ -369,8 +370,8 @@ const I18N = {
     anatomyOn: '🎯 Image Labels: ON',
     anatomyOff: '🎯 Image Labels: OFF',
     langBtn: '🌐 English / JP',
-    bannerReady: 'PROBE READY\nChange region: ← → / Space\nFine position: Shift+arrows / drag body marker\nTilt: on the echo image,\nOption (Mac) / Alt (Win) + drag / scroll',
-    bannerConn: (src) => `${src} Connected\nChange region: ← → / Space\nFine position: Shift+arrows / drag body marker\nTilt: on the echo image,\nOption (Mac) / Alt (Win) + drag / scroll`,
+    bannerReady: 'PROBE READY\nChange region: ← → / Space\nFine position: Shift+arrows / drag body marker\nRotate: Q / E\nTilt: on the echo image,\nOption (Mac) / Alt (Win) + drag / scroll',
+    bannerConn: (src) => `${src} Connected\nChange region: ← → / Space\nFine position: Shift+arrows / drag body marker\nRotate: Q / E\nTilt: on the echo image,\nOption (Mac) / Alt (Win) + drag / scroll`,
     tiltHintHtml: '<strong>Tilt</strong>: on this <strong>echo image</strong>,<br><kbd>Option</kbd> (Mac) / <kbd>Alt</kbd> (Windows) <span class="nowrap">+ drag or scroll</span>',
     tiltDirsHtml: '<strong>Tilting</strong>  ↑ head  ↓ feet  ← patient right  → patient left',
     echoCanvasTitle: 'Tilt: hold Option (Mac) / Alt (Windows) and drag or scroll on this echo image',
@@ -383,6 +384,7 @@ const I18N = {
     ruleHtml: `<strong>[PC Controls]</strong><br>
       • <strong>Change region</strong>: <code>←</code> previous region / <code>→</code> or <code>Space</code> next region<br>
       • <strong>Fine position</strong>: <code>Shift</code>+arrows move 0.5 cm per press (within ±1.5 cm of the selected region) / drag the body marker<br>
+      • <strong>Rotate</strong>: <code>Q</code> = counterclockwise / <code>E</code> = clockwise (as seen on the body marker; 5° per press, repeats while held, up to ±90°)<br>
       • <strong>Tilt</strong>: On the <strong>echo image</strong> on the right, hold <code>Option</code> on Mac or <code>Alt</code> on Windows and drag with the mouse. Up tilts the beam toward the head, down toward the feet, left toward patient right, and right toward patient left. Release the mouse to keep that angle. Once the drag starts, it continues until the mouse is released, even if the key is released first. With the same key held, two-finger trackpad scrolling or the mouse wheel also tilts the beam, in the direction the image would move when scrolled (add <code>Shift</code> to tilt left/right with a mouse wheel). If the key does not work, the Pitch and Roll sliders on the left change the same angles.<br>
       • <strong>Other</strong>: <code>F</code>=FREEZE / hold <code>P</code>=Press / <code>R</code>=return to the reference view<br>
       <strong>[Phone (optional)]</strong><br>
@@ -526,6 +528,32 @@ const ZONE_STARTS = {
   right_flank: [-7.2, 1.8], left_flank: [5.8, 1.0], pelvis_bladder: [0.0, 7.0]
 };
 const ZONE_ADJUST_CM = 1.5;
+// ボディマーク上のプローブ表示位置（286×240の描画座標）。教本の当て方に合わせた模式で、
+// 3Dモデルの座標（エコー画像の計算）とは別。部位の開始位置をここに描き、位置の微調整は
+// 1 cm = 8.5 の同じ縮尺で差分だけ動かす。指定のない部位は従来どおりモデル座標から描く。
+// 教本（ユーザー提供の腹部超音波テキスト）の当て方に合わせる：
+// 心窩部：剣状突起（肋骨弓の頂点）の直下。右季肋部：右肋骨弓のすぐ尾側（右肋骨弓下走査）。
+// 右・左側腹部：肋骨弓の外側端の高さ（右腎は肝の右肋間走査の1〜2肋間下、脾・左腎は左肋間走査）。
+// いずれも心窩部より尾側。下腹部は従来どおり。
+const BODY_MARK_SCALE = 8.5;
+const BODY_MARK_ANCHORS = {
+  epigastric: [138, 82],
+  subcostal_gb: [110, 96],
+  right_flank: [86, 96],
+  left_flank: [192, 89]
+};
+function bodyMarkFromModel(px, py) {
+  const anchor = BODY_MARK_ANCHORS[state.selectedZone];
+  if (!anchor) return [143 + px * BODY_MARK_SCALE, 110 + py * BODY_MARK_SCALE];
+  const [zx, zy] = ZONE_STARTS[state.selectedZone];
+  return [anchor[0] + (px - zx) * BODY_MARK_SCALE, anchor[1] + (py - zy) * BODY_MARK_SCALE];
+}
+function modelFromBodyMark(x, y) {
+  const anchor = BODY_MARK_ANCHORS[state.selectedZone];
+  if (!anchor) return [(x - 143) / BODY_MARK_SCALE, (y - 110) / BODY_MARK_SCALE];
+  const [zx, zy] = ZONE_STARTS[state.selectedZone];
+  return [zx + (x - anchor[0]) / BODY_MARK_SCALE, zy + (y - anchor[1]) / BODY_MARK_SCALE];
+}
 const ZONE_KEY_STEP_CM = 0.5;
 
 function updateZoneUI() {
@@ -586,6 +614,21 @@ function nudgeZonePosition(dx, dy) {
   state.px = p.x;
   state.py = p.y;
   sendPcPosNow();
+}
+// Q / E：プローブの回転（Yaw）。修飾キーと矢印の組み合わせは、OSやブラウザの操作
+// （Macの履歴移動・デスクトップ切替、WindowsのAlt＋←の戻るなど）と重なるため使わない。
+// Q＝反時計回り（ボディマーク上）、E＝時計回り。1回5°、押し続けると連続、±90°まで。
+const YAW_KEY_STEP_DEGREES = 5;
+function handleYawKey(e) {
+  const key = e.key.toLowerCase();
+  if (key !== 'q' && key !== 'e') return false;
+  e.preventDefault();
+  if (state.frozen) toggleFreeze();
+  state.yaw = Math.max(-90, Math.min(90, state.yaw + (key === 'e' ? 1 : -1) * YAW_KEY_STEP_DEGREES));
+  state.source = 'PC KEY';
+  state.manualAngleOverride = true;
+  syncSliders();
+  return true;
 }
 function handleZoneNudgeKey(e) {
   if (!e.shiftKey || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return false;
@@ -793,6 +836,7 @@ window.addEventListener('keydown', e => {
   if (e.target instanceof HTMLInputElement && e.target.type === 'range' &&
       !e.shiftKey && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
   if (handleZoneNudgeKey(e)) return;
+  if (handleYawKey(e)) return;
   if (e.key === 'ArrowRight' || e.code === 'Space') {
     e.preventDefault();
     if (!e.repeat) stepZone(1);
@@ -985,6 +1029,7 @@ function openSchemaWindow() {
     // メイン画面と同じく、Alt/Option・Ctrl・Meta付きのキーは部位選択・位置調整に使わない。
     if (e.altKey || e.ctrlKey || e.metaKey) return;
     if (handleZoneNudgeKey(e)) return;
+    if (handleYawKey(e)) return;
     if (e.key === 'ArrowRight' || e.code === 'Space' || e.key === 'ArrowLeft') {
       e.preventDefault();
       if (!e.repeat) stepZone(e.key === 'ArrowLeft' ? -1 : 1);
@@ -1313,7 +1358,7 @@ function drawAnatomicalBodyAndProbe(bCtx, W, H, px, py, yaw, pitch, roll, isMovi
   bCtx.fillText(state.lang === 'ja' ? 'F (尾)' : 'F (Foot)', 143, 218);
   bCtx.fillText('R', 44, 120); bCtx.fillText('L', 242, 120);
 
-  const probeCx = 143 + px * 8.5, probeCy = 110 + py * 8.5;
+  const [probeCx, probeCy] = bodyMarkFromModel(px, py);
   const frame = computeProbeFrame(yaw, pitch, roll);
 
   const beamDx = frame.bx * 38;
@@ -2864,7 +2909,7 @@ function updateBodyPos(e) {
   const rect = bodyCanvas.getBoundingClientRect();
   const normX = ((e.clientX - rect.left) / rect.width) * 286;
   const normY = ((e.clientY - rect.top) / rect.height) * 240;
-  const p = clampZonePos((normX - 143) / 8.5, (normY - 110) / 8.5);
+  const p = clampZonePos(...modelFromBodyMark(normX, normY));
   state.px = p.x;
   state.py = p.y;
   const now = performance.now();
