@@ -2,11 +2,13 @@
 
 [日本語](README_JA.md) · [Open the web app](https://abdominal-ultrasound-simulator.onrender.com/web)
 
-An educational prototype that renders schematic ultrasound views from a simplified 3D abdominal model at five probe positions. It does not contain patient images, establish normal ultrasound appearances, or provide diagnostic guidance. Organ shapes, scan orientation, liver segment boundaries, and correspondence with reference views have not been validated by a specialist.
+An educational prototype that renders schematic ultrasound views from a simplified 3D abdominal model and schema-based textbook sections at six probe positions. It does not contain patient images, establish normal ultrasound appearances, or provide diagnostic guidance. Organ shapes, scan orientation, liver segment boundaries, and correspondence with reference views have not been validated by a specialist.
 
 ## Use
 
-1. Open the [web app](https://abdominal-ultrasound-simulator.onrender.com/web) on a PC and choose the epigastric, right subcostal, right flank, left flank, or lower abdominal region. Rendering runs in each PC's browser.
+1. Open the [web app](https://abdominal-ultrasound-simulator.onrender.com/web) on a PC and choose the epigastric, right subcostal, right intercostal, right flank, left flank, or lower abdominal region. Rendering runs in each PC's browser.
+   - **Textbook views (liver)**: buttons ① to ⑥ place the probe at the position and angle of the six liver section schemas in an abdominal ultrasound textbook (epigastric transverse, epigastric-to-right-subcostal, right intercostal, and longitudinal aorta and IVC planes). At that position the echo uses the layout of the textbook schema (a schema-based section image); tilting or moving the probe gradually changes to the simplified 3D model. The left panel shows a reference drawing and a findings checklist that marks what is in the current image. Buttons such as “Tilt cranially” switch to the tilts described in the textbook's scanning technique pages (3D model). No textbook figures or photos are included.
+   - **Field of view**: the “View” button switches between a wide field like the textbook's photos (default) and the actual size of an abdominal convex probe (50 mm radius, 70°).
 2. The PC alone supports these controls (no phone needed):
    - **Change region**: `←` / `→` or `Space`
    - **Fine position**: `Shift` plus an arrow key (0.5 cm per press, within ±1.5 cm of the selected region), or drag the body marker

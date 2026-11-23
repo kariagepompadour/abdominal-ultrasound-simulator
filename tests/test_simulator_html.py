@@ -167,7 +167,7 @@ class AnatomyWindowBrowserTest(BrowserTestBase):
         self.press('ArrowRight')
         self.assertEqual(self.state('state.selectedZone'), 'subcostal_gb')
         self.press('Space')
-        self.assertEqual(self.state('state.selectedZone'), 'right_flank')
+        self.assertEqual(self.state('state.selectedZone'), 'right_intercostal')
         self.press('ArrowLeft')
         self.assertEqual(self.state('state.selectedZone'), 'subcostal_gb')
 
@@ -668,7 +668,7 @@ class BodyMarkPositionTest(BrowserTestBase):
         self.assertEqual(self.marker(), [143 + px * 8.5, 110 + py * 8.5])
 
     def test_nudge_moves_marker_by_the_same_scale_and_round_trips(self):
-        for zone in ('epigastric', 'subcostal_gb', 'right_flank', 'left_flank', 'pelvis_bladder'):
+        for zone in ('epigastric', 'subcostal_gb', 'right_intercostal', 'right_flank', 'left_flank', 'pelvis_bladder'):
             with self.subTest(zone=zone):
                 self.select(zone)
                 x0, y0 = self.marker()
@@ -790,3 +790,173 @@ class EchoTiltHintLayoutTest(BrowserTestBase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TextbookViewTest(BrowserTestBase):
+    """Textbook standard sections (liver, textbook pp.10-17).
+
+    At each textbook position and angle the echo follows the textbook section schema (SCHEMA_SCENES);
+    away from it the image moves to the 3D model. Counts and positions come from
+    textbookFindingCounts(): the current image without breathing motion on a 160 x 120 grid.
+    "lateral" is image-left (-) / image-right (+) in cm, "depth" is the distance from the skin in cm.
+    """
+
+    MIN_SAMPLES = 12   # about 0.2 cm2: a 5 mm vessel in cross-section is visible
+
+    def setUp(self):
+        self.open_page()
+
+    def counts(self, view, step='base'):
+        return self.page.evaluate(f"() => {{ selectTextbookView('{view}', '{step}'); return textbookFindingCounts(); }}")
+
+    def visible(self, counts, finding):
+        fids = self.page.evaluate(f"findingFids('{finding}')")
+        return any(counts.get(fid, {}).get('n', 0) >= self.MIN_SAMPLES for fid in fids)
+
+    def assert_layout(self, view, relations):
+        c = self.counts(view)
+        for a, rel, b in relations:
+            with self.subTest(view=view, relation=f'{a} {rel} {b}'):
+                key = 'lateral' if rel == 'left of' else 'depth'
+                self.assertLess(c[a][key], c[b][key])
+
+    def test_six_liver_sections_of_textbook_pages_10_11(self):
+        self.assertEqual(self.page.evaluate("TEXTBOOK_ORDER"),
+                         ['liver_hv', 'liver_pv', 'liver_ic', 'liver_ao_long', 'liver_ivc_s4', 'liver_ivc_rl'])
+        self.assertEqual(self.page.evaluate("TEXTBOOK_ORDER.filter(id => SCHEMA_SCENES[id]).length"), 6)
+
+    def test_every_step_shows_all_of_its_textbook_findings(self):
+        views = self.page.evaluate("TEXTBOOK_ORDER.map(id => [id, TEXTBOOK_VIEWS[id].steps.map(s => [s.id, s.findings])])")
+        for view, steps in views:
+            for step, findings in steps:
+                with self.subTest(view=view, step=step):
+                    counts = self.counts(view, step)
+                    missing = [f for f in findings if not self.visible(counts, f)]
+                    self.assertEqual(missing, [])
+        self.assertEqual(self.errors, [])
+
+    def test_textbook_position_shows_the_schema_and_leaving_it_moves_to_the_3d_model(self):
+        self.page.evaluate("selectTextbookView('liver_ic')")
+        self.assertEqual(self.state('activeSchema().w'), 1)
+        self.page.evaluate("state.yaw += 5")
+        w = self.state('activeSchema().w')
+        self.assertTrue(0 < w < 1, w)
+        self.page.evaluate("state.yaw += 15")
+        self.assertIsNone(self.state('activeSchema()'))
+        # 傾けの段階（教本の走査法の写真）は3Dモデルで描く。
+        self.page.evaluate("selectTextbookView('liver_pv', 'head')")
+        self.assertIsNone(self.state('activeSchema()'))
+
+    def test_hepatic_vein_plane_layout(self):
+        # 教本 p.10「心窩部横走査」：画面左から RHV・MHV・LHV、IVC の左（画面右）に Ao、その背側に椎体。
+        self.assert_layout('liver_hv', [
+            ('rhv', 'left of', 'ivc'), ('mhv', 'left of', 'lhv'), ('ivc', 'left of', 'ao'),
+            ('mhv', 'above', 'ivc'), ('ivc', 'above', 'spine'),
+            ('S8', 'left of', 'S4'), ('S5', 'left of', 'S4'), ('S4', 'left of', 'S3'), ('S4', 'left of', 'S2'),
+            ('S5', 'above', 'S8'), ('S3', 'above', 'S2')])
+
+    def test_portal_branch_plane_layout(self):
+        # 教本 p.10「心窩部横走査〜右肋骨弓下走査」
+        self.assert_layout('liver_pv', [
+            ('rpv', 'left of', 'lpvTrans'), ('lpvTrans', 'left of', 'lpvUmb'), ('ligTeres', 'above', 'lpvUmb'),
+            ('lpvTrans', 'above', 'S1'), ('S1', 'above', 'ivc'), ('ivc', 'left of', 'ao'), ('rhv', 'left of', 'ivc'),
+            ('p3', 'above', 'p2'), ('rpv', 'above', 'rpvPost'), ('S5', 'above', 'S6'), ('S6', 'left of', 'S7')])
+
+    def test_right_intercostal_layout(self):
+        # 教本 p.10「右肋間走査」：画面左＝頭側。IVC は画面下を横に走る。
+        self.assert_layout('liver_ic', [
+            ('S8', 'left of', 'S5'), ('S7', 'left of', 'S6'), ('S8', 'above', 'S7'), ('S5', 'above', 'S6'),
+            ('rhv', 'above', 'ivc'), ('rpv', 'above', 'ivc'), ('p8', 'left of', 'p5'), ('rhv', 'left of', 'gb')])
+        c = self.counts('liver_ic')
+        self.assertGreater(c['ivc']['n'], 500, 'IVC seen along its length')
+
+    def test_aorta_long_layout(self):
+        # 教本 p.11「縦走査（大動脈面）」：画面左＝頭側。
+        self.assert_layout('liver_ao_long', [
+            ('eso', 'left of', 'ce'), ('ce', 'left of', 'sma'), ('cha', 'left of', 'sa'),
+            ('stomach', 'above', 'pancBody'), ('pancBody', 'above', 'sv'), ('ce', 'above', 'ao'), ('S3', 'above', 'S2'),
+            ('ao', 'above', 'spine')])
+
+    def test_ivc_plane_s4_border_layout(self):
+        # 教本 p.11「縦走査（下大静脈面）：S4 と外側区との境界面」
+        self.assert_layout('liver_ivc_s4', [
+            ('lpvUmb', 'left of', 'pv'), ('ligTeres', 'above', 'pv'), ('pha', 'above', 'pv'), ('pv', 'above', 'ivc'),
+            ('S1', 'above', 'ivc'), ('ivc', 'above', 'rra'), ('lhv', 'left of', 'S1'), ('pv', 'left of', 'pancHead')])
+
+    def test_ivc_plane_lobe_border_layout(self):
+        # 教本 p.11「縦走査（下大静脈面）：右葉と左葉の境界面」
+        self.assert_layout('liver_ivc_rl', [
+            ('mhv', 'left of', 'gb'), ('gb', 'above', 'pv'), ('cbd', 'above', 'pv'), ('pv', 'above', 'ivc'),
+            ('pv', 'left of', 'pancHead'), ('S1', 'above', 'ivc')])
+
+    def test_intercostal_probe_avoids_rib_shadows_and_rotation_across_ribs_shows_them(self):
+        for step in ('base', 'post', 'ant'):
+            with self.subTest(step=step):
+                self.assertNotIn('rib', self.counts('liver_ic', step))
+        crossed = self.page.evaluate("() => { selectTextbookView('liver_ic'); state.yaw = -40; return textbookFindingCounts(); }")
+        self.assertGreater(crossed.get('rib', {}).get('n', 0), 100)
+
+    def test_field_of_view_switch(self):
+        self.assertEqual(self.state('[probeGeometryMode, PROBE_RADIUS_CM, PROBE_HALF_ANGLE_DEG]'), ['textbook', 24, 17])
+        self.page.click('#btnFov')
+        self.assertEqual(self.state('[probeGeometryMode, PROBE_RADIUS_CM, PROBE_HALF_ANGLE_DEG]'), ['convex', 5, 35])
+        self.assertIn('コンベックス', self.page.text_content('#btnFov'))
+        self.page.click('#btnFov')
+        self.assertEqual(self.state('probeGeometryMode'), 'textbook')
+        self.assertEqual(self.errors, [])
+
+    def test_panel_checklist_marks_findings_seen_in_the_echo(self):
+        self.page.evaluate("selectTextbookView('liver_pv')")
+        self.page.wait_for_timeout(900)
+        self.assertTrue(self.page.locator('#textbookPanel').is_visible())
+        total = self.page.evaluate("TEXTBOOK_VIEWS.liver_pv.steps[0].findings.length")
+        self.assertEqual(self.page.locator('#textbookFindings li').count(), total)
+        self.assertEqual(self.page.locator('#textbookFindings li.seen').count(), total)
+        self.assertEqual(self.page.text_content('#textbookScore'), f'{total} / {total}')
+        self.assertIn('p.10', self.page.text_content('#textbookPages'))
+        self.assertTrue(self.page.locator('#btnTextbook_liver_pv').evaluate("b => b.classList.contains('active')"))
+        self.page.locator('#textbookSteps button', has_text='頭側へ傾ける').click()
+        self.page.wait_for_timeout(900)
+        self.assertEqual(self.state('[state.pitch, state.textbookStep]'), [35, 'head'])
+        self.assertIn('中肝静脈', self.page.text_content('#textbookFindings li.seen'))
+        self.assertEqual(self.errors, [])
+
+    def test_zone_selection_leaves_the_textbook_view(self):
+        self.page.evaluate("selectTextbookView('liver_hv')")
+        self.page.keyboard.press('ArrowRight')
+        self.page.wait_for_timeout(100)
+        self.assertIsNone(self.state('state.textbookView'))
+        self.assertFalse(self.page.locator('#textbookPanel').is_visible())
+        self.assertEqual(self.state('[state.yaw, state.pitch, state.roll]'), [0, 0, 0])
+
+    def test_reset_returns_to_the_step_pose_and_phone_angles_are_relative_to_it(self):
+        self.page.evaluate("selectTextbookView('liver_pv')")
+        self.page.evaluate("state.yaw = 10; state.pitch = 0; state.roll = -20")
+        self.page.keyboard.press('r')
+        self.page.wait_for_timeout(100)
+        self.assertEqual(self.state('[state.yaw, state.pitch, state.roll]'), [-16, 27, 2])
+        self.page.evaluate("ingestProbePacket('PHONE', {px: 0, py: 0, yaw: 4, pitch: -5, roll: 1, exploring: 1})")
+        self.assertEqual(self.state('[state.yaw, state.pitch, state.roll]'), [-12, 22, 3])
+
+    def test_body_mark_shows_the_textbook_probe_sites(self):
+        def marker(view):
+            return self.page.evaluate(f"() => {{ selectTextbookView('{view}'); return bodyMarkFromModel(state.px, state.py); }}")
+        x, y = marker('liver_hv')
+        self.assertTrue(55 < y < 80 and abs(x - 143) < 10, 'just below the xiphoid')
+        x, y = marker('liver_pv')
+        self.assertLess(x, 143)
+        self.assertGreater(y, 49 + (132 - x) * 50 / 52, 'below the right costal margin')
+        x, y = marker('liver_ic')
+        self.assertLess(x, 85, 'right lateral chest wall')
+        self.assertLess(y, 99)
+        for view in ('liver_ao_long', 'liver_ivc_s4', 'liver_ivc_rl'):
+            with self.subTest(view=view):
+                x, y = marker(view)
+                self.assertTrue(55 < y < 90 and abs(x - 143) < 12, 'epigastrium, longitudinal')
+                self.assertEqual(self.state('state.yaw'), 90)
+
+    def test_english_labels(self):
+        self.page.evaluate("toggleLang(); selectTextbookView('liver_ivc_rl')")
+        self.assertIn('Longitudinal', self.page.text_content('#textbookTitle'))
+        self.assertIn('Textbook views', self.page.text_content('#textbookToolbarLabel'))
+        self.assertEqual(self.errors, [])
