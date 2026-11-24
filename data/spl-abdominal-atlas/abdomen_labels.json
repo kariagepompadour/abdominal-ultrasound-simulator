@@ -1,0 +1,17 @@
+{
+ "dims": [
+  232,
+  171,
+  226
+ ],
+ "voxel_cm": [
+  0.13,
+  0.13,
+  0.105
+ ],
+ "midI": 117,
+ "xiphoidK": 18,
+ "skinJ": 170,
+ "source": "SPL Abdominal Atlas (Talos IF, Jakab M, Kikinis R, 2015), 3D Slicer License; modified (relabelled, rescaled)",
+ "note": "Voxel size: the header states 0.9375 x 0.9375 x 1.5 mm, but vertebral spacing and organ sizes indicate about 1.875 x 1.875 x 3.0 mm; the body (about 41 x 35 cm) was then scaled by 0.7 to a typical adult (aorta about 21 mm). Class boundaries smoothed (Gaussian sigma ~1.0 voxel cranio-caudally, ~0.6 in-plane) and cranio-caudal sampling doubled."
+}

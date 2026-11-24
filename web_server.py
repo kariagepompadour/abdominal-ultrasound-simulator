@@ -136,6 +136,10 @@ class WebHandler(BaseHTTPRequestHandler):
         files = {
             '/web': (ROOT / 'local_simulator.html', 'text/html; charset=utf-8'),
             '/vendor/qrcode.min.js': (ROOT / 'vendor' / 'qrcode.min.js', 'text/javascript; charset=utf-8'),
+            # 実在のCTから作った解剖ラベル（SPL Abdominal Atlas、3D Slicer License。LICENSE-SPL-ABDOMINAL-ATLAS.txt を参照）
+            '/data/spl-abdominal-atlas/abdomen_labels.u8.gz': (ROOT / 'data' / 'spl-abdominal-atlas' / 'abdomen_labels.u8.gz', 'application/octet-stream'),
+            '/data/spl-abdominal-atlas/abdomen_labels.json': (ROOT / 'data' / 'spl-abdominal-atlas' / 'abdomen_labels.json', 'application/json; charset=utf-8'),
+            '/data/spl-abdominal-atlas/LICENSE-SPL-ABDOMINAL-ATLAS.txt': (ROOT / 'data' / 'spl-abdominal-atlas' / 'LICENSE-SPL-ABDOMINAL-ATLAS.txt', 'text/plain; charset=utf-8'),
         }
         if path == '/':
             self.send_response(302)

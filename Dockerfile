@@ -10,6 +10,7 @@ COPY local_simulator.html web_server.py ./
 COPY LICENSE ./LICENSE
 COPY vendor/qrcode.min.js ./vendor/qrcode.min.js
 COPY vendor/LICENSE-qrcodejs ./vendor/LICENSE-qrcodejs
+COPY data/spl-abdominal-atlas/abdomen_labels.u8.gz data/spl-abdominal-atlas/abdomen_labels.json data/spl-abdominal-atlas/LICENSE-SPL-ABDOMINAL-ATLAS.txt ./data/spl-abdominal-atlas/
 
 USER 10001:10001
 EXPOSE 8080

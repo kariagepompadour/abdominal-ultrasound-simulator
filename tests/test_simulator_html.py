@@ -138,6 +138,9 @@ class BrowserTestBase(unittest.TestCase):
         self.context = self.browser.new_context(viewport={'width': width, 'height': height})
         self.page = self.context.new_page()
         self.page.on('pageerror', lambda error: self.errors.append(f'main: {error}'))
+        # 既存のテストは模式モデル（?anatomy=model）で行う。実CTのテストは AtlasAnatomyTest で別に行う。
+        if 'anatomy=' not in query:
+            query = query + '&anatomy=model' if query.startswith('?') else '?anatomy=model' + query
         self.page.goto(self.base + '/web' + query)
         self.page.wait_for_function('typeof state === "object" && state.selectedZone === "epigastric"')
 
@@ -788,8 +791,6 @@ class EchoTiltHintLayoutTest(BrowserTestBase):
         self.assertNotEqual(positions[1], 'none', 'wide panel: caution centered with translateX(-50%)')
 
 
-if __name__ == '__main__':
-    unittest.main()
 
 
 class TextbookViewTest(BrowserTestBase):
@@ -960,3 +961,158 @@ class TextbookViewTest(BrowserTestBase):
         self.assertIn('Longitudinal', self.page.text_content('#textbookTitle'))
         self.assertIn('Textbook views', self.page.text_content('#textbookToolbarLabel'))
         self.assertEqual(self.errors, [])
+
+
+class AtlasAnatomyTest(BrowserTestBase):
+    """Real-CT anatomy (SPL Abdominal Atlas, modified) with the textbook sections.
+
+    The textbook section schema is shown at each textbook position; tilting away from it shows the real CT,
+    where the hand-placed intrahepatic vessels (hepatic veins, portal branches) lie in the textbook planes.
+    """
+
+    MIN_SAMPLES = 12
+
+    def open_atlas(self, query='?anatomy=atlas'):
+        self.open_page(query=query)
+        for _ in range(100):
+            if self.page.evaluate('() => ATLAS.ready || ATLAS.failed'):
+                break
+            self.page.wait_for_timeout(100)
+        self.assertTrue(self.page.evaluate('ATLAS.ready'))
+
+    def visible(self, counts, finding):
+        fids = self.page.evaluate(f"findingFids('{finding}')")
+        return any(counts.get(fid, {}).get('n', 0) >= self.MIN_SAMPLES for fid in fids)
+
+    def counts(self, view, step='base'):
+        return self.page.evaluate(f"() => {{ selectTextbookView('{view}', '{step}'); return textbookFindingCounts(); }}")
+
+    def test_real_ct_is_loaded_and_used_with_a_real_convex_probe(self):
+        self.open_atlas()
+        self.assertTrue(self.page.evaluate('atlasReady()'))
+        self.assertEqual(self.page.evaluate('probeGeometryMode'), 'convex')
+        self.assertEqual(self.page.evaluate('ZONE_STARTS.epigastric'), [-0.5, 3.0])
+        self.page.wait_for_timeout(300)
+        self.assertTrue(self.page.evaluate('realisticEcho'))
+        # 出典とライセンス全文への案内（3D Slicer License：利用者向けの表示）
+        credit = self.page.locator('#dataCredit')
+        self.assertTrue(credit.is_visible())
+        self.assertIn('SPL Abdominal Atlas', credit.inner_text())
+        self.assertEqual(credit.locator('a').get_attribute('href'), 'data/spl-abdominal-atlas/LICENSE-SPL-ABDOMINAL-ATLAS.txt')
+        self.assertEqual(self.errors, [])
+
+    def test_every_textbook_step_shows_all_of_its_findings_on_real_ct(self):
+        self.open_atlas()
+        views = self.page.evaluate("TEXTBOOK_ORDER.map(id => [id, TEXTBOOK_VIEWS[id].steps.map(s => [s.id, s.findings])])")
+        for view, steps in views:
+            for step, findings in steps:
+                with self.subTest(view=view, step=step):
+                    counts = self.counts(view, step)
+                    self.assertEqual([f for f in findings if not self.visible(counts, f)], [])
+
+    def test_tilt_steps_are_drawn_from_the_real_ct_not_the_schema(self):
+        self.open_atlas()
+        for view, step in (('liver_pv', 'head'), ('liver_pv', 'foot'), ('liver_ic', 'post'), ('liver_ic', 'ant')):
+            with self.subTest(view=view, step=step):
+                self.page.evaluate(f"selectTextbookView('{view}', '{step}')")
+                self.assertIsNone(self.page.evaluate('activeSchema()'))
+
+    def test_hepatic_vein_plane_of_the_real_ct_matches_the_textbook_layout(self):
+        # 教本 p.10「心窩部横走査」：シェーマなし（実CTと肝静脈の配置）でも、RHV・MHV・LHV が IVC へ流入し、Ao・椎体が並ぶ。
+        self.open_atlas('?anatomy=atlas&schema=off')
+        c = self.counts('liver_hv')
+        for finding in ('rhv', 'mhv', 'lhv', 'ivc', 'ao', 'spine'):
+            with self.subTest(finding=finding):
+                self.assertTrue(self.visible(c, finding))
+        for a, rel, b in (('rhv', 'left of', 'ivc'), ('mhv', 'left of', 'lhv'), ('ivc', 'left of', 'ao'),
+                          ('mhv', 'above', 'ivc'), ('ivc', 'above', 'spine')):
+            with self.subTest(relation=f'{a} {rel} {b}'):
+                key = 'lateral' if rel == 'left of' else 'depth'
+                self.assertLess(c[a][key], c[b][key])
+
+    def test_leaving_the_textbook_section_keeps_the_real_anatomy_continuous(self):
+        self.open_atlas()
+        self.page.evaluate("selectTextbookView('liver_hv')")
+        self.assertEqual(self.page.evaluate('activeSchema().w'), 1)
+        for pitch in (1, 3, 6, 9, 12):
+            c = self.page.evaluate(f"() => {{ state.pitch = TEXTBOOK_VIEWS.liver_hv.steps[0].pose.pitch + {pitch}; return textbookFindingCounts(); }}")
+            with self.subTest(pitch=pitch):
+                self.assertTrue(self.visible(c, 'ivc'))
+                if pitch <= 6:
+                    self.assertTrue(self.visible(c, 'ao'))
+        self.assertIsNone(self.page.evaluate('activeSchema()'))
+
+    def test_heart_and_contrast_filled_arteries_are_not_drawn_as_bone(self):
+        # 動脈相CTの造影血液（心腔・動脈）は高吸収でも骨ではない（以前は骨と判定して音響陰影が出ていた）。
+        self.open_atlas()
+        n = self.page.evaluate("""() => { const c = {}; for (let x = -3; x <= 4; x += 0.25) for (let y = -1.8; y <= 0; y += 0.3) for (let z = 4; z <= 11; z += 0.25) {
+            const k = atlasClass(x, y, z); c[k] = (c[k] || 0) + 1; } return c; }""")
+        self.assertGreater(n.get('23', 0), 200)
+        self.assertLess(n.get('4', 0), 10)
+
+    def test_pelvis_stays_on_the_schematic_model_outside_the_ct_range(self):
+        self.open_atlas()
+        self.page.evaluate("selectZone('pelvis_bladder')")
+        self.assertFalse(self.page.evaluate('atlasReady()'))
+        self.page.evaluate("selectZone('epigastric')")
+        self.assertTrue(self.page.evaluate('atlasReady()'))
+
+    def test_model_mode_keeps_the_textbook_photo_view_and_model_positions(self):
+        self.open_page(query='?anatomy=model')
+        self.assertEqual(self.page.evaluate('probeGeometryMode'), 'textbook')
+        self.assertFalse(self.page.evaluate('atlasReady()'))
+        self.assertFalse(self.page.locator('#dataCredit').is_visible())
+
+    def test_missing_atlas_data_falls_back_to_the_schematic_model(self):
+        # 読み込みに失敗（file:// で開いた、データがない・壊れている）しても、模式モデルと教本の写真の視野で動く。
+        for status in (404, 'broken'):
+            with self.subTest(status=status):
+                self.errors = []
+                self.context = self.browser.new_context(viewport={'width': 1400, 'height': 900})
+                self.page = self.context.new_page()
+                self.page.on('pageerror', lambda error: self.errors.append(f'main: {error}'))
+                if status == 404:
+                    self.page.route('**/data/spl-abdominal-atlas/**', lambda route: route.fulfill(status=404, body='missing'))
+                else:
+                    self.page.route('**/abdomen_labels.u8.gz', lambda route: route.fulfill(status=200, body=b'not gzip'))
+                self.page.goto(self.base + '/web?anatomy=atlas')
+                for _ in range(100):
+                    if self.page.evaluate('() => ATLAS.ready || ATLAS.failed'):
+                        break
+                    self.page.wait_for_timeout(100)
+                self.page.wait_for_timeout(200)
+                self.assertTrue(self.page.evaluate('ATLAS.failed'))
+                self.assertFalse(self.page.evaluate('atlasReady()'))
+                self.assertEqual(self.page.evaluate('probeGeometryMode'), 'textbook')
+                self.assertEqual(self.page.evaluate('ZONE_STARTS.epigastric'), [-0.6, 1.7])
+                counts = self.page.evaluate("() => { selectTextbookView('liver_hv'); return textbookFindingCounts(); }")
+                self.assertTrue(self.visible(counts, 'ivc'))
+                self.assertEqual(self.errors, [])
+                self.context.close()
+        self.context = self.browser.new_context()
+
+    def test_switching_anatomy_back_and_forth_moves_the_current_probe_with_it(self):
+        # 模式モデル→実CT→模式モデルと切り替えても、表示中の教本断面の位置・角度が、そのときの解剖の定位置に一致する。
+        self.open_atlas()
+        self.page.evaluate("selectTextbookView('liver_ic', 'post')")
+        atlas_view = self.page.evaluate("() => [state.px, state.py, state.yaw, state.pitch, state.roll, ZONE_PROBE_BASES.right_intercostal.depth]")
+        self.page.evaluate("() => { anatomyMode = 'model'; refreshAnatomy(); }")
+        model_view = self.page.evaluate("() => [state.px, state.py, state.yaw, state.pitch, state.roll, ZONE_PROBE_BASES.right_intercostal.depth]")
+        self.assertEqual(model_view, [-6.1, 0.5, 50, -9, 25, 4.5])
+        self.assertEqual(self.page.evaluate("TEXTBOOK_VIEWS.liver_hv.pos"), [-0.6, 0.2])
+        self.page.evaluate("() => { anatomyMode = 'atlas'; refreshAnatomy(); }")
+        self.assertEqual(self.page.evaluate("() => [state.px, state.py, state.yaw, state.pitch, state.roll, ZONE_PROBE_BASES.right_intercostal.depth]"), atlas_view)
+        self.assertEqual(atlas_view, [-6.1, 5.0, 50, -19, 9, 8.0])
+
+    def test_atlas_data_and_license_are_served(self):
+        self.open_atlas()
+        for path, needle in (('/data/spl-abdominal-atlas/abdomen_labels.json', 'voxel_cm'),
+                             ('/data/spl-abdominal-atlas/LICENSE-SPL-ABDOMINAL-ATLAS.txt', 'All or portions of this licensed product')):
+            with self.subTest(path=path):
+                response = self.page.request.get(self.base + path)
+                self.assertEqual(response.status, 200)
+                self.assertIn(needle, response.text())
+
+
+if __name__ == '__main__':
+    unittest.main()
