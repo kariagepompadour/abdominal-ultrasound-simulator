@@ -1001,7 +1001,12 @@ function textbookFindingCounts(visibleOnly = false) {
 }
 // 教本の断面のボタン：臓器（肝・脾・胆道・膵）を選ぶと、その臓器の断面のボタンが並ぶ。
 let textbookOrgan = 'liver', textbookOrganSyncedView = null;
-function selectTextbookOrgan(organ) { textbookOrgan = organ; updateTextbookPanel(); }
+// 臓器のボタンは、その臓器の最初の断面を選んだのと同じにする（すでにその臓器の断面を選んでいるときはそのまま）。
+function selectTextbookOrgan(organ) {
+  textbookOrgan = organ;
+  if (state.textbookView && TEXTBOOK_VIEWS[state.textbookView].organ === organ) { updateTextbookPanel(); return; }
+  selectTextbookView(TEXTBOOK_ORDER.find(id => TEXTBOOK_VIEWS[id].organ === organ));
+}
 function renderTextbookToolbar() {
   const organs = document.getElementById('textbookOrganButtons'), views = document.getElementById('textbookViewButtons');
   if (!organs || !views) return;
