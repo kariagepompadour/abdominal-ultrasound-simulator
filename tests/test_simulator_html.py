@@ -830,8 +830,8 @@ class TextbookViewTest(BrowserTestBase):
         self.assertEqual(self.page.evaluate("TEXTBOOK_ORDER.filter(id => SCHEMA_SCENES[id]).length"), 16)
         organs = self.page.evaluate("Object.fromEntries(TEXTBOOK_ORGANS.map(o => [o.id, TEXTBOOK_ORDER.filter(id => TEXTBOOK_VIEWS[id].organ === o.id).length]))")
         self.assertEqual(organs, {'liver': 6, 'spleen': 2, 'biliary': 4, 'pancreas': 4})
-        pages = self.page.evaluate("TEXTBOOK_ORDER.slice(6).map(id => TEXTBOOK_VIEWS[id].pages.ja)")
-        self.assertTrue(all(p.startswith('教本 p.') and '断層模式図' in p for p in pages), pages)
+        # 教本名を出さないので、教本のページも画面には出さない（ソースのコメントにだけ残す）
+        self.assertEqual(self.page.evaluate("TEXTBOOK_ORDER.filter(id => 'pages' in TEXTBOOK_VIEWS[id])"), [])
         missing = self.page.evaluate("TEXTBOOK_ORDER.flatMap(id => TEXTBOOK_VIEWS[id].steps.flatMap(s => s.findings.filter(f => !FINDING_DEFS[f])))")
         self.assertEqual(missing, [])
 
@@ -843,12 +843,11 @@ class TextbookViewTest(BrowserTestBase):
         self.page.click('#btnTextbook_pan_body')
         self.assertEqual(self.state('[state.textbookView, state.selectedZone, activeSchema().id, activeSchema().w]'), ['pan_body', 'epigastric', 'pan_body', 1])
         self.assertTrue(self.page.locator('#btnOrgan_pancreas').evaluate("b => b.classList.contains('active')"))
-        self.assertIn('p.73', self.page.text_content('#textbookPages'))
         self.page.click('#btnOrgan_spleen')
         self.page.click('#btnTextbook_spl_ic')
         self.assertEqual(self.state('[state.textbookView, state.selectedZone]'), ['spl_ic', 'left_flank'])
         self.page.click('#btnLang')
-        self.assertIn('Textbook views', self.page.text_content('#textbookToolbarLabel'))
+        self.assertIn('Standard views', self.page.text_content('#textbookToolbarLabel'))
         self.assertEqual(self.page.text_content('#btnOrgan_spleen'), 'Spleen')
         self.assertEqual(self.errors, [])
 
@@ -932,20 +931,45 @@ class TextbookViewTest(BrowserTestBase):
         self.assertEqual(self.state('probeGeometryMode'), 'textbook')
         self.assertEqual(self.errors, [])
 
-    def test_panel_checklist_marks_findings_seen_in_the_echo(self):
+    def test_textbook_notes_steps_schema_and_findings_are_in_the_anatomy_window(self):
         self.page.evaluate("selectTextbookView('liver_pv')")
         self.page.wait_for_timeout(900)
-        self.assertTrue(self.page.locator('#textbookPanel').is_visible())
         total = self.page.evaluate("TEXTBOOK_VIEWS.liver_pv.steps[0].findings.length")
-        self.assertEqual(self.page.locator('#textbookFindings li').count(), total)
-        self.assertEqual(self.page.locator('#textbookFindings li.seen').count(), total)
-        self.assertEqual(self.page.text_content('#textbookScore'), f'{total} / {total}')
-        self.assertIn('p.10', self.page.text_content('#textbookPages'))
+        # メイン画面：左の列は通常どおり（操作案内とボディマークの位置は変わらない）、ツールバーに所見の数と段階のボタン
+        self.assertTrue(self.page.locator('#modeBanner').is_visible())
+        self.assertEqual(self.page.locator('#textbookPanel').count(), 0)
+        legend = self.page.text_content('#organLegend')   # エコーの下の帯：所見の数と、傾けの段階を選べる場所
+        self.assertIn(f'この断面の所見 {total} / {total}', legend)
+        self.assertNotIn('教本', legend)   # 教本名を出さないので、教本のページも公開画面には出さない
+        self.assertIn('解剖シェーマを別画面で見る', legend)
         self.assertTrue(self.page.locator('#btnTextbook_liver_pv').evaluate("b => b.classList.contains('active')"))
-        self.page.locator('#textbookSteps button', has_text='頭側へ傾ける').click()
+        # 別画面：教本の断面タブに説明・見本図・所見の一覧
+        with self.page.expect_popup() as info:
+            self.page.click('#btnSchemata')
+        popup = info.value
+        popup.wait_for_timeout(600)
+        self.assertTrue(popup.locator('button[data-kind="textbook"]').evaluate("b => b.classList.contains('active')"))
+        self.assertNotIn('教本', popup.locator('body').inner_text())
+        self.assertIn('門脈', popup.text_content('#tbNote'))
+        self.assertEqual(popup.locator('#tbFindings li').count(), total)
+        self.assertEqual(popup.locator('#tbFindings li.seen').count(), total)
+        self.assertEqual(popup.text_content('#tbScore'), f'✓ {total} / {total}')
+        self.assertFalse(popup.locator('#diagramGrid').is_visible())
+        # 段階のボタンは別画面からも押せる
+        popup.locator('#tbSteps button', has_text='頭側へ傾ける').click()
         self.page.wait_for_timeout(900)
         self.assertEqual(self.state('[state.pitch, state.textbookStep]'), [35, 'head'])
-        self.assertIn('中肝静脈', self.page.text_content('#textbookFindings li.seen'))
+        popup.wait_for_timeout(300)
+        self.assertIn('中肝静脈', popup.text_content('#tbFindings'))
+        # 別の断面を選ぶと、別画面もその断面に変わる
+        self.page.click('#btnOrgan_pancreas')
+        self.page.click('#btnTextbook_pan_body')
+        popup.wait_for_timeout(500)
+        self.assertIn('膵-3', popup.text_content('#tbTitle'))
+        popup.locator('button[data-kind="section"]').click()
+        popup.wait_for_timeout(300)
+        self.assertTrue(popup.locator('#diagramGrid').is_visible())
+        self.assertFalse(popup.locator('#textbookDetail').is_visible())
         self.assertEqual(self.errors, [])
 
     def test_zone_selection_leaves_the_textbook_view(self):
@@ -953,7 +977,6 @@ class TextbookViewTest(BrowserTestBase):
         self.page.keyboard.press('ArrowRight')
         self.page.wait_for_timeout(100)
         self.assertIsNone(self.state('state.textbookView'))
-        self.assertFalse(self.page.locator('#textbookPanel').is_visible())
         self.assertEqual(self.state('[state.yaw, state.pitch, state.roll]'), [0, 0, 0])
 
     def test_reset_returns_to_the_step_pose_and_phone_angles_are_relative_to_it(self):
@@ -984,8 +1007,8 @@ class TextbookViewTest(BrowserTestBase):
 
     def test_english_labels(self):
         self.page.evaluate("toggleLang(); selectTextbookView('liver_ivc_rl')")
-        self.assertIn('Longitudinal', self.page.text_content('#textbookTitle'))
-        self.assertIn('Textbook views', self.page.text_content('#textbookToolbarLabel'))
+        self.assertIn('Long.', self.page.text_content('#btnTextbook_liver_ivc_rl'))
+        self.assertIn('Standard views', self.page.text_content('#textbookToolbarLabel'))
         self.assertEqual(self.errors, [])
 
 

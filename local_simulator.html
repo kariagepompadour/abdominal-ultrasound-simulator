@@ -20,20 +20,6 @@
   .textbook-organs { display: inline-flex; gap: 3px; margin-right: 8px; padding-right: 8px; border-right: 1px solid #30363d; }
   .textbook-organs button.active { background: #6e40c9; border-color: #a371f7; color: #fff; }
   .textbook-views { display: inline-flex; flex-wrap: wrap; gap: 4px; }
-  .textbook-panel { background: #0d1117; border: 1px solid #8957e5; border-radius: 6px; padding: 7px 8px; font-size: 11px; flex-shrink: 0; }
-  .textbook-head { display: flex; justify-content: space-between; gap: 6px; color: #d2a8ff; font-size: 12px; }
-  .textbook-score { color: #3fb950; font-weight: bold; white-space: nowrap; }
-  .textbook-pages { color: #8b949e; margin: 2px 0 5px; }
-  .textbook-steps { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 5px; }
-  .textbook-steps button { font-size: 11px; padding: 3px 7px; }
-  .textbook-note { color: #c9d1d9; line-height: 1.45; margin-bottom: 5px; }
-  #textbookSchemaCanvas { display: block; width: 100%; height: auto; border-radius: 4px; }
-  .textbook-caption { color: #8b949e; font-size: 10px; margin: 2px 0 5px; }
-  .textbook-findings-title { color: #79c0ff; font-weight: bold; margin-bottom: 3px; }
-  .textbook-findings { list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 1px 8px; }
-  .textbook-findings li { color: #8b949e; line-height: 1.4; }
-  .textbook-findings li.seen { color: #e6edf3; }
-  .textbook-findings .finding-mark { display: inline-block; width: 1.2em; color: #3fb950; font-weight: bold; }
   button { background: #21262d; color: #c9d1d9; border: 1px solid #30363d; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; }
   button:hover { background: #30363d; border-color: #8b949e; }
   button.active { background: #1f6feb; color: #fff; border-color: #388bfd; }
@@ -149,7 +135,7 @@
         <button id="btnPcPress" onmousedown="setPcPress(true)" onmouseup="setPcPress(false)" onmouseleave="setPcPress(false)">👇 圧迫 (P)</button>
         <button id="btnStone" onclick="toggleStone()">胆石: OFF</button>
         <button id="btnAnatomy" class="anatomy-btn active" onclick="toggleAnatomy()">🎯 画像内ラベル: ON</button>
-        <button id="btnFov" onclick="toggleProbeGeometry()">視野：教本の写真</button>
+        <button id="btnFov" onclick="toggleProbeGeometry()">視野：台形</button>
         <button id="btnSchemata" onclick="openSchemaWindow()">📚 解剖シェーマを別画面で見る</button>
         <button id="btnLang" class="lang-btn" onclick="toggleLang()">🌐 日本語 / EN</button>
       </div>
@@ -163,7 +149,7 @@
       <button id="btnPreLtFlank" onclick="selectZone('left_flank')">左側腹部</button>
     </div>
     <div class="zone-toolbar textbook-toolbar" role="group" aria-labelledby="textbookToolbarLabel">
-      <span id="textbookToolbarLabel" class="zone-toolbar-label">教本の断面</span>
+      <span id="textbookToolbarLabel" class="zone-toolbar-label">標準断面</span>
       <span id="textbookOrganButtons" class="textbook-organs"></span>
       <span id="textbookViewButtons" class="textbook-views"></span>
     </div>
@@ -172,16 +158,6 @@
     <div class="left-panel">
       <div id="modeBanner" class="mode-banner">PROBE READY<br>部位の切替：← → / Space<br>位置の微調整：Shift＋矢印<br>／ボディマークをドラッグ<br>回転：Q / E<br>チルト：エコー画像の上で<br>Option(Mac) / Alt(Win)＋ドラッグ／スクロール</div>
       <button id="btnMobileQR" class="dev-btn" onclick="openQRModal()">📱 スマホ接続 (QR)</button>
-      <section id="textbookPanel" class="textbook-panel" hidden aria-live="polite">
-        <div class="textbook-head"><strong id="textbookTitle"></strong><span id="textbookScore" class="textbook-score"></span></div>
-        <div id="textbookPages" class="textbook-pages"></div>
-        <div id="textbookSteps" class="textbook-steps"></div>
-        <p id="textbookNote" class="textbook-note"></p>
-        <canvas id="textbookSchemaCanvas" width="300" height="210" aria-label="教本の断層模式図を描き直した見本図"></canvas>
-        <div id="textbookSchemaCaption" class="textbook-caption"></div>
-        <div id="textbookFindingsTitle" class="textbook-findings-title"></div>
-        <ul id="textbookFindings" class="textbook-findings"></ul>
-      </section>
       <div class="body-panel">
         <div id="bodyOverlayTitle" class="body-overlay-title">ボディマーク（ドラッグで位置移動）</div>
         <div class="body-stage">
@@ -762,7 +738,7 @@ const TEXTBOOK_VIEWS = {
   liver_hv: {
     ja: '① 心窩部横走査：肝静脈面', en: '① Epigastric transverse: hepatic veins',
     short: { ja: '① 肝静脈面', en: '① Hepatic veins' },
-    pages: { ja: '教本 p.10（断層模式図）・p.12（走査法）', en: 'Textbook p.10 (section schema), p.12 (technique)' },
+    // 参考：教本 p.10（断層模式図）・p.12（走査法）
     zone: 'epigastric', pos: [-0.6, 0.2], bodyMark: [140, 64],
     steps: [
       { id: 'base', ja: '基本', en: 'Basic', pose: { yaw: 0, pitch: 23, roll: 0 },
@@ -774,7 +750,7 @@ const TEXTBOOK_VIEWS = {
   liver_pv: {
     ja: '② 心窩部横〜右肋骨弓下走査：門脈枝面', en: '② Epigastric to right subcostal: portal branches',
     short: { ja: '② 門脈枝面', en: '② Portal branches' },
-    pages: { ja: '教本 p.10（断層模式図）・p.12–13（走査法）', en: 'Textbook p.10 (section schema), pp.12–13 (technique)' },
+    // 参考：教本 p.10（断層模式図）・p.12–13（走査法）
     zone: 'subcostal_gb', pos: [-1.6, 2.4], bodyMark: [112, 80],
     steps: [
       { id: 'base', ja: '基本', en: 'Basic', pose: { yaw: -16, pitch: 27, roll: 2 },
@@ -794,7 +770,7 @@ const TEXTBOOK_VIEWS = {
   liver_ic: {
     ja: '③ 右肋間走査', en: '③ Right intercostal',
     short: { ja: '③ 右肋間', en: '③ Rt. intercostal' },
-    pages: { ja: '教本 p.10（断層模式図）・p.14–15（走査法）', en: 'Textbook p.10 (section schema), pp.14–15 (technique)' },
+    // 参考：教本 p.10（断層模式図）・p.14–15（走査法）
     zone: 'right_intercostal', pos: [-6.1, 0.5], bodyMark: [74, 82],
     steps: [
       { id: 'base', ja: '基本', en: 'Basic', pose: { yaw: 50, pitch: 0, roll: 16 },
@@ -815,7 +791,7 @@ const TEXTBOOK_VIEWS = {
 TEXTBOOK_VIEWS.liver_ao_long = {
   ja: '④ 縦走査：大動脈面', en: '④ Longitudinal: aorta plane',
   short: { ja: '④ 縦・大動脈面', en: '④ Long. aorta' },
-  pages: { ja: '教本 p.11（断層模式図）・p.16（走査法）', en: 'Textbook p.11 (section schema), p.16 (technique)' },
+  // 参考：教本 p.11（断層模式図）・p.16（走査法）
   zone: 'epigastric', pos: [1.2, 0.5], bodyMark: [147, 74],
   steps: [
     { id: 'base', ja: '基本', en: 'Basic', pose: { yaw: 90, pitch: 0, roll: 0 },
@@ -827,7 +803,7 @@ TEXTBOOK_VIEWS.liver_ao_long = {
 TEXTBOOK_VIEWS.liver_ivc_s4 = {
   ja: '⑤ 縦走査：下大静脈面（S4と外側区の境界）', en: '⑤ Longitudinal IVC plane: S4 / lateral segment border',
   short: { ja: '⑤ 縦・S4境界', en: '⑤ Long. S4 border' },
-  pages: { ja: '教本 p.11（断層模式図）・p.17（走査法）', en: 'Textbook p.11 (section schema), p.17 (technique)' },
+  // 参考：教本 p.11（断層模式図）・p.17（走査法）
   zone: 'epigastric', pos: [0.4, 0.5], bodyMark: [141, 74],
   steps: [
     { id: 'base', ja: '基本', en: 'Basic', pose: { yaw: 90, pitch: 0, roll: 10 },
@@ -839,7 +815,7 @@ TEXTBOOK_VIEWS.liver_ivc_s4 = {
 TEXTBOOK_VIEWS.liver_ivc_rl = {
   ja: '⑥ 縦走査：下大静脈面（右葉と左葉の境界）', en: '⑥ Longitudinal IVC plane: right / left lobe border',
   short: { ja: '⑥ 縦・右葉左葉', en: '⑥ Long. lobe border' },
-  pages: { ja: '教本 p.11（断層模式図）', en: 'Textbook p.11 (section schema)' },
+  // 参考：教本 p.11（断層模式図）
   zone: 'epigastric', pos: [-1.6, 0.5], bodyMark: [136, 74],
   steps: [
     { id: 'base', ja: '基本', en: 'Basic', pose: { yaw: 90, pitch: 0, roll: 0 },
@@ -853,7 +829,7 @@ Object.assign(TEXTBOOK_VIEWS, {
   spl_ic: {
     organ: 'spleen', ja: '脾-1 左肋間走査', en: 'Spleen 1: left intercostal',
     short: { ja: '脾1 左肋間', en: 'Sp1 Lt. intercostal' },
-    pages: { ja: '教本 p.43（断層模式図）', en: 'Textbook p.43 (section schema)' },
+    // 参考：教本 p.43（断層模式図）
     zone: 'left_flank', pos: [5.8, 1.0], bodyMark: [212, 82],
     steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: -50, pitch: 0, roll: 0 },
       noteJa: '左の第9〜10肋間に、前〜後腋窩線のあたりで肋骨に沿って当てる（仰臥位か右側臥位）。三日月形の脾が見え、脾門で脾静脈、深部に左腎の上極（中心部エコー）。前方に胃底部のガス、頭側に肺のガス。',
@@ -863,7 +839,7 @@ Object.assign(TEXTBOOK_VIEWS, {
   spl_long: {
     organ: 'spleen', ja: '脾-2 縦走査', en: 'Spleen 2: longitudinal',
     short: { ja: '脾2 縦', en: 'Sp2 Long.' },
-    pages: { ja: '教本 p.43（断層模式図）', en: 'Textbook p.43 (section schema)' },
+    // 参考：教本 p.43（断層模式図）
     zone: 'left_flank', pos: [5.8, 1.0], bodyMark: [214, 96],
     steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: 90, pitch: 0, roll: 0 },
       noteJa: '左の側腹部で縦に当てる（画面左が頭側）。脾の尾側に左腎が並び、肋骨が縦の音響陰影をつくる。頭側は肺のガス。',
@@ -873,7 +849,7 @@ Object.assign(TEXTBOOK_VIEWS, {
   bil_ep: {
     organ: 'biliary', ja: '胆-1 心窩部横〜右肋骨弓下走査', en: 'Biliary 1: epigastric to right subcostal',
     short: { ja: '胆1 心窩部〜肋弓下', en: 'Bi1 Epigastric–subcostal' },
-    pages: { ja: '教本 p.52（断層模式図）', en: 'Textbook p.52 (section schema)' },
+    // 参考：教本 p.52（断層模式図）
     zone: 'subcostal_gb', pos: [-1.6, 2.4], bodyMark: [112, 80],
     steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: -16, pitch: 27, roll: 2 },
       noteJa: '心窩部から右肋骨弓に沿って斜めに当てる。門脈右枝・左枝と臍部（先端に肝円索）に沿って肝内胆管が走り、胆嚢が見える。肝静脈3本と下大静脈。',
@@ -883,7 +859,7 @@ Object.assign(TEXTBOOK_VIEWS, {
   bil_sc: {
     organ: 'biliary', ja: '胆-2 右肋骨弓下走査', en: 'Biliary 2: right subcostal',
     short: { ja: '胆2 右肋弓下', en: 'Bi2 Rt. subcostal' },
-    pages: { ja: '教本 p.52（断層模式図）', en: 'Textbook p.52 (section schema)' },
+    // 参考：教本 p.52（断層模式図）
     zone: 'subcostal_gb', pos: [-3.0, 3.0], bodyMark: [108, 88],
     steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: -25, pitch: 15, roll: 0 },
       noteJa: '右肋骨弓の下に斜めに当てる。胆嚢の長軸、門脈左枝（横行部・臍部）、右腎と右腎静脈・右腎動脈、下大静脈・大動脈、十二指腸下行部と膵体部・脾静脈（胃は画面の端の外）。',
@@ -893,7 +869,7 @@ Object.assign(TEXTBOOK_VIEWS, {
   bil_long: {
     organ: 'biliary', ja: '胆-3 縦走査（胆嚢・総胆管）', en: 'Biliary 3: longitudinal (GB and CBD)',
     short: { ja: '胆3 縦', en: 'Bi3 Long.' },
-    pages: { ja: '教本 p.53（断層模式図）', en: 'Textbook p.53 (section schema)' },
+    // 参考：教本 p.53（断層模式図）
     zone: 'subcostal_gb', pos: [-3.0, 3.0], bodyMark: [118, 92],
     steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: 90, pitch: 0, roll: 0 },
       noteJa: '右季肋部で縦に当てる（画面左が頭側）。胆嚢の背側で、総胆管が門脈の腹側を通って膵頭部へ向かう。中肝静脈が下大静脈へ流入し、その腹側に尾状葉(S1)。',
@@ -903,7 +879,7 @@ Object.assign(TEXTBOOK_VIEWS, {
   bil_ic: {
     organ: 'biliary', ja: '胆-4 右肋間走査', en: 'Biliary 4: right intercostal',
     short: { ja: '胆4 右肋間', en: 'Bi4 Rt. intercostal' },
-    pages: { ja: '教本 p.53（断層模式図）', en: 'Textbook p.53 (section schema)' },
+    // 参考：教本 p.53（断層模式図）
     zone: 'right_intercostal', pos: [-6.1, 0.5], bodyMark: [74, 82],
     steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: 50, pitch: 0, roll: 16 },
       noteJa: '右肋間走査。門脈右枝から前区域枝（S8・S5）と後区域枝が分かれ、それぞれに肝内胆管が並走する。右肝静脈、下大静脈、画面右に胆嚢と横行結腸。',
@@ -913,7 +889,7 @@ Object.assign(TEXTBOOK_VIEWS, {
   pan_head: {
     organ: 'pancreas', ja: '膵-1 膵頭部 横走査', en: 'Pancreas 1: head, transverse',
     short: { ja: '膵1 頭部・横', en: 'Pa1 Head trans.' },
-    pages: { ja: '教本 p.72（断層模式図）', en: 'Textbook p.72 (section schema)' },
+    // 参考：教本 p.72（断層模式図）
     zone: 'epigastric', pos: [-0.5, 3.0], bodyMark: [138, 84],
     steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: 0, pitch: 0, roll: 0 },
       noteJa: '心窩部の横走査。膵頭部の中に主膵管と総胆管、前縁に胃十二指腸動脈、右に十二指腸下行部。上腸間膜静脈・脾静脈、上腸間膜動脈、大動脈と下大静脈、左腎静脈・左腎動脈、両腎。',
@@ -923,7 +899,7 @@ Object.assign(TEXTBOOK_VIEWS, {
   pan_headlong: {
     organ: 'pancreas', ja: '膵-2 膵頭部 縦走査（下大静脈面）', en: 'Pancreas 2: head, longitudinal (IVC plane)',
     short: { ja: '膵2 頭部・縦', en: 'Pa2 Head long.' },
-    pages: { ja: '教本 p.72（断層模式図）', en: 'Textbook p.72 (section schema)' },
+    // 参考：教本 p.72（断層模式図）
     zone: 'epigastric', pos: [-1.6, 3.0], bodyMark: [132, 90],
     steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: 90, pitch: 0, roll: 0 },
       noteJa: '下大静脈の上で縦に当てる（画面左が頭側）。下大静脈の腹側を門脈〜上腸間膜静脈が走り、総胆管が膵頭部の背側へ入る。総肝動脈、胆嚢、十二指腸球部、尾状葉(S1)。',
@@ -933,7 +909,7 @@ Object.assign(TEXTBOOK_VIEWS, {
   pan_body: {
     organ: 'pancreas', ja: '膵-3 膵体部〜尾部 横走査', en: 'Pancreas 3: body to tail, transverse',
     short: { ja: '膵3 体尾部・横', en: 'Pa3 Body–tail trans.' },
-    pages: { ja: '教本 p.73（断層模式図）', en: 'Textbook p.73 (section schema)' },
+    // 参考：教本 p.73（断層模式図）
     zone: 'epigastric', pos: [0.5, 2.5], bodyMark: [143, 80],
     steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: 0, pitch: 10, roll: 0 },
       noteJa: '心窩部の横走査をやや頭側へ。膵体部〜尾部の中央に主膵管、背側を脾静脈が尾部へ走る。腹腔動脈から脾動脈・固有肝動脈、上腸間膜動脈と大動脈。腹側に胃、肝左葉と門脈左枝・肝円索。',
@@ -943,7 +919,7 @@ Object.assign(TEXTBOOK_VIEWS, {
   pan_bodylong: {
     organ: 'pancreas', ja: '膵-4 膵体部 縦走査（大動脈面）', en: 'Pancreas 4: body, longitudinal (aorta plane)',
     short: { ja: '膵4 体部・縦', en: 'Pa4 Body long.' },
-    pages: { ja: '教本 p.73（断層模式図）', en: 'Textbook p.73 (section schema)' },
+    // 参考：教本 p.73（断層模式図）
     zone: 'epigastric', pos: [1.2, 2.5], bodyMark: [147, 86],
     steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: 90, pitch: 0, roll: 0 },
       noteJa: '大動脈の上で縦に当てる（画面左が頭側）。肝左葉と胃の背側に膵体部（中に主膵管）、その背側に脾静脈。大動脈から腹腔動脈（総肝動脈・脾動脈）と上腸間膜動脈が出て、その間を左腎静脈が通る。',
@@ -971,7 +947,7 @@ function applyTextbookPose(step) {
   state.basePose = { ...step.pose };
   state.yaw = step.pose.yaw; state.pitch = step.pose.pitch; state.roll = step.pose.roll;
   state.manualAngleOverride = true;
-  state.source = 'TEXTBOOK';
+  state.source = 'STANDARD VIEW';
   syncSliders();
 }
 function selectTextbookView(id, stepId) {
@@ -1047,58 +1023,18 @@ function renderTextbookToolbar() {
     return b;
   }));
 }
+// 教本の断面の説明・段階（傾け）のボタン・見本図・所見の一覧は「解剖シェーマ（別画面）」の「教本の断面」タブに出す
+// （メイン画面の左の列やツールバーを教本の断面のときも変えないため）。所見の数はエコーの下の帯に出る。
 function updateTextbookPanel() {
-  const ja = state.lang === 'ja';
   renderTextbookToolbar();
-  setTextSafe('textbookToolbarLabel', ja ? '教本の断面' : 'Textbook views');
-  const panel = document.getElementById('textbookPanel');
-  if (!panel) return;
-  const view = state.textbookView && TEXTBOOK_VIEWS[state.textbookView];
-  panel.hidden = !view;
-  // 教本の断面では操作案内を畳み、見本図・所見・ボディマークを1画面に収める。
-  const banner = document.getElementById('modeBanner');
-  if (banner) banner.hidden = !!view;
-  if (!view) return;
-  const step = currentTextbookStep();
-  setTextSafe('textbookTitle', ja ? view.ja : view.en);
-  setTextSafe('textbookPages', ja ? view.pages.ja : view.pages.en);
-  setTextSafe('textbookNote', ja ? step.noteJa : step.noteEn);
-  const steps = document.getElementById('textbookSteps');
-  steps.replaceChildren(...view.steps.map(item => {
-    const button = document.createElement('button');
-    button.textContent = ja ? item.ja : item.en;
-    button.classList.toggle('active', item.id === step.id);
-    button.addEventListener('click', () => selectTextbookStep(item.id));
-    return button;
-  }));
-  steps.hidden = view.steps.length < 2;
-  const list = document.getElementById('textbookFindings');
-  list.replaceChildren(...step.findings.map(id => {
-    const li = document.createElement('li');
-    li.dataset.finding = id;
-    const mark = document.createElement('span'); mark.className = 'finding-mark';
-    const label = document.createElement('span'); label.textContent = ja ? FINDING_DEFS[id].ja : FINDING_DEFS[id].en;
-    li.append(mark, label);
-    return li;
-  }));
-  setTextSafe('textbookFindingsTitle', ja ? '教本の所見（今の画面に出ているものに ✓）' : 'Textbook findings (✓ = in the current image)');
-  setTextSafe('textbookSchemaCaption', ja ? '見本：教本の断層模式図の構造と位置関係を独自に描き直した図' : 'Reference: original redraw of the textbook schema (structures and layout)');
-  drawTextbookSchema(state.textbookView, document.getElementById('textbookSchemaCanvas'));
-  refreshTextbookChecklist();
+  setTextSafe('textbookToolbarLabel', state.lang === 'ja' ? '標準断面' : 'Standard views');
 }
-function refreshTextbookChecklist() {
+// 今の教本の段階の所見と、それぞれが今のエコーに出ているか（直近 1.5 秒）。
+function textbookFindingStates() {
   const step = currentTextbookStep();
-  const list = document.getElementById('textbookFindings');
-  if (!step || !list) return;
+  if (!step) return [];
   const now = performance.now();
-  let shown = 0;
-  list.querySelectorAll('li').forEach(li => {
-    const seen = findingFids(li.dataset.finding).some(fid => now - (findingSeenAt.get(fid) || -1e9) < 1500);
-    li.classList.toggle('seen', seen);
-    li.querySelector('.finding-mark').textContent = seen ? '✓' : '・';
-    if (seen) shown++;
-  });
-  setTextSafe('textbookScore', `${shown} / ${step.findings.length}`);
+  return step.findings.map(id => ({ id, seen: findingFids(id).some(fid => now - (findingSeenAt.get(fid) || -1e9) < 1500) }));
 }
 
 // 見本図：シェーマ準拠の断面像と同じ構造の配置（SCHEMA_SCENES）を、このアプリ独自の平塗りの色で描く。
@@ -1117,11 +1053,12 @@ function drawTextbookSchema(id, canvas) {
   const boxes = scene.prims.filter(p => p.t !== 'bone').map(p => p.box);
   const x0 = Math.min(...boxes.map(b => b[0])), y0 = Math.min(...boxes.map(b => b[1]));
   const x1 = Math.max(...boxes.map(b => b[2])), y1 = Math.max(...boxes.map(b => b[3]));
-  const k = Math.min((W - 16) / (x1 - x0), (H - 26) / (y1 - y0));
-  const ox = (W - (x1 - x0) * k) / 2 - x0 * k, oy = 18 - y0 * k;
+  const hdr = Math.max(14, Math.round(W / 24));   // 上の向きの表示の高さ（大きい別画面では文字も大きく）
+  const k = Math.min((W - 16) / (x1 - x0), (H - hdr - 12) / (y1 - y0));
+  const ox = (W - (x1 - x0) * k) / 2 - x0 * k, oy = hdr + 4 - y0 * k;
   const P = ([x, y]) => [ox + x * k, oy + y * k];
   g.save();
-  g.beginPath(); g.rect(0, 14, W, H - 14); g.clip();
+  g.beginPath(); g.rect(0, hdr, W, H - hdr); g.clip();
   // 奥（リストの後ろ）から順に描く。
   [...scene.prims].reverse().forEach(p => {
     const color = SCHEMA_DRAW_COLORS[p.kind] || SCHEMA_DRAW_COLORS.bone;
@@ -1169,14 +1106,14 @@ function drawTextbookSchema(id, canvas) {
   g.fillStyle = '#d2a8ff';
   Object.entries(sums).forEach(([seg, a]) => { const [x, y] = P([a[0] / a[2], a[1] / a[2]]); g.fillText(seg, x, y); });
   g.restore();
-  g.fillStyle = '#8b949e'; g.font = '9px sans-serif'; g.textAlign = 'left';
+  g.fillStyle = '#8b949e'; g.font = `${Math.max(9, Math.round(hdr * 0.6))}px sans-serif`; g.textAlign = 'left';
   const orient = scene.orient || (id === 'liver_hv' || id === 'liver_pv' ? 'trans' : 'long');
   const ends = { trans: [ja ? '← 患者右' : '← Patient R', ja ? '患者左 →' : 'Patient L →'],
     long: [ja ? '← 頭側' : '← Head', ja ? '尾側 →' : 'Foot →'],
     leftIc: [ja ? '← 腹側' : '← Anterior', ja ? '背側・頭側 →' : 'Posterior / head →'] }[orient];
-  g.fillText(ends[0], 6, 11);
+  g.fillText(ends[0], 6, Math.round(hdr * 0.75));
   g.textAlign = 'right';
-  g.fillText(ends[1], W - 6, 11);
+  g.fillText(ends[1], W - 6, Math.round(hdr * 0.75));
 }
 
 // ============================================================
@@ -1758,7 +1695,7 @@ function updateZoneUI() {
 function updateViewStatus() {
   const status = document.getElementById('viewStatus');
   const base = state.textbookView
-    ? (state.lang === 'ja' ? '模式エコー：教本の断層模式図に準拠' : 'Schematic echo based on the textbook schema')
+    ? (state.lang === 'ja' ? '模式エコー：標準断面の模式図に準拠' : 'Schematic echo based on the standard-view schema')
     : state.lang === 'ja'
     ? '模式エコー：各視野の正常像との一致は未検証です。'
     : 'Schematic echo: normal views have not been validated.';
@@ -1934,8 +1871,8 @@ function applyLanguage() {
   if (typeof applyProbeGeometry === 'function' && rMax) {
     const button = document.getElementById('btnFov');
     if (button) button.textContent = state.lang === 'ja'
-      ? (probeGeometryMode === 'textbook' ? '視野：教本の写真' : '視野：コンベックス')
-      : (probeGeometryMode === 'textbook' ? 'View: textbook' : 'View: convex');
+      ? (probeGeometryMode === 'textbook' ? '視野：台形' : '視野：コンベックス')
+      : (probeGeometryMode === 'textbook' ? 'View: trapezoid' : 'View: convex');
   }
 
   setTextSafe('lblYaw', L.lblYaw);
@@ -2197,9 +2134,12 @@ function openSchemaModal() { selectSchemaTab('liver'); document.getElementById('
 function closeSchemaModal() { document.getElementById('schemaModal').classList.remove('open'); }
 function closeQRModal() { document.getElementById('qrModal').style.display = 'none'; }
 
-let schemaWindow = null;
-function openSchemaWindow() {
-  if (schemaWindow && !schemaWindow.closed) { schemaWindow.focus(); return; }
+let schemaWindow = null, schemaWindowSetKind = null;
+function openSchemaWindow(initialKind) {
+  if (schemaWindow && !schemaWindow.closed) {
+    if (initialKind && schemaWindowSetKind) schemaWindowSetKind(initialKind);
+    schemaWindow.focus(); return;
+  }
   const popup = window.open('', 'abdominal_v43_anatomy', 'width=900,height=680,resizable=yes,scrollbars=yes');
   if (!popup) {
     window.alert(state.lang === 'ja' ? '別画面がブロックされました。このページのポップアップを許可してください。' : 'The anatomy window was blocked. Allow pop-ups for this page.');
@@ -2227,22 +2167,44 @@ function openSchemaWindow() {
     #schemaReadout{color:#79c0ff;font-size:12px;margin:8px 0}
     #schemaTargets{color:#c9d1d9;font-size:12px;line-height:1.5;margin:0 0 10px}
     p{font-size:12px;line-height:1.5;color:#e3b341;margin:10px 0}
+    #textbookDetail{display:none}#textbookDetail.active{display:block}
+    #tbHead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:0 0 8px}
+    #tbTitle{font-size:16px;color:#d2a8ff;margin:0}#tbScore{color:#3fb950;font-weight:bold;font-size:15px;white-space:nowrap}
+    #tbSteps{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}#tbSteps button{font-size:12px;padding:5px 9px}
+    #tbNote{color:#c9d1d9;font-size:13px;line-height:1.6;margin:0 0 10px}
+    #tbBody{display:grid;grid-template-columns:minmax(0,3fr) minmax(220px,2fr);gap:16px;align-items:start}
+    @media(max-width:700px){#tbBody{grid-template-columns:minmax(0,1fr)}}
+    #tbCanvas{display:block;width:100%;height:auto;background:#0d1117;border-radius:6px}
+    #tbCaption{color:#8b949e;font-size:11px;margin:4px 0 0}
+    #tbFindingsTitle{color:#79c0ff;font-weight:bold;font-size:13px;margin:0 0 6px}
+    #tbFindings{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr;gap:2px}
+    #tbFindings li{color:#8b949e;font-size:13px;line-height:1.5}#tbFindings li.seen{color:#e6edf3}
+    #tbFindings .mark{display:inline-block;width:1.3em;color:#3fb950;font-weight:bold}
+    #tbEmpty{color:#8b949e;font-size:13px;line-height:1.6}
   </style></head><body><h1 id="schemaWindowTitle"></h1><nav>
-    <button data-kind="section" class="active"></button><button data-kind="reference"></button><button data-kind="anatomy"></button>
-  </nav><div id="schemaReadout"></div><div id="referenceViewControls"></div><div id="schemaTargets"></div><div id="diagramGrid" class="diagram-grid">
+    <button data-kind="textbook"></button><button data-kind="section" class="active"></button><button data-kind="reference"></button><button data-kind="anatomy"></button>
+  </nav><section id="textbookDetail"><div id="tbEmpty"></div><div id="tbMain"><div id="tbHead"><h2 id="tbTitle"></h2><span id="tbScore"></span></div>
+<div id="tbSteps"></div><p id="tbNote"></p>
+    <div id="tbBody"><div><canvas id="tbCanvas" width="600" height="420"></canvas><div id="tbCaption"></div></div>
+    <div><div id="tbFindingsTitle"></div><ul id="tbFindings"></ul></div></div></div></section><div id="schemaReadout"></div><div id="referenceViewControls"></div><div id="schemaTargets"></div><div id="diagramGrid" class="diagram-grid">
     <div><div id="firstTitle" class="diagram-title"></div><div id="liverViewControls"><button data-liver-view="hepatic" class="active"></button><button data-liver-view="portal"></button></div><canvas id="schemaDisplay" width="380" height="290"></canvas><div id="liverViewHint"></div></div>
     <div id="secondDiagram"><div id="secondTitle" class="diagram-title"></div><canvas id="schemaVascularDisplay" width="290" height="220"></canvas></div>
   </div><p id="schemaCaution"></p></body></html>`);
   popup.document.close();
   let kind = 'section';
+  const setKind = next => {
+    kind = next;
+    popup.document.querySelectorAll('button[data-kind]').forEach(b => b.classList.toggle('active', b.dataset.kind === kind));
+  };
+  schemaWindowSetKind = setKind;
+  // 教本の断面を選んだら、別画面も「教本の断面」タブに切り替える（断面を選び直したときだけ）。
+  let tbSyncedView = state.textbookView, tbKey = '';
+  if (initialKind || state.textbookView) setKind(initialKind || 'textbook');
   let liverView = 'hepatic';
   let targetZone = '';
   let targetIndex = 0;
   popup.document.querySelectorAll('button[data-kind]').forEach(button => {
-    button.addEventListener('click', () => {
-      kind = button.dataset.kind;
-      popup.document.querySelectorAll('button[data-kind]').forEach(b => b.classList.toggle('active', b === button));
-    });
+    button.addEventListener('click', () => setKind(button.dataset.kind));
   });
   popup.document.querySelectorAll('button[data-liver-view]').forEach(button => {
     button.addEventListener('click', () => {
@@ -2272,8 +2234,13 @@ function openSchemaWindow() {
     if (popup.closed) return;
     const ja = state.lang === 'ja';
     const names = ja
-      ? {section:'現在の断面',reference:'観察見本（模式図）',anatomy:'肝区域・血管の3D模式図'}
-      : {section:'Current section',reference:'Reference schematic',anatomy:'Liver segments and vessels in 3D'};
+      ? {textbook:'標準断面',section:'現在の断面',reference:'観察見本（模式図）',anatomy:'肝区域・血管の3D模式図'}
+      : {textbook:'Standard view',section:'Current section',reference:'Reference schematic',anatomy:'Liver segments and vessels in 3D'};
+    if (state.textbookView !== tbSyncedView) { tbSyncedView = state.textbookView; if (state.textbookView) setKind('textbook'); }
+    const onTextbook = kind === 'textbook';
+    popup.document.getElementById('textbookDetail').classList.toggle('active', onTextbook);
+    ['schemaTargets', 'diagramGrid', 'schemaCaution', 'referenceViewControls'].forEach(id => { popup.document.getElementById(id).style.display = onTextbook ? 'none' : ''; });
+    if (onTextbook) updateTextbookDetail(popup.document, key => { if (key === tbKey) return false; tbKey = key; return true; });
     popup.document.title = ja ? '解剖シェーマ' : 'Anatomy Diagrams';
     popup.document.getElementById('schemaWindowTitle').textContent = popup.document.title;
     popup.document.querySelectorAll('button[data-kind]').forEach(b => { b.textContent = names[b.dataset.kind]; });
@@ -2335,7 +2302,9 @@ function openSchemaWindow() {
       g.clearRect(0, 0, target.width, target.height);
       g.drawImage(source, 0, 0);
     };
-    if (kind === 'section') {
+    if (onTextbook) {
+      // 教本の断面のタブは updateTextbookDetail で描く
+    } else if (kind === 'section') {
       drawCurrentSection();
       mirror('sectionCanvas', 'schemaDisplay');
     } else if (kind === 'reference') {
@@ -2348,8 +2317,56 @@ function openSchemaWindow() {
       mirror('vascular3DCanvas', 'schemaVascularDisplay');
     }
   }, 120);
-  popup.addEventListener('beforeunload', () => { if (schemaWindow === popup) schemaWindow = null; });
+  popup.addEventListener('beforeunload', () => { if (schemaWindow === popup) { schemaWindow = null; schemaWindowSetKind = null; } });
   popup.focus();
+}
+
+// 別画面の「教本の断面」タブ：説明・見本図・所見の一覧（✓ は今のエコーに出ているもの）。
+function updateTextbookDetail(doc, changed) {
+  const ja = state.lang === 'ja';
+  const view = state.textbookView && TEXTBOOK_VIEWS[state.textbookView];
+  doc.getElementById('tbEmpty').style.display = view ? 'none' : 'block';
+  doc.getElementById('tbMain').style.display = view ? 'block' : 'none';
+  if (!view) {
+    doc.getElementById('tbEmpty').textContent = ja
+      ? 'メイン画面の上の「標準断面」で、臓器（肝・脾・胆道・膵）と断面を選ぶと、ここに説明・見本図・所見の一覧が出ます。'
+      : 'Choose an organ and a view under “Standard views” at the top of the main window to see the notes, schema and findings here.';
+    changed('none');
+    return;
+  }
+  const step = currentTextbookStep();
+  const items = textbookFindingStates();
+  if (changed([state.textbookView, step.id, state.lang].join('|'))) {
+    doc.getElementById('tbTitle').textContent = ja ? view.ja : view.en;
+    doc.getElementById('tbNote').textContent = ja ? step.noteJa : step.noteEn;
+    const steps = doc.getElementById('tbSteps');
+    steps.replaceChildren(...view.steps.map(item => {
+      const b = doc.createElement('button');
+      b.textContent = ja ? item.ja : item.en;
+      b.classList.toggle('active', item.id === step.id);
+      b.addEventListener('click', () => selectTextbookStep(item.id));
+      return b;
+    }));
+    steps.style.display = view.steps.length < 2 ? 'none' : 'flex';
+    doc.getElementById('tbCaption').textContent = ja
+      ? '見本：この断面の構造と位置関係を示す模式図（このアプリ独自の作図。向きはエコーと同じ）'
+      : 'Reference: schematic of the structures and layout of this view (original drawing; same orientation as the echo)';
+    doc.getElementById('tbFindingsTitle').textContent = ja ? 'この断面の所見（今のエコーに出ているものに ✓）' : 'Findings of this view (✓ = in the current image)';
+    doc.getElementById('tbFindings').replaceChildren(...items.map(f => {
+      const li = doc.createElement('li'); li.dataset.finding = f.id;
+      const mark = doc.createElement('span'); mark.className = 'mark';
+      const label = doc.createElement('span'); label.textContent = ja ? FINDING_DEFS[f.id].ja : FINDING_DEFS[f.id].en;
+      li.append(mark, label); return li;
+    }));
+    drawTextbookSchema(state.textbookView, doc.getElementById('tbCanvas'));
+  }
+  const seen = new Map(items.map(f => [f.id, f.seen]));
+  doc.querySelectorAll('#tbFindings li').forEach(li => {
+    const on = !!seen.get(li.dataset.finding);
+    li.classList.toggle('seen', on);
+    li.querySelector('.mark').textContent = on ? '✓' : '・';
+  });
+  doc.getElementById('tbScore').textContent = `✓ ${items.filter(f => f.seen).length} / ${items.length}`;
 }
 
 // 視野（走査範囲）の形。各ビームは半径 R の弧の上の点から放射状に出る。画面の位置と同じく、
@@ -3758,7 +3775,7 @@ function drawTargetReferenceView(zone, view) {
   if (textbookId) {
     drawTextbookSchema(textbookId, canvas);
     g.font = '10px sans-serif'; g.textAlign = 'left'; g.fillStyle = '#e3b341';
-    g.fillText(ja ? `教本 ${TEXTBOOK_VIEWS[textbookId].pages.ja.replace('教本 ', '')} を独自に描き直した見本` : 'Original redraw of the textbook schema', 12, 293);
+    g.fillText(ja ? '独自に作図した見本' : 'Original schematic', 12, 293);
     return;
   }
   g.clearRect(0, 0, canvas.width, canvas.height);
@@ -3978,8 +3995,8 @@ function applyProbeGeometry(mode) {
   const button = document.getElementById('btnFov');
   if (button) {
     button.textContent = state.lang === 'ja'
-      ? (probeGeometryMode === 'textbook' ? '視野：教本の写真' : '視野：コンベックス')
-      : (probeGeometryMode === 'textbook' ? 'View: textbook' : 'View: convex');
+      ? (probeGeometryMode === 'textbook' ? '視野：台形' : '視野：コンベックス')
+      : (probeGeometryMode === 'textbook' ? 'View: trapezoid' : 'View: convex');
     button.classList.toggle('active', probeGeometryMode === 'textbook');
   }
 }
@@ -4267,7 +4284,6 @@ function renderEcho(time) {
     const textbookStep = currentTextbookStep();
     const now = performance.now();
     findingCentroids.forEach((acc, fid) => { if (acc.count >= FINDING_MIN_SAMPLES) findingSeenAt.set(fid, now); });
-    if (textbookStep) refreshTextbookChecklist();
     if (state.showAnatomy && textbookStep) {
       // 教本の断面：その段階の所見を教本の略称で示す（区域名は枠なし、血管・構造は枠付き）。
       // 教本の所見の並び順（血管・構造を先、区域名を後）で、重なるラベルは後のものを省く。
@@ -4319,7 +4335,10 @@ function renderEcho(time) {
     if (textbookStep) {
       const view = TEXTBOOK_VIEWS[state.textbookView], ja = state.lang === 'ja';
       const seen = textbookStep.findings.filter(id => findingFids(id).some(fid => (findingCentroids.get(fid)?.count || 0) >= FINDING_MIN_SAMPLES));
-      document.getElementById('organLegend').textContent = `${ja ? view.ja : view.en}（${ja ? view.pages.ja : view.pages.en}）  ${ja ? '教本の所見' : 'Textbook findings'} ${seen.length} / ${textbookStep.findings.length}`;
+      // 傾けの段階がある断面（肝）は、段階を選べる場所（別画面）を添える。
+      const stepHint = view.steps.length > 1
+        ? (ja ? `  ·  ${textbookStep.ja}（傾け方の段階は「解剖シェーマを別画面で見る」で選べます）` : `  ·  ${textbookStep.en} (choose the tilt steps in “Open Anatomy Window”)`) : '';
+      document.getElementById('organLegend').textContent = `${ja ? view.ja : view.en}  ${ja ? 'この断面の所見' : 'Findings of this view'} ${seen.length} / ${textbookStep.findings.length}${stepHint}`;
     } else document.getElementById('organLegend').textContent = labels.length > 0
       ? `${atlasReady() ? (state.lang === 'ja' ? '実CT（1名分）上の描出（目標視野との一致は未検証）: ' : 'Real-CT anatomy (one person; target view not validated): ') : (state.lang === 'ja' ? '模式モデル上の描出（目標視野との一致は未検証）: ' : 'Schematic model output (target view not validated): ')}${labels.join(' / ')}`
       : (state.lang === 'ja' ? (atlasReady() ? '実CT上の描出なし' : '模式モデル上の描出なし') : (atlasReady() ? 'No structures in the real-CT anatomy' : 'No structures in schematic model'));
