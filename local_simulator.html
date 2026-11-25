@@ -17,6 +17,9 @@
   .zone-toolbar-label { color: #79c0ff; font-size: 11px; font-weight: bold; margin-right: 4px; }
   .textbook-toolbar { padding-top: 5px; }
   .textbook-toolbar .zone-toolbar-label { color: #d2a8ff; }
+  .textbook-organs { display: inline-flex; gap: 3px; margin-right: 8px; padding-right: 8px; border-right: 1px solid #30363d; }
+  .textbook-organs button.active { background: #6e40c9; border-color: #a371f7; color: #fff; }
+  .textbook-views { display: inline-flex; flex-wrap: wrap; gap: 4px; }
   .textbook-panel { background: #0d1117; border: 1px solid #8957e5; border-radius: 6px; padding: 7px 8px; font-size: 11px; flex-shrink: 0; }
   .textbook-head { display: flex; justify-content: space-between; gap: 6px; color: #d2a8ff; font-size: 12px; }
   .textbook-score { color: #3fb950; font-weight: bold; white-space: nowrap; }
@@ -158,16 +161,11 @@
       <button id="btnPreRtIc" onclick="selectZone('right_intercostal')">右肋間</button>
       <button id="btnPreRtFlank" onclick="selectZone('right_flank')">右側腹部</button>
       <button id="btnPreLtFlank" onclick="selectZone('left_flank')">左側腹部</button>
-      <button id="btnPreBladder" onclick="selectZone('pelvis_bladder')">下腹部</button>
     </div>
     <div class="zone-toolbar textbook-toolbar" role="group" aria-labelledby="textbookToolbarLabel">
-      <span id="textbookToolbarLabel" class="zone-toolbar-label">教本の断面（肝）</span>
-      <button id="btnTextbook_liver_hv" onclick="selectTextbookView('liver_hv')">① 肝静脈面</button>
-      <button id="btnTextbook_liver_pv" onclick="selectTextbookView('liver_pv')">② 門脈枝面</button>
-      <button id="btnTextbook_liver_ic" onclick="selectTextbookView('liver_ic')">③ 右肋間</button>
-      <button id="btnTextbook_liver_ao_long" onclick="selectTextbookView('liver_ao_long')">④ 縦・大動脈面</button>
-      <button id="btnTextbook_liver_ivc_s4" onclick="selectTextbookView('liver_ivc_s4')">⑤ 縦・S4境界</button>
-      <button id="btnTextbook_liver_ivc_rl" onclick="selectTextbookView('liver_ivc_rl')">⑥ 縦・右葉左葉</button>
+      <span id="textbookToolbarLabel" class="zone-toolbar-label">教本の断面</span>
+      <span id="textbookOrganButtons" class="textbook-organs"></span>
+      <span id="textbookViewButtons" class="textbook-views"></span>
     </div>
   </header>
   <main>
@@ -548,7 +546,8 @@ const ZONE_GUIDES = {
     landmarkKeys: ['bladder', 'prostate']
   }
 };
-const ZONE_ORDER = ['epigastric', 'subcostal_gb', 'right_intercostal', 'right_flank', 'left_flank', 'pelvis_bladder'];
+// 下腹部（膀胱）は消化器のルーチン検査に含まれず、実CTの範囲外でもあるため、選べる部位から外した（内部の定義は残す）
+const ZONE_ORDER = ['epigastric', 'subcostal_gb', 'right_intercostal', 'right_flank', 'left_flank'];
 // 実CTの解剖での各部位の開始位置（模式モデル用の ZONE_STARTS を置き換える）
 const MODEL_ZONE_STARTS = {};
 // 実CT（SPL Abdominal Atlas）上の開始位置（x：患者左が +、y：剣状突起から尾側へ cm）
@@ -565,9 +564,22 @@ const ATLAS_TEXTBOOK_ANCHORS = {
   liver_ic: { pos: [-5.95, 4.8], base: { yaw: 28.6, pitch: -2.9, roll: 13.0 } },
   liver_ao_long: { pos: [2.87, 2.87], base: { yaw: 79.4, pitch: -10.2, roll: 1.0 } },
   liver_ivc_s4: { pos: [-0.67, 3.98], base: { yaw: 83.5, pitch: -0.1, roll: 7.1 } },
-  liver_ivc_rl: { pos: [-1.63, 4.97], base: { yaw: 88.6, pitch: -11.4, roll: 5.5 } }
+  liver_ivc_rl: { pos: [-1.63, 4.97], base: { yaw: 88.6, pitch: -11.4, roll: 5.5 } },
+  // 脾・胆道・膵：基本の位置ではシェーマ準拠の像を出す。基準の位置・角度は、そこから動かしたときに実CTで同じ臓器が見え、
+  // 皮下の肋骨・ガスの陰影が少ない所を探索で選んだ（tools の jsearch）。
+  spl_ic: { pos: [6.71, 5.06], base: { yaw: -39.6, pitch: 4.7, roll: -14.7 } },
+  spl_long: { pos: [6.47, 6.81], base: { yaw: 75.4, pitch: -18.2, roll: -17.9 } },
+  bil_ep: { pos: [-4.06, 5.96], base: { yaw: -14.2, pitch: 15.6, roll: -3.4 } },
+  bil_sc: { pos: [-5.0, 6.21], base: { yaw: -35.5, pitch: 9.9, roll: -5.3 } },
+  bil_long: { pos: [-3.28, 6.0], base: { yaw: 95.2, pitch: -16.7, roll: -4.0 } },
+  bil_ic: { pos: [-5.61, 5.92], base: { yaw: 47.9, pitch: 0.0, roll: 8.9 } },
+  pan_head: { pos: [0.59, 6.41], base: { yaw: 3.3, pitch: -11.2, roll: 4.8 } },
+  pan_headlong: { pos: [-1.21, 5.5], base: { yaw: 87.0, pitch: -6.6, roll: -1.1 } },
+  pan_body: { pos: [0.28, 7.55], base: { yaw: -1.5, pitch: -3.1, roll: -8.9 } },
+  pan_bodylong: { pos: [3.5, 3.71], base: { yaw: 77.7, pitch: -1.8, roll: -3.6 } }
 };
 const ATLAS_INTERCOSTAL_DEPTH = 7.86;
+const ATLAS_LEFT_FLANK_DEPTH = 12.0;
 const MODEL_TEXTBOOK_ANCHORS = {};
 const MODEL_INTERCOSTAL_DEPTH = 4.5;
 // 解剖（実CT／模式モデル）を切り替えた後に呼ぶ：基準の位置・角度を入れ替え、今の断面（教本の断面または部位）を選び直して、
@@ -587,6 +599,9 @@ function applyAnatomyZones() {
   const atlas = anatomyMode === 'atlas' && ATLAS.ready;
   Object.assign(ZONE_STARTS, atlas ? ATLAS_ZONE_STARTS : MODEL_ZONE_STARTS);
   ZONE_PROBE_BASES.right_intercostal.depth = atlas ? ATLAS_INTERCOSTAL_DEPTH : MODEL_INTERCOSTAL_DEPTH;
+  // 実CTでは、左側腹部は左の側面から当てる（脾・左腎は胃や結腸のガスの後ろにあり、前からは見えない）
+  if (atlas) { ZONE_PROBE_BASES.left_flank = { lateral: true, side: 'left', depth: ATLAS_LEFT_FLANK_DEPTH }; ZONE_DEFAULT_POSES.left_flank = { yaw: -50, pitch: 0, roll: 0 }; }
+  else { delete ZONE_PROBE_BASES.left_flank; delete ZONE_DEFAULT_POSES.left_flank; }
   Object.entries(TEXTBOOK_VIEWS).forEach(([id, view]) => {
     const model = MODEL_TEXTBOOK_ANCHORS[id], anchor = ATLAS_TEXTBOOK_ANCHORS[id];
     if (!model) return;
@@ -717,10 +732,24 @@ const FINDING_DEFS = {
   pha: { ja: '固有肝動脈（PHA）', en: 'Proper hepatic artery (PHA)', tag: 'PHA' },
   lrv: { ja: '左腎静脈（LRV）', en: 'Left renal vein (LRV)', tag: 'LRV' },
   rra: { ja: '右腎動脈（R.RA）', en: 'Right renal artery (R.RA)', tag: 'R.RA' },
-  pancBody: { ja: '膵体部', en: 'Pancreatic body', tag: { ja: '膵体部', en: 'Pancreas' } },
-  pancHead: { ja: '膵頭部', en: 'Pancreatic head', tag: { ja: '膵頭部', en: 'Pancreas' } },
+  pancBody: { ja: '膵体部', en: 'Pancreatic body', tag: { ja: '膵体部', en: 'Pancreas' }, any: ['pancBody', 'pancreas'] },
+  pancHead: { ja: '膵頭部', en: 'Pancreatic head', tag: { ja: '膵頭部', en: 'Pancreas' }, any: ['pancHead', 'pancreas'] },
   stomach: { ja: '胃体部', en: 'Gastric body', tag: { ja: '胃体部', en: 'Stomach' } },
-  eso: { ja: '食道（食道胃接合部）', en: 'Esophagus (GE junction)', tag: { ja: '食道', en: 'Esophagus' } }
+  eso: { ja: '食道（食道胃接合部）', en: 'Esophagus (GE junction)', tag: { ja: '食道', en: 'Esophagus' } },
+  spleen: { ja: '脾臓', en: 'Spleen', tag: { ja: '脾', en: 'Spleen' } },
+  lk: { ja: '左腎', en: 'Left kidney', tag: { ja: '左腎', en: 'L kidney' } },
+  rk: { ja: '右腎', en: 'Right kidney', tag: { ja: '右腎', en: 'R kidney' } },
+  cec: { ja: '腎中心部エコー（CEC）', en: 'Central echo complex (renal sinus)', tag: 'CEC' },
+  lungGas: { ja: '肺内ガス像（多重反射）', en: 'Lung air (reverberation)', tag: { ja: '肺', en: 'Lung' } },
+  fundusGas: { ja: '胃底部ガス像', en: 'Gastric fundus gas', tag: { ja: '胃底部', en: 'Fundus' } },
+  ribShadow: { ja: '肋骨による音響陰影', en: 'Acoustic shadow of the ribs', tag: { ja: '肋骨', en: 'Rib' } },
+  colon: { ja: '横行結腸（ガス）', en: 'Transverse colon (gas)', tag: { ja: '横行結腸', en: 'Colon' } },
+  duod: { ja: '十二指腸下行部', en: 'Descending duodenum', tag: { ja: '十二指腸', en: 'Duod.' } },
+  duodBulb: { ja: '十二指腸球部', en: 'Duodenal bulb', tag: { ja: '十二指腸球部', en: 'Bulb' } },
+  pd: { ja: '主膵管（PD）', en: 'Main pancreatic duct (PD)', tag: 'PD' },
+  gda: { ja: '胃十二指腸動脈（GDA）', en: 'Gastroduodenal artery (GDA)', tag: 'GDA' },
+  lra: { ja: '左腎動脈（L.RA）', en: 'Left renal artery (L.RA)', tag: 'L.RA' },
+  rrv: { ja: '右腎静脈（R.RV）', en: 'Right renal vein (R.RV)', tag: 'R.RV' }
 };
 function findingFids(id) { return FINDING_DEFS[id] && FINDING_DEFS[id].any ? FINDING_DEFS[id].any : [id]; }
 function findingTag(fid) {
@@ -819,7 +848,115 @@ TEXTBOOK_VIEWS.liver_ivc_rl = {
       findings: ['mhv', 'gb', 'cbd', 'pv', 'smv', 'pancHead', 'ivc', 'S1'] }
   ]
 };
-const TEXTBOOK_ORDER = ['liver_hv', 'liver_pv', 'liver_ic', 'liver_ao_long', 'liver_ivc_s4', 'liver_ivc_rl'];
+// ── 脾・胆道・膵の断層模式図（教本 p.43・p.52–53・p.72–73）。基本の断面だけ（教本に傾けの段階の記載はない）。 ──
+Object.assign(TEXTBOOK_VIEWS, {
+  spl_ic: {
+    organ: 'spleen', ja: '脾-1 左肋間走査', en: 'Spleen 1: left intercostal',
+    short: { ja: '脾1 左肋間', en: 'Sp1 Lt. intercostal' },
+    pages: { ja: '教本 p.43（断層模式図）', en: 'Textbook p.43 (section schema)' },
+    zone: 'left_flank', pos: [5.8, 1.0], bodyMark: [212, 82],
+    steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: -50, pitch: 0, roll: 0 },
+      noteJa: '左の第9〜10肋間に、前〜後腋窩線のあたりで肋骨に沿って当てる（仰臥位か右側臥位）。三日月形の脾が見え、脾門で脾静脈、深部に左腎の上極（中心部エコー）。前方に胃底部のガス、頭側に肺のガス。',
+      noteEn: 'Along the 9th–10th left intercostal space between the anterior and posterior axillary lines (supine or right lateral decubitus). The crescent spleen with the splenic vein at the hilum and the upper pole of the left kidney behind it; gastric fundus gas in front and lung air cranially.',
+      findings: ['spleen', 'sv', 'lk', 'cec', 'fundusGas', 'lungGas'] }]
+  },
+  spl_long: {
+    organ: 'spleen', ja: '脾-2 縦走査', en: 'Spleen 2: longitudinal',
+    short: { ja: '脾2 縦', en: 'Sp2 Long.' },
+    pages: { ja: '教本 p.43（断層模式図）', en: 'Textbook p.43 (section schema)' },
+    zone: 'left_flank', pos: [5.8, 1.0], bodyMark: [214, 96],
+    steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: 90, pitch: 0, roll: 0 },
+      noteJa: '左の側腹部で縦に当てる（画面左が頭側）。脾の尾側に左腎が並び、肋骨が縦の音響陰影をつくる。頭側は肺のガス。',
+      noteEn: 'Longitudinal on the left flank (image left = cranial). The left kidney lies caudal to the spleen; the ribs cast vertical acoustic shadows; lung air cranially.',
+      findings: ['spleen', 'lk', 'cec', 'ribShadow', 'lungGas'] }]
+  },
+  bil_ep: {
+    organ: 'biliary', ja: '胆-1 心窩部横〜右肋骨弓下走査', en: 'Biliary 1: epigastric to right subcostal',
+    short: { ja: '胆1 心窩部〜肋弓下', en: 'Bi1 Epigastric–subcostal' },
+    pages: { ja: '教本 p.52（断層模式図）', en: 'Textbook p.52 (section schema)' },
+    zone: 'subcostal_gb', pos: [-1.6, 2.4], bodyMark: [112, 80],
+    steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: -16, pitch: 27, roll: 2 },
+      noteJa: '心窩部から右肋骨弓に沿って斜めに当てる。門脈右枝・左枝と臍部（先端に肝円索）に沿って肝内胆管が走り、胆嚢が見える。肝静脈3本と下大静脈。',
+      noteEn: 'Oblique from the epigastrium along the right costal margin. Intrahepatic bile ducts run with the right and left portal veins and the umbilical portion (ligamentum teres at its tip); the gallbladder, three hepatic veins and the IVC.',
+      findings: ['gb', 'bd', 'rpv', 'lpvTrans', 'lpvUmb', 'ligTeres', 'rpvAnt', 'rpvPost', 'mhv', 'rhv', 'lhv', 'ivc', 'ao', 'spine', 'S2', 'S3', 'S6', 'S7'] }]
+  },
+  bil_sc: {
+    organ: 'biliary', ja: '胆-2 右肋骨弓下走査', en: 'Biliary 2: right subcostal',
+    short: { ja: '胆2 右肋弓下', en: 'Bi2 Rt. subcostal' },
+    pages: { ja: '教本 p.52（断層模式図）', en: 'Textbook p.52 (section schema)' },
+    zone: 'subcostal_gb', pos: [-3.0, 3.0], bodyMark: [108, 88],
+    steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: -25, pitch: 15, roll: 0 },
+      noteJa: '右肋骨弓の下に斜めに当てる。胆嚢の長軸、門脈左枝（横行部・臍部）、右腎と右腎静脈・右腎動脈、下大静脈・大動脈、十二指腸下行部と膵体部・脾静脈（胃は画面の端の外）。',
+      noteEn: 'Oblique under the right costal margin. The gallbladder long axis, left portal vein (transverse and umbilical parts), right kidney with its vein and artery, IVC, aorta, descending duodenum, pancreatic body and splenic vein.',
+      findings: ['gb', 'lpvTrans', 'lpvUmb', 'rk', 'rrv', 'rra', 'ivc', 'ao', 'sma', 'sv', 'pancBody', 'duod', 'spine', 'S3', 'S4', 'S5', 'S6'] }]
+  },
+  bil_long: {
+    organ: 'biliary', ja: '胆-3 縦走査（胆嚢・総胆管）', en: 'Biliary 3: longitudinal (GB and CBD)',
+    short: { ja: '胆3 縦', en: 'Bi3 Long.' },
+    pages: { ja: '教本 p.53（断層模式図）', en: 'Textbook p.53 (section schema)' },
+    zone: 'subcostal_gb', pos: [-3.0, 3.0], bodyMark: [118, 92],
+    steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: 90, pitch: 0, roll: 0 },
+      noteJa: '右季肋部で縦に当てる（画面左が頭側）。胆嚢の背側で、総胆管が門脈の腹側を通って膵頭部へ向かう。中肝静脈が下大静脈へ流入し、その腹側に尾状葉(S1)。',
+      noteEn: 'Longitudinal in the right upper quadrant (image left = cranial). Behind the gallbladder the CBD runs anterior to the portal vein toward the pancreatic head. The MHV drains into the IVC with the caudate (S1) in front.',
+      findings: ['gb', 'cbd', 'pv', 'smv', 'pancHead', 'mhv', 'ivc', 'S1'] }]
+  },
+  bil_ic: {
+    organ: 'biliary', ja: '胆-4 右肋間走査', en: 'Biliary 4: right intercostal',
+    short: { ja: '胆4 右肋間', en: 'Bi4 Rt. intercostal' },
+    pages: { ja: '教本 p.53（断層模式図）', en: 'Textbook p.53 (section schema)' },
+    zone: 'right_intercostal', pos: [-6.1, 0.5], bodyMark: [74, 82],
+    steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: 50, pitch: 0, roll: 16 },
+      noteJa: '右肋間走査。門脈右枝から前区域枝（S8・S5）と後区域枝が分かれ、それぞれに肝内胆管が並走する。右肝静脈、下大静脈、画面右に胆嚢と横行結腸。',
+      noteEn: 'Right intercostal. The right portal vein divides into the anterior (S8, S5) and posterior branches, each with an accompanying bile duct; the RHV, IVC, and the gallbladder and transverse colon on the right.',
+      findings: ['gb', 'bd', 'rpv', 'rpvAnt', 'rpvPost', 'p8', 'p5', 'p6', 'rhv', 'ivc', 'colon', 'S5', 'S6', 'S7', 'S8'] }]
+  },
+  pan_head: {
+    organ: 'pancreas', ja: '膵-1 膵頭部 横走査', en: 'Pancreas 1: head, transverse',
+    short: { ja: '膵1 頭部・横', en: 'Pa1 Head trans.' },
+    pages: { ja: '教本 p.72（断層模式図）', en: 'Textbook p.72 (section schema)' },
+    zone: 'epigastric', pos: [-0.5, 3.0], bodyMark: [138, 84],
+    steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: 0, pitch: 0, roll: 0 },
+      noteJa: '心窩部の横走査。膵頭部の中に主膵管と総胆管、前縁に胃十二指腸動脈、右に十二指腸下行部。上腸間膜静脈・脾静脈、上腸間膜動脈、大動脈と下大静脈、左腎静脈・左腎動脈、両腎。',
+      noteEn: 'Epigastric transverse. Within the pancreatic head lie the main duct and the CBD, the GDA at its front edge and the descending duodenum to the right; SMV, splenic vein, SMA, aorta, IVC, left renal vein and artery, and both kidneys.',
+      findings: ['pancHead', 'pd', 'cbd', 'gda', 'smv', 'sv', 'sma', 'ao', 'ivc', 'lrv', 'lra', 'gb', 'duod', 'stomach', 'rk', 'lk', 'spine', 'S3'] }]
+  },
+  pan_headlong: {
+    organ: 'pancreas', ja: '膵-2 膵頭部 縦走査（下大静脈面）', en: 'Pancreas 2: head, longitudinal (IVC plane)',
+    short: { ja: '膵2 頭部・縦', en: 'Pa2 Head long.' },
+    pages: { ja: '教本 p.72（断層模式図）', en: 'Textbook p.72 (section schema)' },
+    zone: 'epigastric', pos: [-1.6, 3.0], bodyMark: [132, 90],
+    steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: 90, pitch: 0, roll: 0 },
+      noteJa: '下大静脈の上で縦に当てる（画面左が頭側）。下大静脈の腹側を門脈〜上腸間膜静脈が走り、総胆管が膵頭部の背側へ入る。総肝動脈、胆嚢、十二指腸球部、尾状葉(S1)。',
+      noteEn: 'Longitudinal over the IVC (image left = cranial). The portal vein–SMV runs anterior to the IVC and the CBD enters the back of the pancreatic head; the common hepatic artery, gallbladder, duodenal bulb and caudate (S1).',
+      findings: ['pancHead', 'cbd', 'pv', 'smv', 'cha', 'gb', 'duodBulb', 'ivc', 'S1', 'S4'] }]
+  },
+  pan_body: {
+    organ: 'pancreas', ja: '膵-3 膵体部〜尾部 横走査', en: 'Pancreas 3: body to tail, transverse',
+    short: { ja: '膵3 体尾部・横', en: 'Pa3 Body–tail trans.' },
+    pages: { ja: '教本 p.73（断層模式図）', en: 'Textbook p.73 (section schema)' },
+    zone: 'epigastric', pos: [0.5, 2.5], bodyMark: [143, 80],
+    steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: 0, pitch: 10, roll: 0 },
+      noteJa: '心窩部の横走査をやや頭側へ。膵体部〜尾部の中央に主膵管、背側を脾静脈が尾部へ走る。腹腔動脈から脾動脈・固有肝動脈、上腸間膜動脈と大動脈。腹側に胃、肝左葉と門脈左枝・肝円索。',
+      noteEn: 'Epigastric transverse, slightly cranial. The main duct runs in the middle of the pancreatic body–tail with the splenic vein behind it; the celiac trunk with the splenic and proper hepatic arteries, SMA and aorta; the stomach in front, the left lobe with the left portal vein and ligamentum teres.',
+      findings: ['pancBody', 'pd', 'sv', 'sma', 'ce', 'sa', 'pha', 'gda', 'smv', 'cbd', 'ao', 'ivc', 'stomach', 'duodBulb', 'ligTeres', 'lpvUmb', 'spine', 'S1', 'S2', 'S3', 'S4'] }]
+  },
+  pan_bodylong: {
+    organ: 'pancreas', ja: '膵-4 膵体部 縦走査（大動脈面）', en: 'Pancreas 4: body, longitudinal (aorta plane)',
+    short: { ja: '膵4 体部・縦', en: 'Pa4 Body long.' },
+    pages: { ja: '教本 p.73（断層模式図）', en: 'Textbook p.73 (section schema)' },
+    zone: 'epigastric', pos: [1.2, 2.5], bodyMark: [147, 86],
+    steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: 90, pitch: 0, roll: 0 },
+      noteJa: '大動脈の上で縦に当てる（画面左が頭側）。肝左葉と胃の背側に膵体部（中に主膵管）、その背側に脾静脈。大動脈から腹腔動脈（総肝動脈・脾動脈）と上腸間膜動脈が出て、その間を左腎静脈が通る。',
+      noteEn: 'Longitudinal over the aorta (image left = cranial). Behind the left lobe and stomach lies the pancreatic body (with the main duct) and the splenic vein; the celiac trunk (CHA, SA) and SMA arise from the aorta, with the left renal vein between the SMA and aorta.',
+      findings: ['pancBody', 'pd', 'sv', 'ao', 'ce', 'cha', 'sa', 'sma', 'lrv', 'stomach', 'p2', 'p3', 'S2', 'S3'] }]
+  }
+});
+Object.values(TEXTBOOK_VIEWS).forEach(view => { if (!view.organ) view.organ = 'liver'; });
+const TEXTBOOK_ORDER = ['liver_hv', 'liver_pv', 'liver_ic', 'liver_ao_long', 'liver_ivc_s4', 'liver_ivc_rl',
+  'spl_ic', 'spl_long', 'bil_ep', 'bil_sc', 'bil_long', 'bil_ic', 'pan_head', 'pan_headlong', 'pan_body', 'pan_bodylong'];
+const TEXTBOOK_ORGANS = [
+  { id: 'liver', ja: '肝', en: 'Liver' }, { id: 'spleen', ja: '脾', en: 'Spleen' },
+  { id: 'biliary', ja: '胆道', en: 'Biliary' }, { id: 'pancreas', ja: '膵', en: 'Pancreas' }];
 // エコー1フレームで見えた構造（fid）の数。チェックリストは直近1.5秒のどこかで見えたものに印を付ける。
 const findingSeenAt = new Map();
 const FINDING_MIN_SAMPLES = 4;
@@ -886,15 +1023,34 @@ function textbookFindingCounts(visibleOnly = false) {
   Object.defineProperty(cnt, 'shadowedFraction', { value: shallow.reduce((n, v) => n + v, 0) / 160 });
   return cnt;
 }
+// 教本の断面のボタン：臓器（肝・脾・胆道・膵）を選ぶと、その臓器の断面のボタンが並ぶ。
+let textbookOrgan = 'liver', textbookOrganSyncedView = null;
+function selectTextbookOrgan(organ) { textbookOrgan = organ; updateTextbookPanel(); }
+function renderTextbookToolbar() {
+  const organs = document.getElementById('textbookOrganButtons'), views = document.getElementById('textbookViewButtons');
+  if (!organs || !views) return;
+  // 断面を選び直したときだけ、その断面の臓器のボタン列に合わせる（臓器ボタンで別の臓器の列を見ているときは変えない）。
+  if (state.textbookView && state.textbookView !== textbookOrganSyncedView) textbookOrgan = TEXTBOOK_VIEWS[state.textbookView].organ;
+  textbookOrganSyncedView = state.textbookView;
+  organs.replaceChildren(...TEXTBOOK_ORGANS.map(o => {
+    const b = document.createElement('button');
+    b.id = 'btnOrgan_' + o.id; b.textContent = state.lang === 'ja' ? o.ja : o.en;
+    b.classList.toggle('active', textbookOrgan === o.id);
+    b.addEventListener('click', () => selectTextbookOrgan(o.id));
+    return b;
+  }));
+  views.replaceChildren(...TEXTBOOK_ORDER.filter(id => TEXTBOOK_VIEWS[id].organ === textbookOrgan).map(id => {
+    const b = document.createElement('button');
+    b.id = 'btnTextbook_' + id; b.textContent = TEXTBOOK_VIEWS[id].short[state.lang];
+    b.classList.toggle('active', state.textbookView === id);
+    b.addEventListener('click', () => selectTextbookView(id));
+    return b;
+  }));
+}
 function updateTextbookPanel() {
   const ja = state.lang === 'ja';
-  TEXTBOOK_ORDER.forEach(id => {
-    const button = document.getElementById('btnTextbook_' + id);
-    if (!button) return;
-    button.textContent = TEXTBOOK_VIEWS[id].short[state.lang];
-    button.classList.toggle('active', state.textbookView === id);
-  });
-  setTextSafe('textbookToolbarLabel', ja ? '教本の断面（肝）' : 'Textbook views (liver)');
+  renderTextbookToolbar();
+  setTextSafe('textbookToolbarLabel', ja ? '教本の断面' : 'Textbook views');
   const panel = document.getElementById('textbookPanel');
   if (!panel) return;
   const view = state.textbookView && TEXTBOOK_VIEWS[state.textbookView];
@@ -948,7 +1104,8 @@ function refreshTextbookChecklist() {
 // 見本図：シェーマ準拠の断面像と同じ構造の配置（SCHEMA_SCENES）を、このアプリ独自の平塗りの色で描く。
 // 画面の向きはエコーと同じ（横走査：画面左＝患者右、縦走査と肋間走査：画面左＝頭側）。
 const SCHEMA_DRAW_COLORS = { liver: '#3a3326', hv: '#5fb7f2', pv: '#b07ae8', bd: '#7ee787', cbd: '#7ee787', ivc: '#3d8fd6', vein: '#8fb8e6',
-  art: '#e06a6a', gb: '#62b87a', panc: '#b9895d', stomach: '#8b949e', eso: '#8b949e', lig: '#f0f6fc', bone: '#8b949e' };
+  art: '#e06a6a', gb: '#62b87a', panc: '#b9895d', stomach: '#8b949e', eso: '#8b949e', lig: '#f0f6fc', bone: '#8b949e',
+  spleen: '#5d4a6e', kidney: '#6b4f3a', sinus: '#d9c9a3', gas: '#6e7781', lung: '#9aa7b3', bowel: '#7d8590' };
 function drawTextbookSchema(id, canvas) {
   if (!canvas) return;
   const scene = SCHEMA_SCENES[id];
@@ -994,15 +1151,17 @@ function drawTextbookSchema(id, canvas) {
     const tag = findingTag(p.fid);
     if (!tag) return;
     labelled.add(p.fid);
-    const q = p.t === 'tube' || p.t === 'boneLine' ? p.pts[Math.floor(p.pts.length / 2)] : p.t === 'bone' ? [p.c[0], p.c[1] - p.r + 30] : p.c;
+    const q = p.t === 'tube' || p.t === 'boneLine' ? p.pts[Math.floor(p.pts.length / 2)] : p.t === 'bone' ? [p.c[0], p.c[1] - p.r + 30]
+      : p.t === 'poly' ? polyLabelPoint(p.pts) : p.c;
     const [x, y] = P(q);
     g.fillStyle = 'rgba(13,17,23,0.75)'; const w = g.measureText(tag).width + 6; g.fillRect(x - w / 2, y - 9, w, 12);
     g.fillStyle = '#f0f6fc'; g.fillText(tag, x, y);
   });
   const sums = {};
   for (let y = y0; y < y1; y += (y1 - y0) / 60) for (let x = x0; x < x1; x += (x1 - x0) / 80) {
-    const liver = scene.prims.find(p => p.t === 'poly' && pointInPolygon(x, y, p.pts));
-    if (!liver) continue;
+    const hit = scene.prims.find(p => p.box && x >= p.box[0] && x <= p.box[2] && y >= p.box[1] && y <= p.box[3]
+      && (p.t === 'poly' ? pointInPolygon(x, y, p.pts) : p.t === 'ell' ? Math.hypot((x - p.c[0]) / p.r[0], (y - p.c[1]) / p.r[1]) < 1 : p.t === 'tube' ? tubeHit(p, x, y).d < 0 : false));
+    if (!hit || hit.t !== 'poly' || (hit.kind && hit.kind !== 'liver')) continue;
     const seg = scene.segment(x, y);
     if (!seg) continue;
     const a = sums[seg] || (sums[seg] = [0, 0, 0]); a[0] += x; a[1] += y; a[2]++;
@@ -1011,10 +1170,13 @@ function drawTextbookSchema(id, canvas) {
   Object.entries(sums).forEach(([seg, a]) => { const [x, y] = P([a[0] / a[2], a[1] / a[2]]); g.fillText(seg, x, y); });
   g.restore();
   g.fillStyle = '#8b949e'; g.font = '9px sans-serif'; g.textAlign = 'left';
-  const transverse = id === 'liver_hv' || id === 'liver_pv';
-  g.fillText(transverse ? (ja ? '← 患者右' : '← Patient R') : (ja ? '← 頭側' : '← Head'), 6, 11);
+  const orient = scene.orient || (id === 'liver_hv' || id === 'liver_pv' ? 'trans' : 'long');
+  const ends = { trans: [ja ? '← 患者右' : '← Patient R', ja ? '患者左 →' : 'Patient L →'],
+    long: [ja ? '← 頭側' : '← Head', ja ? '尾側 →' : 'Foot →'],
+    leftIc: [ja ? '← 腹側' : '← Anterior', ja ? '背側・頭側 →' : 'Posterior / head →'] }[orient];
+  g.fillText(ends[0], 6, 11);
   g.textAlign = 'right';
-  g.fillText(transverse ? (ja ? '患者左 →' : 'Patient L →') : (ja ? '尾側 →' : 'Foot →'), W - 6, 11);
+  g.fillText(ends[1], W - 6, 11);
 }
 
 // ============================================================
@@ -1158,6 +1320,238 @@ const SCHEMA_SCENES = {
     ]
   }
 };
+// ── 脾（教本 p.43）・胆道（p.52–53）・膵（p.72–73）の断層模式図（教本のページを 150 dpi で切り出した図の画素座標でなぞった） ──
+Object.assign(SCHEMA_SCENES, {
+  spl_ic: {
+    orient: 'leftIc', s: 0.03, cx: 235, top: 70,
+    segment() { return null; },
+    prims: [
+      { t: 'tube', pts: [[185, 215, 7], [215, 197, 7], [248, 190, 6]], kind: 'vein', fid: 'sv' },
+      { t: 'ell', c: [262, 318], r: [22, 22], kind: 'sinus', fid: 'cec' },
+      { t: 'ell', c: [262, 312], r: [66, 82], kind: 'kidney', fid: 'lk' },
+      { t: 'poly', kind: 'spleen', fid: 'spleen', pts: [[118,80],[320,74],[322,230],[330,330],[310,388],[180,392],[175,240],[170,175],[150,135],[125,100]] },
+      { t: 'poly', kind: 'lung', fid: 'lungGas', pts: [[322,74],[445,74],[445,410],[330,410],[330,330],[322,230]] },
+      { t: 'poly', kind: 'gas', fid: 'fundusGas', pts: [[0,85],[60,85],[118,90],[150,135],[170,175],[175,240],[178,410],[0,410]] }
+    ]
+  },
+  spl_long: {
+    s: 0.03, cx: 255, top: 62,
+    segment() { return null; },
+    prims: [
+      { t: 'boneLine', pts: [[92, 68], [136, 68]], fid: 'ribShadow' },
+      { t: 'boneLine', pts: [[232, 68], [278, 68]], fid: 'ribShadow' },
+      { t: 'boneLine', pts: [[388, 68], [436, 68]], fid: 'ribShadow' },
+      { t: 'ell', c: [375, 150], r: [100, 28], rot: -0.2, kind: 'sinus', fid: 'cec' },
+      { t: 'ell', c: [340, 160], r: [178, 70], rot: -0.12, kind: 'kidney', fid: 'lk' },
+      { t: 'poly', kind: 'spleen', fid: 'spleen', pts: [[62,58],[520,58],[520,95],[420,85],[320,95],[250,115],[170,150],[100,215],[60,268]] },
+      { t: 'poly', kind: 'lung', fid: 'lungGas', pts: [[0,58],[62,58],[60,268],[0,275]] }
+    ]
+  },
+  bil_ep: {
+    orient: 'trans', s: 0.03, cx: 330, top: 55,
+    segment(x, y) {
+      if (x > 440) return y < 175 ? 'S3' : 'S2';
+      if (x < 165 && y > 195) return 'S6';
+      if (y > 250 && x < 360) return 'S7';
+      return null;
+    },
+    prims: [
+      { t: 'ell', c: [405, 118], r: [9, 9], kind: 'lig', fid: 'ligTeres' },
+      { t: 'ell', c: [518, 338], r: [25, 22], kind: 'art', fid: 'ao' },
+      { t: 'ell', c: [390, 330], r: [36, 24], kind: 'ivc', fid: 'ivc' },
+      { t: 'ell', c: [285, 138], r: [40, 80], rot: -0.6, kind: 'gb', fid: 'gb' },
+      { t: 'tube', pts: [[315, 190, 8], [345, 200, 6]], kind: 'gb', fid: 'gb' },
+      { t: 'tube', pts: [[215, 213, 15], [300, 215, 16], [372, 218, 16]], kind: 'pv', fid: 'rpv', duct: -1 },
+      { t: 'tube', pts: [[372, 218, 16], [430, 212, 15], [540, 205, 12]], kind: 'pv', fid: 'lpvTrans', duct: -1 },
+      { t: 'tube', pts: [[415, 205, 14], [416, 160, 14], [410, 128, 11]], kind: 'pv', fid: 'lpvUmb' },
+      { t: 'tube', pts: [[420, 132, 10], [480, 137, 10], [555, 148, 9]], kind: 'pv', fid: 'p3', duct: -1 },
+      { t: 'tube', pts: [[212, 208, 12], [165, 210, 11], [125, 216, 10]], kind: 'pv', fid: 'rpvAnt' },
+      { t: 'tube', pts: [[205, 228, 12], [192, 262, 12], [182, 296, 11]], kind: 'pv', fid: 'rpvPost' },
+      { t: 'tube', pts: [[228, 68, 3], [246, 92, 5]], kind: 'hv', fid: 'mhv' },
+      { t: 'tube', pts: [[358, 245, 10], [382, 302, 12]], kind: 'hv', fid: 'mhv' },
+      { t: 'tube', pts: [[70, 162, 4], [150, 190, 8], [222, 236, 12], [300, 280, 14], [372, 316, 15]], kind: 'hv', fid: 'rhv' },
+      { t: 'tube', pts: [[532, 180, 6], [480, 242, 10], [418, 302, 12]], kind: 'hv', fid: 'lhv' },
+      { t: 'bone', c: [450, 485], r: 100, fid: 'spine' },
+      { t: 'poly', kind: 'liver', pts: [[25,230],[40,150],[80,105],[150,85],[260,70],[400,60],[520,70],[590,100],[612,150],[600,200],[560,250],[520,300],[470,330],[420,352],[300,370],[200,385],[120,370],[60,330],[30,280]] }
+    ]
+  },
+  bil_sc: {
+    orient: 'trans', s: 0.032, cx: 300, top: 32,
+    segment(x, y) {
+      if (x > 430 && y < 175) return 'S3';
+      if (x > 300 && x <= 430 && y < 200) return 'S4';
+      if (x <= 300 && y < 230) return 'S5';
+      if (y >= 230 && x < 330) return 'S6';
+      return null;
+    },
+    prims: [
+      { t: 'ell', c: [565, 245], r: [8, 7], kind: 'art', fid: 'sma' },
+      { t: 'ell', c: [548, 283], r: [25, 28], kind: 'art', fid: 'ao' },
+      { t: 'ell', c: [478, 268], r: [33, 18], rot: -0.3, kind: 'ivc', fid: 'ivc' },
+      { t: 'tube', pts: [[550, 240, 8], [600, 250, 9], [645, 258, 9]], kind: 'vein', fid: 'sv' },
+      { t: 'ell', c: [520, 225], r: [22, 30], kind: 'bowel', fid: 'duod' },
+      { t: 'poly', kind: 'bowel', fid: 'stomach', pts: [[610,180],[700,170],[745,185],[740,212],[650,192]] },
+      { t: 'poly', kind: 'panc', fid: 'pancBody', pts: [[545,205],[600,196],[700,200],[742,216],[680,236],[630,246],[580,236]] },
+      { t: 'tube', pts: [[118, 350, 6], [250, 328, 8], [380, 305, 9], [470, 272, 10]], kind: 'vein', fid: 'rrv' },
+      { t: 'tube', pts: [[122, 362, 5], [250, 340, 6], [400, 305, 7], [530, 282, 9]], kind: 'art', fid: 'rra' },
+      { t: 'ell', c: [140, 345], r: [40, 22], kind: 'sinus', fid: 'cec' },
+      { t: 'ell', c: [140, 345], r: [115, 55], kind: 'kidney', fid: 'rk' },
+      { t: 'ell', c: [215, 125], r: [112, 58], rot: 0.45, kind: 'gb', fid: 'gb' },
+      { t: 'tube', pts: [[330, 225, 15], [405, 215, 16]], kind: 'pv', fid: 'lpvTrans', duct: 1 },
+      { t: 'tube', pts: [[415, 215, 15], [425, 160, 15], [425, 104, 13]], kind: 'pv', fid: 'lpvUmb' },
+      { t: 'tube', pts: [[425, 92, 9], [365, 90, 8]], kind: 'pv', fid: 'p4' },
+      { t: 'tube', pts: [[425, 96, 10], [520, 98, 9], [625, 102, 8]], kind: 'pv', fid: 'p3', duct: 1 },
+      { t: 'bone', c: [480, 450], r: 105, fid: 'spine' },
+      { t: 'poly', kind: 'liver', pts: [[25,300],[30,200],[60,120],[120,60],[200,30],[320,25],[450,30],[560,45],[650,70],[690,110],[685,150],[640,170],[560,180],[500,195],[480,230],[440,258],[380,265],[300,280],[220,290],[120,296],[60,300]] }
+    ]
+  },
+  bil_long: {
+    s: 0.035, cx: 300, top: 40,
+    segment(x, y) { return pointInPolygon(x, y, [[110,342],[250,322],[300,302],[312,322],[200,342]]) ? 'S1' : null; },
+    prims: [
+      { t: 'ell', c: [640, 155], r: [40, 45], kind: 'gas', fid: 'colon' },
+      { t: 'ell', c: [502, 192], r: [135, 42], rot: -0.72, kind: 'gb', fid: 'gb' },
+      { t: 'tube', pts: [[320, 268, 9], [400, 285, 9], [480, 305, 8], [555, 318, 7]], kind: 'cbd', fid: 'cbd' },
+      { t: 'tube', pts: [[305, 295, 18], [400, 300, 15], [470, 305, 11]], kind: 'pv', fid: 'pv' },
+      { t: 'tube', pts: [[470, 300, 11], [550, 275, 12], [625, 245, 12]], kind: 'vein', fid: 'smv' },
+      { t: 'ell', c: [525, 292], r: [75, 35], kind: 'panc', fid: 'pancHead' },
+      { t: 'tube', pts: [[95, 340, 16], [180, 260, 12], [300, 180, 8], [405, 125, 3]], kind: 'hv', fid: 'mhv' },
+      { t: 'tube', pts: [[20, 372, 25], [620, 348, 25]], kind: 'ivc', fid: 'ivc' },
+      { t: 'poly', kind: 'liver', pts: [[60,330],[40,250],[45,160],[80,90],[140,55],[230,35],[330,30],[420,50],[480,80],[535,108],[490,125],[430,160],[410,200],[400,265],[380,285],[300,300],[250,320],[200,335],[105,345]] }
+    ]
+  },
+  bil_ic: {
+    s: 0.032, cx: 300, top: 32,
+    segment(x, y) {
+      if (y > 285 && x < 320) return 'S7';
+      if (x > 380 && y > 150) return 'S6';
+      if (y < 150) return x > 350 ? 'S5' : 'S8';
+      return null;
+    },
+    prims: [
+      { t: 'ell', c: [545, 250], r: [45, 55], kind: 'gas', fid: 'colon' },
+      { t: 'poly', kind: 'gb', fid: 'gb', pts: [[455,240],[470,190],[495,130],[515,85],[545,62],[580,65],[590,90],[575,150],[545,200],[520,235],[480,245]] },
+      { t: 'tube', pts: [[495, 272, 18], [400, 268, 18], [330, 270, 16]], kind: 'pv', fid: 'rpv', duct: 1 },
+      { t: 'tube', pts: [[330, 272, 13], [260, 286, 12], [210, 298, 11]], kind: 'pv', fid: 'rpvPost', duct: 1 },
+      { t: 'tube', pts: [[330, 255, 12], [270, 215, 12], [195, 170, 11]], kind: 'pv', fid: 'rpvAnt', duct: -1 },
+      { t: 'tube', pts: [[195, 170, 10], [140, 160, 9], [90, 155, 8]], kind: 'pv', fid: 'p8', duct: -1 },
+      { t: 'tube', pts: [[232, 175, 9], [200, 115, 8], [170, 62, 7]], kind: 'pv', fid: 'p8', duct: 1 },
+      { t: 'tube', pts: [[305, 222, 10], [380, 135, 9], [440, 68, 8]], kind: 'pv', fid: 'p5', duct: 1 },
+      { t: 'tube', pts: [[340, 232, 9], [400, 240, 9], [455, 242, 8]], kind: 'pv', fid: 'p6' },
+      { t: 'tube', pts: [[150, 318, 20], [260, 250, 15], [380, 170, 10], [495, 98, 4]], kind: 'hv', fid: 'rhv' },
+      { t: 'tube', pts: [[20, 333, 16], [610, 308, 16]], kind: 'ivc', fid: 'ivc' },
+      { t: 'poly', kind: 'liver', pts: [[100,305],[40,230],[20,150],[40,90],[100,50],[200,30],[330,25],[450,35],[545,48],[520,75],[490,100],[500,150],[480,200],[455,240],[440,280],[380,300],[300,310],[220,345],[150,345]] }
+    ]
+  },
+  pan_head: {
+    orient: 'trans', s: 0.025, cx: 300, top: 30,
+    segment(x) { return x > 250 ? 'S3' : null; },
+    prims: [
+      { t: 'ell', c: [178, 230], r: [11, 10], kind: 'art', fid: 'gda' },
+      { t: 'ell', c: [228, 316], r: [10, 10], kind: 'cbd', fid: 'cbd' },
+      { t: 'tube', pts: [[225, 290, 5], [245, 252, 5], [275, 236, 5]], kind: 'bd', fid: 'pd' },
+      { t: 'ell', c: [285, 282], r: [20, 16], kind: 'vein', fid: 'smv' },
+      { t: 'tube', pts: [[290, 272, 12], [330, 247, 13], [380, 240, 13], [432, 244, 11]], kind: 'vein', fid: 'sv' },
+      { t: 'ell', c: [368, 272], r: [12, 10], kind: 'art', fid: 'sma' },
+      { t: 'poly', kind: 'panc', fid: 'pancHead', pts: [[175,215],[260,197],[350,190],[460,196],[470,210],[400,216],[350,236],[310,262],[290,302],[250,322],[200,322],[175,292],[165,250]] },
+      { t: 'ell', c: [140, 290], r: [40, 85], kind: 'bowel', fid: 'duod' },
+      { t: 'poly', kind: 'bowel', fid: 'stomach', pts: [[240,180],[250,150],[300,130],[400,105],[460,92],[480,100],[470,130],[400,150],[330,170],[280,185]] },
+      { t: 'ell', c: [100, 130], r: [55, 70], rot: -0.2, kind: 'gb', fid: 'gb' },
+      { t: 'tube', pts: [[280, 60, 7], [380, 52, 7]], kind: 'pv', fid: 'p3' },
+      { t: 'ell', c: [365, 345], r: [30, 28], kind: 'art', fid: 'ao' },
+      { t: 'tube', pts: [[385, 365, 7], [450, 400, 7], [520, 425, 6], [560, 468, 6]], kind: 'art', fid: 'lra' },
+      { t: 'tube', pts: [[205, 368, 13], [262, 346, 13], [300, 326, 12]], kind: 'ivc', fid: 'ivc' },
+      { t: 'tube', pts: [[300, 326, 10], [350, 302, 9], [410, 312, 9], [470, 358, 9], [560, 400, 8]], kind: 'vein', fid: 'lrv' },
+      { t: 'ell', c: [105, 432], r: [35, 45], kind: 'sinus', fid: 'cec' },
+      { t: 'ell', c: [95, 445], r: [75, 70], kind: 'kidney', fid: 'rk' },
+      { t: 'ell', c: [570, 418], r: [32, 28], kind: 'sinus', fid: 'cec' },
+      { t: 'ell', c: [585, 445], r: [78, 75], kind: 'kidney', fid: 'lk' },
+      { t: 'bone', c: [310, 525], r: 115, fid: 'spine' },
+      { t: 'poly', kind: 'liver', pts: [[40,35],[430,25],[440,50],[400,75],[300,90],[245,105],[235,160],[215,180],[150,195],[60,190],[40,120]] }
+    ]
+  },
+  pan_headlong: {
+    s: 0.042, cx: 290, top: 55,
+    segment(x, y) {
+      if (pointInPolygon(x, y, [[60,300],[170,310],[205,285],[200,265],[120,265],[60,272]])) return 'S1';
+      return y < 200 ? 'S4' : null;
+    },
+    prims: [
+      { t: 'ell', c: [255, 228], r: [8, 7], kind: 'art', fid: 'cha' },
+      { t: 'tube', pts: [[60, 195, 10], [200, 240, 9], [290, 275, 7], [360, 295, 5]], kind: 'cbd', fid: 'cbd' },
+      { t: 'tube', pts: [[55, 232, 15], [220, 246, 16]], kind: 'pv', fid: 'pv' },
+      { t: 'tube', pts: [[220, 246, 16], [400, 232, 15], [580, 205, 14]], kind: 'vein', fid: 'smv' },
+      { t: 'ell', c: [275, 165], r: [95, 32], rot: -0.85, kind: 'gb', fid: 'gb' },
+      { t: 'ell', c: [378, 150], r: [45, 30], kind: 'bowel', fid: 'duodBulb' },
+      { t: 'ell', c: [335, 242], r: [80, 52], kind: 'panc', fid: 'pancHead' },
+      { t: 'tube', pts: [[30, 340, 22], [550, 300, 22]], kind: 'ivc', fid: 'ivc' },
+      { t: 'poly', kind: 'liver', pts: [[40,65],[150,60],[260,62],[340,80],[345,100],[300,150],[260,200],[205,240],[200,280],[170,310],[60,310],[55,250],[60,200],[55,150]] }
+    ]
+  },
+  pan_body: {
+    orient: 'trans', s: 0.028, cx: 280, top: 70,
+    segment(x, y) {
+      if (y > 230 && x < 230) return 'S1';
+      if (x < 230) return 'S4';
+      return y < 150 ? 'S3' : 'S2';
+    },
+    prims: [
+      { t: 'tube', pts: [[230, 96, 8], [230, 280, 8]], kind: 'lig', fid: 'ligTeres' },
+      { t: 'tube', pts: [[262, 108, 9], [375, 102, 8]], kind: 'pv', fid: 'p3' },
+      { t: 'tube', pts: [[262, 108, 9], [195, 110, 9]], kind: 'pv', fid: 'p4' },
+      { t: 'tube', pts: [[262, 196, 14], [262, 150, 14], [262, 112, 12]], kind: 'pv', fid: 'lpvUmb' },
+      { t: 'tube', pts: [[262, 195, 9], [350, 185, 8]], kind: 'pv', fid: 'p2' },
+      { t: 'tube', pts: [[120, 240, 16], [200, 215, 15], [262, 198, 14]], kind: 'pv', fid: 'lpvTrans' },
+      { t: 'tube', pts: [[200, 295, 5], [215, 290, 5]], kind: 'art', fid: 'pha' },
+      { t: 'tube', pts: [[165, 305, 5], [200, 300, 5]], kind: 'art', fid: 'gda' },
+      { t: 'tube', pts: [[200, 330, 7], [270, 318, 7], [330, 320, 7]], kind: 'bd', fid: 'pd' },
+      { t: 'ell', c: [213, 375], r: [17, 14], kind: 'vein', fid: 'smv' },
+      { t: 'ell', c: [163, 383], r: [10, 9], kind: 'cbd', fid: 'cbd' },
+      { t: 'ell', c: [290, 372], r: [9, 9], kind: 'art', fid: 'sma' },
+      { t: 'tube', pts: [[290, 392, 9], [287, 352, 9]], kind: 'art', fid: 'ce' },
+      { t: 'tube', pts: [[300, 350, 5], [470, 362, 5]], kind: 'art', fid: 'sa' },
+      { t: 'tube', pts: [[230, 362, 10], [262, 345, 10], [310, 350, 11], [360, 385, 11], [420, 440, 10], [490, 445, 8]], kind: 'vein', fid: 'sv' },
+      { t: 'poly', kind: 'panc', fid: 'pancBody', pts: [[125,360],[140,320],[200,295],[280,290],[350,300],[410,330],[450,380],[470,430],[440,440],[400,410],[360,370],[330,345],[300,340],[260,355],[225,380],[200,420],[150,425],[125,400]] },
+      { t: 'ell', c: [290, 415], r: [30, 28], kind: 'art', fid: 'ao' },
+      { t: 'ell', c: [195, 450], r: [38, 22], kind: 'ivc', fid: 'ivc' },
+      { t: 'ell', c: [85, 350], r: [35, 45], kind: 'bowel', fid: 'duodBulb' },
+      { t: 'poly', kind: 'bowel', fid: 'stomach', pts: [[330,265],[400,210],[470,180],[520,180],[545,210],[535,260],[500,290],[440,300],[380,290],[330,275]] },
+      { t: 'bone', c: [280, 650], r: 160, fid: 'spine' },
+      { t: 'poly', kind: 'liver', pts: [[20,90],[100,75],[250,68],[380,75],[430,90],[440,120],[410,150],[370,170],[330,200],[300,230],[280,260],[230,280],[150,295],[50,295],[20,200]] }
+    ]
+  },
+  pan_bodylong: {
+    s: 0.038, cx: 260, top: 60,
+    segment(x) { return x < 120 ? 'S2' : 'S3'; },
+    prims: [
+      { t: 'ell', c: [168, 105], r: [9, 8], kind: 'pv', fid: 'p3' },
+      { t: 'ell', c: [75, 212], r: [10, 10], kind: 'pv', fid: 'p2' },
+      { t: 'ell', c: [278, 222], r: [7, 7], kind: 'bd', fid: 'pd' },
+      { t: 'ell', c: [285, 232], r: [75, 45], kind: 'panc', fid: 'pancBody' },
+      { t: 'ell', c: [255, 287], r: [20, 13], kind: 'vein', fid: 'sv' },
+      { t: 'ell', c: [350, 318], r: [15, 8], kind: 'vein', fid: 'lrv' },
+      { t: 'tube', pts: [[155, 300, 8], [175, 268, 10], [205, 250, 10]], kind: 'art', fid: 'sa' },
+      { t: 'tube', pts: [[140, 268, 7], [115, 270, 6], [80, 282, 5]], kind: 'art', fid: 'cha' },
+      { t: 'tube', pts: [[135, 350, 12], [135, 300, 11], [142, 266, 9]], kind: 'art', fid: 'ce' },
+      { t: 'tube', pts: [[250, 335, 9], [350, 302, 10], [500, 275, 10]], kind: 'art', fid: 'sma' },
+      { t: 'tube', pts: [[30, 372, 26], [500, 360, 26]], kind: 'art', fid: 'ao' },
+      { t: 'ell', c: [360, 150], r: [70, 40], kind: 'stomach', fid: 'stomach' },
+      { t: 'poly', kind: 'liver', pts: [[20,70],[150,65],[300,70],[340,80],[300,110],[230,150],[150,200],[80,250],[20,300]] }
+    ]
+  }
+});
+function polyLabelPoint(pts) {
+  // 多角形の中にある、重心に近い点（ラベルの位置）。
+  const c = [pts.reduce((a, q) => a + q[0], 0) / pts.length, pts.reduce((a, q) => a + q[1], 0) / pts.length];
+  if (pointInPolygon(c[0], c[1], pts)) return c;
+  let best = pts[0], bd = Infinity;
+  for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) {
+    const m = [(pts[i][0] + pts[j][0]) / 2, (pts[i][1] + pts[j][1]) / 2];
+    const d = Math.hypot(m[0] - c[0], m[1] - c[1]);
+    if (d < bd && pointInPolygon(m[0], m[1], pts)) { bd = d; best = m; }
+  }
+  return best;
+}
 function pointInPolygon(x, y, pts) {
   let inside = false;
   for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
@@ -1209,8 +1603,40 @@ function vesselLook(kind, inside, organKey, fid) {
   }[kind];
   return inside ? { val: look[0], shadow: 0, enhance: look[1], organKey, fid } : { val: look[2], shadow: 0, enhance: 0, organKey: null, fid };
 }
+// 実質臓器・ガスの見え方（脾・胆道・膵の断層模式図で使う）。肺のガスは多重反射の縞にする。
+const ORGAN_LOOK_KINDS = new Set(['spleen', 'kidney', 'sinus', 'gas', 'lung', 'bowel']);
+// depthCm：その構造の表面（探触子側）からの深さ。ガスは表面だけが明るく、奥は汚い音響陰影。肺は胸膜の線と多重反射（A-line）。
+function organLook(kind, fid, depthCm) {
+  if (kind === 'spleen') return { val: 108, shadow: 0, enhance: 0, organKey: 'spleen', fid };
+  if (kind === 'panc') return { val: 138, shadow: 0, enhance: 0, organKey: 'pancreas', fid };
+  if (kind === 'kidney') return { val: 78, shadow: 0, enhance: 0, organKey: fid === 'lk' ? 'ltKidneyCort' : 'kidneyCort', fid };
+  if (kind === 'sinus') return { val: 190, shadow: 0, enhance: 0, organKey: 'kidneyCec', fid };
+  if (kind === 'gb') return { val: 10, shadow: 0, enhance: 0.35, organKey: 'gb', fid };
+  if (kind === 'lung') {
+    if (depthCm < 0.22) return { val: 225, shadow: 0, enhance: 0, organKey: 'lung', fid };
+    const band = depthCm % 0.5 < 0.16 ? 175 * Math.exp(-depthCm / 4) : 0;
+    return { val: 28 + band, shadow: 0, enhance: 0, organKey: 'lung', fid };
+  }
+  if (kind === 'bowel') return depthCm < 0.16 ? { val: 185, shadow: 0, enhance: 0, organKey: 'bowelWall', fid }
+    : { val: 128, shadow: 0.35, enhance: 0, organKey: 'bowelWall', fid };   // 内容物のある胃・十二指腸：少し陰影
+  return depthCm < 0.25 ? { val: 215, shadow: 0, enhance: 0, organKey: 'gas', fid }
+    : { val: 70, shadow: 0.85, enhance: 0, organKey: 'gas', fid };   // ガス：表面が明るく、奥は陰影
+}
 const SCHEMA_ORGAN_KEYS = { pv: 'pv', hv: 'hv', vein: 'sv', ivc: 'ivc', art: 'ao', bd: 'bd', cbd: 'cbd', gb: 'gb', panc: 'pancreas', stomach: 'stomachWall', eso: 'stomachWall', lig: 'ligTeres' };
 const SCHEMA_WALL_CM = { pv: 0.09, hv: 0.035, vein: 0.04, ivc: 0.035, art: 0.08, bd: 0.07, cbd: 0.07, gb: 0.08 };
+// 図形の中の点の、浅い側の縁からの深さ（cm、3 cmまで）。
+function polyDepthCm(pts, x, y, s) {
+  const step = 0.08 / s;
+  for (let k = 1; k <= 38; k++) if (!pointInPolygon(x, y - k * step, pts)) return k * 0.08;
+  return 99;  // 3 cm より深い
+}
+function ellDepthCm(p, x, y, s) {
+  const rot = p.rot || 0, c = Math.cos(rot), sn = Math.sin(rot);
+  const inside = yy => { const dx = x - p.c[0], dy = yy - p.c[1]; return Math.hypot((dx * c + dy * sn) / p.r[0], (-dx * sn + dy * c) / p.r[1]) < 1; };
+  const step = 0.08 / s;
+  for (let k = 1; k <= 38; k++) if (!inside(y - k * step)) return k * 0.08;
+  return 99;
+}
 function sampleSchemaScene(scene, lCm, aCm) {
   if (aCm < 1.3) return null;  // 皮膚・皮下は3Dモデルと同じ
   const x = scene.cx + lCm / scene.s, y = scene.top + (aCm - 1.5) / scene.s, s = scene.s;
@@ -1237,6 +1663,8 @@ function sampleSchemaScene(scene, lCm, aCm) {
       const depthPx = (1 - d) * Math.min(p.r[0], p.r[1]);
       if (p.kind === 'lig') { if (d < 1) return { val: 228, shadow: 0.32, enhance: 0, organKey, fid: p.fid }; continue; }
       if (p.kind === 'panc') { if (d < 1) return { val: 138, shadow: 0, enhance: 0, organKey, fid: p.fid }; continue; }
+      if (p.kind === 'kidney' && d < 1 && (1 - d) * Math.min(p.r[0], p.r[1]) * s < 0.12) return { val: 165, shadow: 0, enhance: 0, organKey: 'kidneyCort', fid: p.fid }; // 腎被膜・周囲脂肪の明るい縁
+      if (ORGAN_LOOK_KINDS.has(p.kind)) { if (d < 1) return organLook(p.kind, p.fid, ellDepthCm(p, x, y, s)); continue; }
       if (p.kind === 'stomach') {
         if (d >= 1) continue;
         const wallCm = depthPx * s;
@@ -1254,6 +1682,10 @@ function sampleSchemaScene(scene, lCm, aCm) {
     if (p.t === 'boneLine') {
       const h = tubeHit({ pts: p.pts.map(q => [q[0], q[1], 0]) }, x, y);
       if (h.d * s < 0.12) return { val: 210, shadow: 1.0, enhance: 0, organKey: 'spine', fid: p.fid };
+      continue;
+    }
+    if (p.t === 'poly' && p.kind && p.kind !== 'liver') {
+      if (pointInPolygon(x, y, p.pts)) return organLook(p.kind, p.fid, polyDepthCm(p.pts, x, y, s));
       continue;
     }
     if (p.t === 'poly' && pointInPolygon(x, y, p.pts)) {
@@ -1283,7 +1715,9 @@ function activeSchema() {
     const view = TEXTBOOK_VIEWS[id];
     if (view.zone !== state.selectedZone || !SCHEMA_SCENES[id]) continue;
     const w = schemaWeightFor(view);
-    if (w > 0 && (!best || w > best.w)) best = { id, scene: SCHEMA_SCENES[id], w };
+    // 同じ位置に複数の断面があるときは、いま選んでいる教本の断面を優先する。
+    const pref = id === state.textbookView ? 1e-3 : 0;
+    if (w > 0 && (!best || w + pref > best.w + best.pref)) best = { id, scene: SCHEMA_SCENES[id], w, pref };
   }
   return best;
 }
@@ -1291,6 +1725,12 @@ function activeSchema() {
 function sampleEchoPoint(origin, frame, lCm, aCm, respY, schema) {
   const sS = schema ? sampleSchemaScene(schema.scene, lCm, aCm) : null;
   if (sS && schema.w >= 1) return sS;
+  if (schema && schema.w >= 1 && aCm < 1.3) {
+    // シェーマの像のときは、皮膚・皮下（実CT）の肋骨やガスの陰影を持ち込まない（見せたい陰影はシェーマ側で描く）。
+    const n = sampleVolume(origin[0] + frame.ux * lCm + frame.bx * aCm, origin[1] + frame.uy * lCm + frame.by * aCm + respY, origin[2] + frame.uz * lCm + frame.bz * aCm);
+    if (atlasReady() && aCm < 0.25) return { val: 150, shadow: 0, enhance: 0, organKey: null };
+    return n.shadow > 0 || n.val > 175 ? { val: aCm < 0.8 ? 62 : 92, shadow: 0, enhance: 0, organKey: null } : n;
+  }
   // 実CTの解剖では、探触子の直下 2.5 mm を皮膚の明るい層として描く
   if (atlasReady() && aCm < 0.25 && !sS) return { val: 150, shadow: 0, enhance: 0, organKey: null };
   const s3 = sampleVolume(origin[0] + frame.ux * lCm + frame.bx * aCm, origin[1] + frame.uy * lCm + frame.by * aCm + respY, origin[2] + frame.uz * lCm + frame.bz * aCm);
@@ -1304,7 +1744,7 @@ function updateZoneUI() {
   const ja = state.lang === 'ja';
   const guide = ZONE_GUIDES[state.selectedZone];
   const name = ja ? guide.ja : guide.en;
-  [['epigastric', 'btnPreEpTrans'], ['subcostal_gb', 'btnPreSubGb'], ['right_intercostal', 'btnPreRtIc'], ['right_flank', 'btnPreRtFlank'], ['left_flank', 'btnPreLtFlank'], ['pelvis_bladder', 'btnPreBladder']].forEach(([zone, id]) => {
+  [['epigastric', 'btnPreEpTrans'], ['subcostal_gb', 'btnPreSubGb'], ['right_intercostal', 'btnPreRtIc'], ['right_flank', 'btnPreRtFlank'], ['left_flank', 'btnPreLtFlank']].forEach(([zone, id]) => {
     document.getElementById(id).classList.toggle('active', state.selectedZone === zone);
   });
   document.getElementById('bodyStepHint').textContent = ja
@@ -1945,17 +2385,25 @@ const ZONE_PROBE_BASES = { right_intercostal: { lateral: true, depth: 4.5 } };
 // 部位を選んだときの基準の角度。肋間走査は肋骨に沿わせ（Yaw）、やや背側へ向けた姿勢を基準にする。
 const ZONE_DEFAULT_POSES = { right_intercostal: { yaw: 50, pitch: 0, roll: 16 } };
 function lateralToWorld([vx, vy, vz]) { return [vz, vy, -vx]; }
+// 左側面（脾・左腎の左肋間・側腹部走査）：ビームは内側（x−）へ向かう。右側面の写し方を左右反転したもの（回転のまま）。
+function lateralLeftToWorld([vx, vy, vz]) { return [-vz, vy, vx]; }
 function currentProbeFrame() {
   const f = computeProbeFrame(state.yaw, state.pitch, state.roll);
-  if (!ZONE_PROBE_BASES[state.selectedZone]) return f;
-  const [ux, uy, uz] = lateralToWorld([f.ux, f.uy, f.uz]);
-  const [bx, by, bz] = lateralToWorld([f.bx, f.by, f.bz]);
+  const base = ZONE_PROBE_BASES[state.selectedZone];
+  if (!base) return f;
+  const toWorld = base.side === 'left' ? lateralLeftToWorld : lateralToWorld;
+  const [ux, uy, uz] = toWorld([f.ux, f.uy, f.uz]);
+  const [bx, by, bz] = toWorld([f.bx, f.by, f.bz]);
   return { ux, uy, uz, bx, by, bz };
 }
 // 探触子の接触点（体の座標）。側面ではボディマーク上の左右の移動を前後（z）の移動に置き換える。
 function probeOrigin() {
   const base = ZONE_PROBE_BASES[state.selectedZone];
   if (!base) return [state.px, state.py, atlasReady() ? atlasSurfaceZ(state.px, state.py) : 0];
+  if (base.side === 'left') {   // 左側面：ボディマークで内側（x−）へ動かすと前（z−）へ
+    const z = base.depth + (state.px - zoneOrigin()[0]);
+    return [atlasReady() ? atlasLeftSurfaceX(state.py, z) : -LATERAL_SKIN_X, state.py, z];
+  }
   const z = base.depth - (state.px - zoneOrigin()[0]);
   return [atlasReady() ? atlasRightSurfaceX(state.py, z) : LATERAL_SKIN_X, state.py, z];
 }
@@ -2957,11 +3405,17 @@ function atlasRightSurfaceX(y, z) {
   for (let i = 0; i < ATLAS.NI; i++) if (ATLAS.data[(k * ATLAS.NJ + j) * ATLAS.NI + i]) return (i - ATLAS.midI) * ATLAS.vx;
   return LATERAL_SKIN_X;
 }
+function atlasLeftSurfaceX(y, z) {
+  const k = Math.max(0, Math.min(ATLAS.NK - 1, Math.round(y / ATLAS.vy + ATLAS.xiphoidK)));
+  const j = Math.max(0, Math.min(ATLAS.NJ - 1, Math.round(ATLAS.skinJ - z / ATLAS.vz)));
+  for (let i = ATLAS.NI - 1; i >= 0; i--) if (ATLAS.data[(k * ATLAS.NJ + j) * ATLAS.NI + i]) return (i - ATLAS.midI) * ATLAS.vx;
+  return -LATERAL_SKIN_X;
+}
 // 分類ごとの見え方：[輝度, 後方の陰影, 後方増強, 凡例のキー, 所見名]
 const ATLAS_LOOK = {
   1: [72, 0, 0, null, null], 2: [92, 0, 0, null, null], 3: [215, 0.82, 0, 'gas', 'gas'], 23: [14, 0, 0.2, null, null], 4: [215, 1.0, 0, 'spine', 'spine'], 5: [58, 0, 0, null, null], 6: [60, 0, 0, null, null],
   10: [100, 0, 0, 'liverRt', null], 11: [108, 0, 0, 'spleen', 'spleen'], 12: [138, 0, 0, 'pancreas', 'pancreas'],
-  13: [90, 0, 0, 'kidneyCort', 'kidneyR'], 14: [90, 0, 0, 'ltKidneyCort', 'kidneyL'], 15: [185, 0, 0, 'kidneyCec', 'renalSinus'],
+  13: [90, 0, 0, 'kidneyCort', 'rk'], 14: [90, 0, 0, 'ltKidneyCort', 'lk'], 15: [185, 0, 0, 'kidneyCec', 'cec'],
   16: [120, 0, 0, 'rightAdrenal', 'adrenalR'], 17: [120, 0, 0, 'leftAdrenal', 'adrenalL'], 18: [10, 0, 0.35, 'gb', 'gb'],
   19: [150, 0, 0, 'stomachWall', 'stomach'], 20: [140, 0, 0, 'bowelWall', 'bowel'], 21: [40, 0, 0.05, null, 'ureter'], 22: [32, 0, 0.12, 'bowelWall', 'bowel'],
   30: [12, 0, 0.25, 'ao', 'ao'], 31: [11, 0, 0.32, 'ivc', 'ivc'], 32: [15, 0, 0.15, 'pv', 'pv'], 33: [15, 0, 0.15, 'sv', 'sv'],
@@ -3299,7 +3753,8 @@ function drawTargetReferenceView(zone, view) {
   const g = canvas.getContext('2d');
   const ja = state.lang === 'ja';
   // 教本の標準断面に対応する見本は、教本断面ボタンと同じ描き直し図を使う。
-  const textbookId = { liver_hv: 'liver_hv', liver_pv: 'liver_pv', right_intercostal_portal: 'liver_ic', aorta_long: 'liver_ao_long' }[view];
+  const textbookId = { liver_hv: 'liver_hv', liver_pv: 'liver_pv', right_intercostal_portal: 'liver_ic', aorta_long: 'liver_ao_long',
+    pancreas_trans: 'pan_body', biliary_hilum: 'bil_ep', gb_long: 'bil_long', splenorenal: 'spl_long', spleen_long: 'spl_ic' }[view];
   if (textbookId) {
     drawTextbookSchema(textbookId, canvas);
     g.font = '10px sans-serif'; g.textAlign = 'left'; g.fillStyle = '#e3b341';
@@ -3727,6 +4182,7 @@ function drawVesselMiniMap() {
   if (typeof enlargeVesselInner === 'function') enlargeVesselInner();
 }
 
+const ENHANCE_RUN_SAMPLES = Math.round(2.5 * NUM_SAMPLES / ECHO_DEPTH_CM);
 function renderEcho(time) {
   if (!state.frozen) {
     const data = imgData.data, frame = currentProbeFrame(), origin = probeOrigin(), schema = activeSchema();
@@ -3737,7 +4193,7 @@ function renderEcho(time) {
     const sampleStart = performance.now(), rayStep = echoRayStep;
     for (let rIdx = 0; rIdx < NUM_RAYS; rIdx += rayStep) {
       const th = ((rIdx / (NUM_RAYS - 1)) * 2 - 1) * halfAngle;
-      let rayShadow = 0, rayEnhance = 0;
+      let rayShadow = 0, rayEnhance = 0, runSamples = 0;
       for (let sIdx = 0; sIdx < NUM_SAMPLES; sIdx++) {
         const frac = sIdx / (NUM_SAMPLES - 1), dCm = frac * ECHO_DEPTH_CM, [lCm, aCm] = probeRayPoint(dCm, th);
         const wx = origin[0] + frame.ux * lCm + frame.bx * aCm;
@@ -3758,7 +4214,9 @@ function renderEcho(time) {
           organCentroids.set(s.organKey, acc);
         }
         if (s.shadow > rayShadow) rayShadow = s.shadow;
-        if (s.enhance > 0) rayEnhance = Math.min(0.45, rayEnhance + s.enhance * 0.014);
+        // 後方エコーの増強：液体の中を通った距離に応じて強くするが、1つの液体の区間で数えるのは 2.5 cm まで
+        // （血管が走査線とほぼ平行に走ると、その奥だけが帯状に明るくなるのを防ぐ）。
+        if (s.enhance > 0) { if (runSamples++ < ENHANCE_RUN_SAMPLES) rayEnhance = Math.min(0.45, rayEnhance + s.enhance * 0.014); } else runSamples = 0;
         const idx = rIdx * NUM_SAMPLES + sIdx;
         if (realisticEcho) {
           // 組織の明るさ・音響陰影/増強・スペックルを分けて持ち、あとで実機らしく合成する。

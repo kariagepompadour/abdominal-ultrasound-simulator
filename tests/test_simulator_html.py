@@ -665,13 +665,13 @@ class BodyMarkPositionTest(BrowserTestBase):
                 self.assertLessEqual(abs(y - 99), 12, 'near the lateral end of the costal arch (y = 99)')
                 self.assertGreater(y, epigastric_y)
 
-    def test_lower_abdomen_keeps_the_model_mapping(self):
-        self.select('pelvis_bladder')
-        px, py = self.state('[state.px, state.py]')
-        self.assertEqual(self.marker(), [143 + px * 8.5, 110 + py * 8.5])
+    def test_lower_abdomen_is_not_offered(self):
+        # 下腹部（膀胱）は消化器のルーチン検査ではなく、実CTの範囲外なので選べない
+        self.assertEqual(self.page.locator('#btnPreBladder').count(), 0)
+        self.assertNotIn('pelvis_bladder', self.state('ZONE_ORDER'))
 
     def test_nudge_moves_marker_by_the_same_scale_and_round_trips(self):
-        for zone in ('epigastric', 'subcostal_gb', 'right_intercostal', 'right_flank', 'left_flank', 'pelvis_bladder'):
+        for zone in ('epigastric', 'subcostal_gb', 'right_intercostal', 'right_flank', 'left_flank'):
             with self.subTest(zone=zone):
                 self.select(zone)
                 x0, y0 = self.marker()
@@ -821,10 +821,36 @@ class TextbookViewTest(BrowserTestBase):
                 key = 'lateral' if rel == 'left of' else 'depth'
                 self.assertLess(c[a][key], c[b][key])
 
-    def test_six_liver_sections_of_textbook_pages_10_11(self):
+    def test_section_schemas_of_the_textbook_for_liver_spleen_biliary_and_pancreas(self):
+        # 教本の「断層模式図」のページ：肝 p.10–11（6枚）、脾 p.43（2枚）、胆道 p.52–53（4枚）、膵 p.72–73（4枚）
         self.assertEqual(self.page.evaluate("TEXTBOOK_ORDER"),
-                         ['liver_hv', 'liver_pv', 'liver_ic', 'liver_ao_long', 'liver_ivc_s4', 'liver_ivc_rl'])
-        self.assertEqual(self.page.evaluate("TEXTBOOK_ORDER.filter(id => SCHEMA_SCENES[id]).length"), 6)
+                         ['liver_hv', 'liver_pv', 'liver_ic', 'liver_ao_long', 'liver_ivc_s4', 'liver_ivc_rl',
+                          'spl_ic', 'spl_long', 'bil_ep', 'bil_sc', 'bil_long', 'bil_ic',
+                          'pan_head', 'pan_headlong', 'pan_body', 'pan_bodylong'])
+        self.assertEqual(self.page.evaluate("TEXTBOOK_ORDER.filter(id => SCHEMA_SCENES[id]).length"), 16)
+        organs = self.page.evaluate("Object.fromEntries(TEXTBOOK_ORGANS.map(o => [o.id, TEXTBOOK_ORDER.filter(id => TEXTBOOK_VIEWS[id].organ === o.id).length]))")
+        self.assertEqual(organs, {'liver': 6, 'spleen': 2, 'biliary': 4, 'pancreas': 4})
+        pages = self.page.evaluate("TEXTBOOK_ORDER.slice(6).map(id => TEXTBOOK_VIEWS[id].pages.ja)")
+        self.assertTrue(all(p.startswith('教本 p.') and '断層模式図' in p for p in pages), pages)
+        missing = self.page.evaluate("TEXTBOOK_ORDER.flatMap(id => TEXTBOOK_VIEWS[id].steps.flatMap(s => s.findings.filter(f => !FINDING_DEFS[f])))")
+        self.assertEqual(missing, [])
+
+    def test_textbook_toolbar_groups_the_views_by_organ(self):
+        self.assertEqual(self.page.locator('#textbookOrganButtons button').count(), 4)
+        self.assertEqual(self.page.locator('#textbookViewButtons button').count(), 6)
+        self.page.click('#btnOrgan_pancreas')
+        self.assertEqual(self.page.locator('#textbookViewButtons button').count(), 4)
+        self.page.click('#btnTextbook_pan_body')
+        self.assertEqual(self.state('[state.textbookView, state.selectedZone, activeSchema().id, activeSchema().w]'), ['pan_body', 'epigastric', 'pan_body', 1])
+        self.assertTrue(self.page.locator('#btnOrgan_pancreas').evaluate("b => b.classList.contains('active')"))
+        self.assertIn('p.73', self.page.text_content('#textbookPages'))
+        self.page.click('#btnOrgan_spleen')
+        self.page.click('#btnTextbook_spl_ic')
+        self.assertEqual(self.state('[state.textbookView, state.selectedZone]'), ['spl_ic', 'left_flank'])
+        self.page.click('#btnLang')
+        self.assertIn('Textbook views', self.page.text_content('#textbookToolbarLabel'))
+        self.assertEqual(self.page.text_content('#btnOrgan_spleen'), 'Spleen')
+        self.assertEqual(self.errors, [])
 
     def test_every_step_shows_all_of_its_textbook_findings(self):
         views = self.page.evaluate("TEXTBOOK_ORDER.map(id => [id, TEXTBOOK_VIEWS[id].steps.map(s => [s.id, s.findings])])")
@@ -1014,6 +1040,19 @@ class AtlasAnatomyTest(BrowserTestBase):
                     counts = self.counts(view, step)
                     self.assertEqual([f for f in findings if not self.visible(counts, f)], [])
 
+    def test_spleen_views_use_a_probe_on_the_left_side_of_the_body(self):
+        self.open_atlas()
+        self.page.evaluate("selectTextbookView('spl_ic')")
+        self.assertEqual(self.state('ZONE_PROBE_BASES.left_flank.side'), 'left')
+        origin = self.state('probeOrigin()')
+        self.assertGreater(origin[0], 5)            # 患者の左（x が正）の体表
+        frame = self.state('currentProbeFrame()')
+        self.assertLess(frame['bx'], -0.5)          # 左の側面から体の中（右）へ向かう
+        self.page.evaluate("state.yaw += 20")       # 定位置から外れると実CTの脾が見える
+        counts = self.page.evaluate("textbookFindingCounts(true)")
+        self.assertGreaterEqual(counts.get('spleen', {}).get('n', 0), 12)
+        self.assertEqual(self.errors, [])
+
     def test_tilt_steps_are_drawn_from_the_real_ct_not_the_schema(self):
         self.open_atlas()
         for view, step in (('liver_pv', 'head'), ('liver_pv', 'foot'), ('liver_ic', 'post'), ('liver_ic', 'ant')):
@@ -1053,13 +1092,6 @@ class AtlasAnatomyTest(BrowserTestBase):
             const k = atlasClass(x, y, z); c[k] = (c[k] || 0) + 1; } return c; }""")
         self.assertGreater(n.get('23', 0), 200)
         self.assertLess(n.get('4', 0), 10)
-
-    def test_pelvis_stays_on_the_schematic_model_outside_the_ct_range(self):
-        self.open_atlas()
-        self.page.evaluate("selectZone('pelvis_bladder')")
-        self.assertFalse(self.page.evaluate('atlasReady()'))
-        self.page.evaluate("selectZone('epigastric')")
-        self.assertTrue(self.page.evaluate('atlasReady()'))
 
     def test_model_mode_keeps_the_textbook_photo_view_and_model_positions(self):
         self.open_page(query='?anatomy=model')
