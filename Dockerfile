@@ -11,6 +11,7 @@ COPY LICENSE ./LICENSE
 COPY vendor/qrcode.min.js ./vendor/qrcode.min.js
 COPY vendor/LICENSE-qrcodejs ./vendor/LICENSE-qrcodejs
 COPY data/spl-abdominal-atlas/abdomen_labels.u8.gz data/spl-abdominal-atlas/abdomen_labels.json data/spl-abdominal-atlas/LICENSE-SPL-ABDOMINAL-ATLAS.txt ./data/spl-abdominal-atlas/
+COPY data/bodyparts3d/liver_vessels.json data/bodyparts3d/LICENSE-BODYPARTS3D.txt ./data/bodyparts3d/
 
 USER 10001:10001
 EXPOSE 8080

@@ -1,0 +1,32 @@
+BodyParts3D — data used in the Abdominal Ultrasound Simulator
+=============================================================
+
+Attribution (as required by the licensor):
+  BodyParts3D, © The Database Center for Life Science licensed under CC Attribution 4.0 International
+
+Source: BodyParts3D, Database Center for Life Science (DBCLS), Japan.
+  Dataset: isa_BP3D_4.0_obj_99.zip (BodyParts3D 4.0, polygon reduction 99%)
+  https://dbarchive.biosciencedbc.jp/en/bodyparts3d/download.html
+License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+  https://creativecommons.org/licenses/by/4.0/
+  The license page https://dbarchive.biosciencedbc.jp/en/bodyparts3d/lic.html (updated 2025-02-27)
+  specifies CC BY 4.0. Comments inside the original OBJ files still mention the earlier
+  CC BY-SA 2.1 Japan license; the current license page is followed here.
+
+CHANGES MADE (this is a modified, derived work — not the original data):
+  liver_vessels.json contains centre lines with radii derived from the BodyParts3D meshes of the
+  intrahepatic portal vein branches, hepatic veins and bile ducts. The meshes were deformed
+  (affine + B-spline registration) to fit the liver of the SPL Abdominal Atlas CT used by the
+  simulator, skeletonised, smoothed and given minimum radii so that they are visible on simulated
+  ultrasound. The lines were relabelled with textbook finding names: the transverse part of the
+  left portal vein follows the BodyParts3D "Trunk of left portal vein"; the umbilical portion is
+  the skeleton edge of the lateral inferior segmental branch that starts at the end of that trunk;
+  the right portal vein and its anterior/posterior trunks are approximated with distance rules
+  (shared course of the anterior and posterior branches, then the first 2.8 cm). The liver segment
+  classes (S1-S8) in ../spl-abdominal-atlas/abdomen_labels.u8.gz are an APPROXIMATION: each liver
+  voxel takes the nearest segmental portal branch centre line (S2-S8), the right lobe is split into
+  superior/inferior by a horizontal plane at the mean height of the right portal branches, and S1
+  is the deformed BodyParts3D caudate lobe. They are not computed perfusion territories. The
+  ligamentum teres and common bile duct lines were added by hand and are not from BodyParts3D.
+
+No endorsement by DBCLS is implied. For education only; not for clinical use.

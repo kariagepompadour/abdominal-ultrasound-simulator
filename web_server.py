@@ -140,6 +140,9 @@ class WebHandler(BaseHTTPRequestHandler):
             '/data/spl-abdominal-atlas/abdomen_labels.u8.gz': (ROOT / 'data' / 'spl-abdominal-atlas' / 'abdomen_labels.u8.gz', 'application/octet-stream'),
             '/data/spl-abdominal-atlas/abdomen_labels.json': (ROOT / 'data' / 'spl-abdominal-atlas' / 'abdomen_labels.json', 'application/json; charset=utf-8'),
             '/data/spl-abdominal-atlas/LICENSE-SPL-ABDOMINAL-ATLAS.txt': (ROOT / 'data' / 'spl-abdominal-atlas' / 'LICENSE-SPL-ABDOMINAL-ATLAS.txt', 'text/plain; charset=utf-8'),
+            # BodyParts3D（DBCLS、CC BY 4.0）の肝内血管を変形して合わせた中心線。LICENSE-BODYPARTS3D.txt を参照
+            '/data/bodyparts3d/liver_vessels.json': (ROOT / 'data' / 'bodyparts3d' / 'liver_vessels.json', 'application/json; charset=utf-8'),
+            '/data/bodyparts3d/LICENSE-BODYPARTS3D.txt': (ROOT / 'data' / 'bodyparts3d' / 'LICENSE-BODYPARTS3D.txt', 'text/plain; charset=utf-8'),
         }
         if path == '/':
             self.send_response(302)

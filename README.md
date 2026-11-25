@@ -2,7 +2,7 @@
 
 [日本語](README_JA.md) · [Open the web app](https://abdominal-ultrasound-simulator.onrender.com/web)
 
-An educational prototype for practising where to place and how to tilt an abdominal ultrasound probe (experimental). By default the echo is computed from real human anatomy: tissue labels derived from a public, de-identified abdominal CT atlas of one adult (SPL Abdominal Atlas, modified; see [Anatomy data](#anatomy-data)). Intrahepatic structures that the atlas does not label (middle and left hepatic veins, portal branches, bile ducts, ligamentum teres) were added by hand so that they follow the textbook section schemas. At six textbook positions the image follows the textbook schema; tilting or moving the probe changes it to the real-CT anatomy. The app contains no CT images or identifiable patient data, does not establish normal ultrasound appearances, and does not provide diagnostic guidance. The anatomy is one person's and differs from typical textbook anatomy in places; correspondence with reference views has not been validated by a specialist.
+An educational prototype for practising where to place and how to tilt an abdominal ultrasound probe (experimental). By default the echo is computed from real human anatomy: tissue labels derived from a public, de-identified abdominal CT atlas of one adult (SPL Abdominal Atlas, modified; see [Anatomy data](#anatomy-data)). Intrahepatic structures that the atlas does not label (hepatic veins, portal branches, bile ducts, liver segments) come from BodyParts3D, a reference 3D human model, deformed to fit the CT liver; only the ligamentum teres and common bile duct were added by hand. At six textbook positions the image follows the textbook schema; tilting or moving the probe changes it to the real-CT anatomy. The app contains no CT images or identifiable patient data, does not establish normal ultrasound appearances, and does not provide diagnostic guidance. The anatomy is one person's and differs from typical textbook anatomy in places; correspondence with reference views has not been validated by a specialist.
 
 ## Use
 
@@ -257,6 +257,8 @@ respect to Slicer.
 
 </details>
 
+The intrahepatic vessels, bile ducts and liver segments are derived from **BodyParts3D, © The Database Center for Life Science licensed under CC Attribution 4.0 International** ([CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)). The meshes were deformed to fit the CT liver, reduced to centre lines and given minimum widths for ultrasound; see [data/bodyparts3d/LICENSE-BODYPARTS3D.txt](data/bodyparts3d/LICENSE-BODYPARTS3D.txt) for the changes. DBCLS has not reviewed or endorsed this app.
+
 ## License
 
-The application is released under the [MIT License](LICENSE). The bundled QR code library has its own [MIT license](vendor/LICENSE-qrcodejs). The anatomy data follow the [3D Slicer License](data/spl-abdominal-atlas/LICENSE-SPL-ABDOMINAL-ATLAS.txt).
+The application is released under the [MIT License](LICENSE). The bundled QR code library has its own [MIT license](vendor/LICENSE-qrcodejs). The anatomy data follow the [3D Slicer License](data/spl-abdominal-atlas/LICENSE-SPL-ABDOMINAL-ATLAS.txt) and, for the BodyParts3D-derived data, [CC BY 4.0](data/bodyparts3d/LICENSE-BODYPARTS3D.txt).

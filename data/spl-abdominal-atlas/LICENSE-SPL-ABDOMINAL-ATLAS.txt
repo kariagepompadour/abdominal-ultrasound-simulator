@@ -13,8 +13,9 @@ the label map was regrouped into ultrasound-appearance classes; CT values were u
 fat, lumen contents and unlabeled contrast-filled blood (heart chambers, small arteries); the volume
 was cropped to the body, class boundaries were smoothed, cranio-caudal sampling was doubled, and the
 voxel size was rescaled to a typical adult size (see abdomen_labels.json). No CT image intensities
-are included. Intrahepatic vessels, bile ducts and the ligamentum teres shown by the simulator are
-not from the atlas; they were added by hand in the application. No endorsement by Brigham and Women's Hospital, Harvard
+are included. Intrahepatic vessels, bile ducts and the liver segment classes (S1-S8) are not from
+the atlas: they were derived from BodyParts3D (CC BY 4.0; see ../bodyparts3d/LICENSE-BODYPARTS3D.txt),
+and the ligamentum teres and common bile duct were added by hand in the application. No endorsement by Brigham and Women's Hospital, Harvard
 Medical School or the original authors is implied.
 
 All or portions of this licensed product (such portions are the "Software") have been obtained

@@ -985,7 +985,8 @@ class AtlasAnatomyTest(BrowserTestBase):
         return any(counts.get(fid, {}).get('n', 0) >= self.MIN_SAMPLES for fid in fids)
 
     def counts(self, view, step='base'):
-        return self.page.evaluate(f"() => {{ selectTextbookView('{view}', '{step}'); return textbookFindingCounts(); }}")
+        # 実CTでは、肋骨・ガスの音響陰影に隠れたものは「見えた」に数えない
+        return self.page.evaluate(f"() => {{ selectTextbookView('{view}', '{step}'); return textbookFindingCounts(true); }}")
 
     def test_real_ct_is_loaded_and_used_with_a_real_convex_probe(self):
         self.open_atlas()
@@ -998,7 +999,10 @@ class AtlasAnatomyTest(BrowserTestBase):
         credit = self.page.locator('#dataCredit')
         self.assertTrue(credit.is_visible())
         self.assertIn('SPL Abdominal Atlas', credit.inner_text())
-        self.assertEqual(credit.locator('a').get_attribute('href'), 'data/spl-abdominal-atlas/LICENSE-SPL-ABDOMINAL-ATLAS.txt')
+        self.assertEqual(credit.locator('a').first.get_attribute('href'), 'data/spl-abdominal-atlas/LICENSE-SPL-ABDOMINAL-ATLAS.txt')
+        # 肝内の血管・胆管・区域は BodyParts3D（CC BY 4.0、指定の表記）
+        self.assertTrue(self.page.evaluate('ATLAS.bodyParts3d'))
+        self.assertIn('BodyParts3D, © The Database Center for Life Science licensed under CC Attribution 4.0 International', credit.inner_text())
         self.assertEqual(self.errors, [])
 
     def test_every_textbook_step_shows_all_of_its_findings_on_real_ct(self):
@@ -1035,10 +1039,10 @@ class AtlasAnatomyTest(BrowserTestBase):
         self.page.evaluate("selectTextbookView('liver_hv')")
         self.assertEqual(self.page.evaluate('activeSchema().w'), 1)
         for pitch in (1, 3, 6, 9, 12):
-            c = self.page.evaluate(f"() => {{ state.pitch = TEXTBOOK_VIEWS.liver_hv.steps[0].pose.pitch + {pitch}; return textbookFindingCounts(); }}")
+            c = self.page.evaluate(f"() => {{ state.pitch = TEXTBOOK_VIEWS.liver_hv.steps[0].pose.pitch + {pitch}; return textbookFindingCounts(true); }}")
             with self.subTest(pitch=pitch):
                 self.assertTrue(self.visible(c, 'ivc'))
-                if pitch <= 6:
+                if pitch <= 3:
                     self.assertTrue(self.visible(c, 'ao'))
         self.assertIsNone(self.page.evaluate('activeSchema()'))
 
@@ -1091,6 +1095,25 @@ class AtlasAnatomyTest(BrowserTestBase):
                 self.context.close()
         self.context = self.browser.new_context()
 
+    def test_bodyparts3d_credit_stays_when_only_the_vessel_file_is_missing(self):
+        # 肝の区域は解剖データ側に入っている BodyParts3D 由来なので、血管のファイルだけ読めなくても表記は残す（CC BY 4.0）
+        self.errors = []
+        self.context = self.browser.new_context(viewport={'width': 1400, 'height': 900})
+        self.page = self.context.new_page()
+        self.page.on('pageerror', lambda error: self.errors.append(f'main: {error}'))
+        self.page.route('**/data/bodyparts3d/liver_vessels.json', lambda route: route.fulfill(status=404, body='missing'))
+        self.page.goto(self.base + '/web?anatomy=atlas')
+        for _ in range(100):
+            if self.page.evaluate('() => ATLAS.ready || ATLAS.failed'):
+                break
+            self.page.wait_for_timeout(100)
+        self.page.wait_for_timeout(200)
+        self.assertTrue(self.page.evaluate('ATLAS.ready'))
+        self.assertFalse(self.page.evaluate('!!ATLAS.bodyParts3d'))
+        credit = self.page.locator('#dataCredit')
+        self.assertIn('BodyParts3D, © The Database Center for Life Science licensed under CC Attribution 4.0 International', credit.inner_text())
+        self.assertEqual(credit.locator('a', has_text='CC BY 4.0').get_attribute('href'), 'https://creativecommons.org/licenses/by/4.0/')
+
     def test_switching_anatomy_back_and_forth_moves_the_current_probe_with_it(self):
         # 模式モデル→実CT→模式モデルと切り替えても、表示中の教本断面の位置・角度が、そのときの解剖の定位置に一致する。
         self.open_atlas()
@@ -1102,12 +1125,14 @@ class AtlasAnatomyTest(BrowserTestBase):
         self.assertEqual(self.page.evaluate("TEXTBOOK_VIEWS.liver_hv.pos"), [-0.6, 0.2])
         self.page.evaluate("() => { anatomyMode = 'atlas'; refreshAnatomy(); }")
         self.assertEqual(self.page.evaluate("() => [state.px, state.py, state.yaw, state.pitch, state.roll, ZONE_PROBE_BASES.right_intercostal.depth]"), atlas_view)
-        self.assertEqual(atlas_view, [-6.1, 5.0, 50, -19, 9, 8.0])
+        self.assertEqual([round(v, 2) for v in atlas_view], [-5.95, 4.8, 28.6, -11.9, 22.0, 7.86])
 
     def test_atlas_data_and_license_are_served(self):
         self.open_atlas()
         for path, needle in (('/data/spl-abdominal-atlas/abdomen_labels.json', 'voxel_cm'),
-                             ('/data/spl-abdominal-atlas/LICENSE-SPL-ABDOMINAL-ATLAS.txt', 'All or portions of this licensed product')):
+                             ('/data/spl-abdominal-atlas/LICENSE-SPL-ABDOMINAL-ATLAS.txt', 'All or portions of this licensed product'),
+                             ('/data/bodyparts3d/liver_vessels.json', 'lpvUmb'),
+                             ('/data/bodyparts3d/LICENSE-BODYPARTS3D.txt', 'CC Attribution 4.0 International')):
             with self.subTest(path=path):
                 response = self.page.request.get(self.base + path)
                 self.assertEqual(response.status, 200)

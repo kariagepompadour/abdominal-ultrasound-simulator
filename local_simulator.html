@@ -553,20 +553,21 @@ const ZONE_ORDER = ['epigastric', 'subcostal_gb', 'right_intercostal', 'right_fl
 const MODEL_ZONE_STARTS = {};
 // 実CT（SPL Abdominal Atlas）上の開始位置（x：患者左が +、y：剣状突起から尾側へ cm）
 const ATLAS_ZONE_STARTS = {
-  epigastric: [-0.5, 3.0], subcostal_gb: [-3.0, 5.0], right_intercostal: [-6.1, 5.0],
+  epigastric: [-0.5, 3.0], subcostal_gb: [-3.0, 5.0], right_intercostal: [-6.0, 4.8],
   right_flank: [-6.0, 7.5], left_flank: [6.0, 5.5], pelvis_bladder: [0.0, 7.0]
 };
-// 教本6断面の定位置（実CT上）。肝の形・下大静脈・大動脈・門脈本幹・胆嚢の位置が、教本の断層模式図に最も近い断面を探して決めた。
+// 教本6断面の定位置（実CT上）。実CT＋BodyParts3D の肝内血管で、その断面と傾けの段階の所見が、肋骨やガスの陰影に隠れずに
+// 最も多く見え、浅い所の陰影が少ない位置・角度を探して決めた。
 // 角度の段階（頭側・尾側へ傾けるなど）は、教本と同じ差分を基本の角度に足す。
 const ATLAS_TEXTBOOK_ANCHORS = {
-  liver_hv: { pos: [-0.5, 4.0], base: { yaw: 0, pitch: 18, roll: 0 } },
-  liver_pv: { pos: [-3.0, 4.5], base: { yaw: -10, pitch: 14, roll: 0 } },
-  liver_ic: { pos: [-6.1, 5.0], base: { yaw: 50, pitch: -10, roll: 0 } },
-  liver_ao_long: { pos: [1.6, 4.0], base: { yaw: 90, pitch: 0, roll: -5 } },
-  liver_ivc_s4: { pos: [-2.4, 4.0], base: { yaw: 90, pitch: 0, roll: 0 } },
-  liver_ivc_rl: { pos: [-3.0, 4.5], base: { yaw: 80, pitch: 0, roll: -10 } }
+  liver_hv: { pos: [-0.36, 6.05], base: { yaw: -16.5, pitch: 27.6, roll: 9.9 } },
+  liver_pv: { pos: [-4.61, 6.95], base: { yaw: -33.2, pitch: 22.0, roll: 7.3 } },
+  liver_ic: { pos: [-5.95, 4.8], base: { yaw: 28.6, pitch: -2.9, roll: 13.0 } },
+  liver_ao_long: { pos: [2.87, 2.87], base: { yaw: 79.4, pitch: -10.2, roll: 1.0 } },
+  liver_ivc_s4: { pos: [-0.67, 3.98], base: { yaw: 83.5, pitch: -0.1, roll: 7.1 } },
+  liver_ivc_rl: { pos: [-1.63, 4.97], base: { yaw: 88.6, pitch: -11.4, roll: 5.5 } }
 };
-const ATLAS_INTERCOSTAL_DEPTH = 8.0;
+const ATLAS_INTERCOSTAL_DEPTH = 7.86;
 const MODEL_TEXTBOOK_ANCHORS = {};
 const MODEL_INTERCOSTAL_DEPTH = 4.5;
 // 解剖（実CT／模式モデル）を切り替えた後に呼ぶ：基準の位置・角度を入れ替え、今の断面（教本の断面または部位）を選び直して、
@@ -869,16 +870,20 @@ function clearTextbookView() {
   updateTextbookPanel();
 }
 // テスト・確認用：呼吸の動きを除いた現在の断面で、各構造が占めるサンプル数と画面上の位置（横 cm・深さ cm）。
-function textbookFindingCounts() {
-  const frame = currentProbeFrame(), o = probeOrigin(), cnt = {}, schema = activeSchema();
+// visibleOnly：音響陰影（肋骨・ガス）の奥に隠れた点は数えない（実際に画面で見えるものだけ）。
+function textbookFindingCounts(visibleOnly = false) {
+  const frame = currentProbeFrame(), o = probeOrigin(), cnt = {}, schema = activeSchema(), shadow = new Float32Array(160), shallow = new Uint8Array(160);
   for (let r = 0; r < 120; r++) for (let c = 0; c < 160; c++) {
     const th = (c / 159 * 2 - 1) * halfAngle, dCm = (r + 0.5) / 120 * ECHO_DEPTH_CM, [lCm, aCm] = probeRayPoint(dCm, th);
     const s = sampleEchoPoint(o, frame, lCm, aCm, 0, schema);
-    if (!s.fid) continue;
+    if (s.shadow > shadow[c]) { shadow[c] = s.shadow; if (s.shadow >= 0.5 && dCm < 6) shallow[c] = 1; }
+    if (!s.fid || (visibleOnly && shadow[c] >= 0.5 && s.shadow < 0.5)) continue;
     const a = cnt[s.fid] || (cnt[s.fid] = { n: 0, lateral: 0, depth: 0 });
     a.n++; a.lateral += lCm; a.depth += aCm;
   }
   for (const a of Object.values(cnt)) { a.lateral /= a.n; a.depth /= a.n; }
+  // 浅い所（6 cm まで）で始まる陰影の割合：肋骨・ガスで画面が隠れている程度（椎体や肺の深い陰影は含めない）
+  Object.defineProperty(cnt, 'shadowedFraction', { value: shallow.reduce((n, v) => n + v, 0) / 160 });
   return cnt;
 }
 function updateTextbookPanel() {
@@ -1457,9 +1462,12 @@ function updateDataCredit() {
   try { ready = anatomyMode === 'atlas' && ATLAS.ready; } catch (error) { return; } // 起動途中（ATLAS の宣言前）は何もしない
   el.hidden = !ready;
   const link = '<a href="data/spl-abdominal-atlas/LICENSE-SPL-ABDOMINAL-ATLAS.txt" target="_blank" rel="noopener">' + (state.lang === 'ja' ? 'ライセンス全文' : 'full license') + '</a>';
+  const bpLink = '<a href="data/bodyparts3d/LICENSE-BODYPARTS3D.txt" target="_blank" rel="noopener">' + (state.lang === 'ja' ? '変更点' : 'changes') + '</a>';
+  // 肝の区域（解剖データに含まれる）は BodyParts3D 由来なので、肝内血管のファイルを読めなかったときも BodyParts3D の表記を出す
+  const ccLink = '<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>';
   el.innerHTML = state.lang === 'ja'
-    ? `解剖：SPL Abdominal Atlas（Talos, Jakab, Kikinis 2015）の改変版・3D Slicer License（${link}）。研究・教育用で、臨床には使えません。`
-    : `Anatomy: modified from the SPL Abdominal Atlas (Talos, Jakab, Kikinis 2015), 3D Slicer License (${link}). For research and education only; not for clinical use.`;
+    ? `解剖：SPL Abdominal Atlas（Talos, Jakab, Kikinis 2015）の改変版・3D Slicer License（${link}）。研究・教育用で、臨床には使えません。` + ` ${ATLAS.bodyParts3d ? '肝内の血管・胆管・区域' : '肝の区域'}：BodyParts3D, © The Database Center for Life Science licensed under CC Attribution 4.0 International（${ccLink}、変形して使用、${bpLink}）。`
+    : `Anatomy: modified from the SPL Abdominal Atlas (Talos, Jakab, Kikinis 2015), 3D Slicer License (${link}). For research and education only; not for clinical use.` + ` ${ATLAS.bodyParts3d ? 'Intrahepatic vessels, bile ducts and segments' : 'Liver segments'}: BodyParts3D, © The Database Center for Life Science licensed under CC Attribution 4.0 International (${ccLink}; deformed; ${bpLink}).`;
 }
 function applyLanguage() {
   updateDataCredit();
@@ -2906,6 +2914,15 @@ async function loadAtlas() {
       for (let j = NJ - 1; j >= 0; j--) if (ATLAS.data[(k * NJ + j) * NI + i]) { surface[k * NI + i] = (ATLAS.skinJ - j) * ATLAS.vz; break; }
     }
     ATLAS.surface = surface;
+    // BodyParts3D の肝内血管（変形して実CTの肝に合わせた中心線）。読めなければ手で置いた中心線のまま。
+    try {
+      const vesselResponse = await fetch('data/bodyparts3d/liver_vessels.json', { cache: 'no-cache' });
+      if (vesselResponse.ok) {
+        const lines = await vesselResponse.json();
+        buildAtlasVessels(lines.map(line => ({ key: line.key, fid: line.fid, pts: line.p, r: line.r, solid: line.solid })));
+        ATLAS.bodyParts3d = true;
+      }
+    } catch (error) { console.warn('BodyParts3D vessels unavailable; using hand-placed vessels.', error); }
     ATLAS.ready = true;
   } catch (error) {
     ATLAS.failed = true;
@@ -2960,6 +2977,7 @@ const ATLAS_WALL = { 30: 170, 32: 190, 33: 150, 36: 170, 37: 170, 38: 170, 39: 1
 // 前区域枝・後区域枝の分岐と枝は、教本③の「腹側へ傾ける」「背側へ傾ける」断面（p.15）の中に置いた。
 const ATLAS_HILUM = [-3.2, 3.8, 10.4], ATLAS_RPV_SPLIT = [-6.5, 4.0, 10.8], ATLAS_ANT_SPLIT = [-7.27, 3.14, 8.25], ATLAS_POST_SPLIT = [-8.39, 3.84, 11.09];
 const ATLAS_UP_START = [-2.9, 3.4, 9.4], ATLAS_UP_TIP = [-2.6, 3.3, 6.0];
+// BodyParts3D の肝内血管を読み込めないときの代わり（手で置いた中心線）
 const ATLAS_VESSEL_PATHS = [
   // 肝静脈3本は、教本①（心窩部横走査・頭側へ傾けた肝静脈面）の定位置の断面内に、シェーマの形どおりに置いた。
   // 右肝静脈はその先で、実CTにある右肝静脈（ラベル）に沿って尾側へ続ける。
@@ -3010,19 +3028,22 @@ function atlasSmoothPath(points) {
   out.push(points[points.length - 1].slice());
   return out;
 }
-const ATLAS_VESSEL_SEGMENTS = ATLAS_VESSEL_PATHS.flatMap(path => {
-  const pts = atlasSmoothPath(path.points), n = pts.length - 1, taper = path.taper ?? (path.solid || path.key === 'cbd' ? 1 : 0.55);
+// 中心線の区間を作る。points（手で置いた点：曲線でつなぎ先細りにする）か、pts と r（BodyParts3D から取り出した点と各点の半径）。
+function vesselSegmentsOf(path) {
+  const pts = path.pts || atlasSmoothPath(path.points), n = pts.length - 1, taper = path.taper ?? (path.solid || path.key === 'cbd' ? 1 : 0.55);
   return pts.slice(1).map((end, index) => {
     const start = pts[index], delta = end.map((v, axis) => v - start[axis]);
-    const r0 = path.radius * (1 - (1 - taper) * index / n), r1 = path.radius * (1 - (1 - taper) * (index + 1) / n);
+    const r0 = path.r ? path.r[index] : path.radius * (1 - (1 - taper) * index / n), r1 = path.r ? path.r[index + 1] : path.radius * (1 - (1 - taper) * (index + 1) / n);
     const margin = Math.max(r0, r1) + 0.1;
     return { path, start, delta, r0, r1, length2: delta.reduce((sum, v) => sum + v * v, 0) || 1e-6,
       min: start.map((v, axis) => Math.min(v, end[axis]) - margin), max: start.map((v, axis) => Math.max(v, end[axis]) + margin) };
   });
-});
+}
 // 速さのため、0.5 cm 角の格子ごとに、近くを通る区間だけを前もって振り分けておく
-const VESSEL_GRID = { x0: -11, y0: 0, z0: 3, nx: 34, ny: 18, nz: 22, cell: 0.5, cells: null };
-(() => {
+const VESSEL_GRID = { x0: -14, y0: -1, z0: 2, nx: 52, ny: 30, nz: 36, cell: 0.5, cells: null };
+let ATLAS_VESSEL_SEGMENTS = [];
+function buildAtlasVessels(paths) {
+  ATLAS_VESSEL_SEGMENTS = paths.flatMap(vesselSegmentsOf);
   const g = VESSEL_GRID, cells = Array.from({ length: g.nx * g.ny * g.nz }, () => []);
   const clampIndex = (v, o, n) => Math.max(0, Math.min(n - 1, Math.floor((v - o) / g.cell)));
   ATLAS_VESSEL_SEGMENTS.forEach(segment => {
@@ -3032,10 +3053,13 @@ const VESSEL_GRID = { x0: -11, y0: 0, z0: 3, nx: 34, ny: 18, nz: 22, cell: 0.5, 
     for (let k = k0; k <= k1; k++) for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) cells[(k * g.ny + j) * g.nx + i].push(segment);
   });
   g.cells = cells;
-})();
+}
+buildAtlasVessels(ATLAS_VESSEL_PATHS);
 function sampleAtlasVessels(x, y, z) {
-  if (x < -11 || x > 6 || y < 0 || y > 9 || z < 3 || z > 14) return null;
-  const g = VESSEL_GRID, i = Math.min(g.nx - 1, Math.floor((x - g.x0) / g.cell)), j = Math.min(g.ny - 1, Math.floor((y - g.y0) / g.cell)), k = Math.min(g.nz - 1, Math.floor((z - g.z0) / g.cell));
+  const g = VESSEL_GRID;
+  if (x < g.x0 || y < g.y0 || z < g.z0) return null;
+  const i = Math.floor((x - g.x0) / g.cell), j = Math.floor((y - g.y0) / g.cell), k = Math.floor((z - g.z0) / g.cell);
+  if (i >= g.nx || j >= g.ny || k >= g.nz) return null;
   const candidates = g.cells[(k * g.ny + j) * g.nx + i];
   if (!candidates.length) return null;
   let wallHit = null;
@@ -3069,7 +3093,7 @@ function atlasSample(x, y, z) {
   const c = atlasClass(x, y, z);
   if (c === 0) return { val: 0, shadow: 0, enhance: 0, organKey: null };
   // 肝内の血管・胆管・肝円索（肝・肝門の脂肪・軟部組織の中だけに描く）
-  if (c === 10 || c === 1 || c === 2 || c === 6 || c === 32) {
+  if (c === 10 || (c >= 81 && c <= 88) || c === 1 || c === 2 || c === 6 || c === 32) {
     const vessel = sampleAtlasVessels(x, y, z);
     if (vessel) return vessel;
   }
@@ -3078,6 +3102,10 @@ function atlasSample(x, y, z) {
     const h = 0.07;
     if (atlasClass(x + h, y, z) !== c || atlasClass(x - h, y, z) !== c || atlasClass(x, y, z + h) !== c || atlasClass(x, y, z - h) !== c || atlasClass(x, y + 0.1, z) !== c || atlasClass(x, y - 0.1, z) !== c)
       return { val: ATLAS_WALL[c], shadow: 0, enhance: 0, organKey: null, fid: look[4] };
+  }
+  if (c >= 81 && c <= 88) {   // 肝の区域の近似（BodyParts3D の門脈の区域枝の中心線のうち最も近いもの＋門脈右枝の高さの水平面。S1 は尾状葉）
+    const seg = 'S' + (c - 80);
+    return { val: seg === 'S1' ? 96 : 100, shadow: 0, enhance: 0, organKey: seg === 'S1' ? null : ['S2', 'S3', 'S4'].includes(seg) ? 'liverLt' : 'liverRt', segmentKey: seg, fid: seg };
   }
   if (c === 10) {
     const seg = atlasLiverSegment(x, y, z);
@@ -3437,7 +3465,7 @@ const W = echoCanvas.width, H = echoCanvas.height, imgData = ctx.createImageData
 let rMin = 0, rMax = 0, apexY = 0, halfAngle = 0;
 const apexX = W / 2;
 const NUM_RAYS = 360, NUM_SAMPLES = 300, polarBuffer = new Float32Array(NUM_RAYS * NUM_SAMPLES);
-const baseBuffer = new Float32Array(NUM_RAYS * NUM_SAMPLES), attenBuffer = new Float32Array(NUM_RAYS * NUM_SAMPLES), speckleBuffer = new Float32Array(NUM_RAYS * NUM_SAMPLES), blurBuffer = new Float32Array(NUM_RAYS * NUM_SAMPLES);
+const attBlur = new Float32Array(NUM_RAYS * NUM_SAMPLES), baseBuffer = new Float32Array(NUM_RAYS * NUM_SAMPLES), attenBuffer = new Float32Array(NUM_RAYS * NUM_SAMPLES), speckleBuffer = new Float32Array(NUM_RAYS * NUM_SAMPLES), blurBuffer = new Float32Array(NUM_RAYS * NUM_SAMPLES);
 let realisticEcho = false;
 let echoRayStep = urlParams.get('quality') === 'low' ? 2 : 1, echoSampleMs = 0;
 // 実機らしい合成：①組織の境界をビーム幅ぶん（横はぼやけ、深さ方向はシャープ）ならす、②音響インピーダンスの差で境界面が明るく反射する、
@@ -3451,6 +3479,17 @@ function composeRealisticEcho() {
       blurBuffer[rc + i] = lateral;
     }
   }
+  // 音響陰影は横に約 13 本の走査線（ビーム幅）でならす：細い骨の縁だけに当たった線が、真っ黒な細い筋にならないようにする
+  for (let i = 0; i < N; i++) {
+    let sum = 0, count = 0;
+    for (let r = -6; r <= 6 && r < NUM_RAYS; r++) if (r >= 0) { sum += attenBuffer[r * N + i]; count++; }
+    for (let r = 0; r < NUM_RAYS; r++) {
+      attBlur[r * N + i] = sum / count;
+      const add = r + 7, drop = r - 6;
+      if (add < NUM_RAYS) { sum += attenBuffer[add * N + i]; count++; }
+      if (drop >= 0) { sum -= attenBuffer[drop * N + i]; count--; }
+    }
+  }
   for (let r = 0; r < NUM_RAYS; r++) {
     const rc = r * N, rm = Math.max(0, r - 2) * N, rp = Math.min(NUM_RAYS - 1, r + 2) * N;
     for (let i = 0; i < N; i++) {
@@ -3458,7 +3497,7 @@ function composeRealisticEcho() {
       const base = blurBuffer[rc + i] * 0.5 + (blurBuffer[rc + im] + blurBuffer[rc + ip]) * 0.25;
       const step = Math.abs(blurBuffer[rc + ip] - blurBuffer[rc + Math.max(0, i - 2)]);
       const interfaceGlow = Math.min(90, step * 0.45);
-      const att = (attenBuffer[rc + i] * 2 + attenBuffer[rm + i] + attenBuffer[rp + i]) * 0.25;
+      const att = attBlur[rc + i];
       const sp = Math.max(0, 0.526 + (speckleBuffer[rc + i] - 0.526) * 2.4);
       const lum = (base * (0.25 + sp * 1.45) + interfaceGlow * (0.5 + sp)) * att;
       polarBuffer[rc + i] = lum < 0 ? 0 : lum > 255 ? 255 : lum;
@@ -3705,7 +3744,7 @@ function renderEcho(time) {
         const wy = origin[1] + frame.uy * lCm + frame.by * aCm + respY;
         const wz = origin[2] + frame.uz * lCm + frame.bz * aCm;
         const s = sampleEchoPoint(origin, frame, lCm, aCm, respY, schema);
-        if (s.fid && (rIdx & 3) === 0 && (sIdx & 3) === 0) {
+        if (s.fid && (rIdx & 3) === 0 && (sIdx & 3) === 0 && !(realisticEcho && rayShadow >= 0.5 && s.shadow < 0.5)) {
           const rPx = rMin + frac * (rMax - rMin);
           const acc = findingCentroids.get(s.fid) || { sumX: 0, sumY: 0, count: 0 };
           acc.sumX += apexX + rPx * Math.sin(th); acc.sumY += apexY + rPx * Math.cos(th); acc.count++;

@@ -2,7 +2,7 @@
 
 [English](README.md) · [Web版を開く](https://abdominal-ultrasound-simulator.onrender.com/web)
 
-腹部エコーのプローブの当て方・傾け方を練習するための教育用の試作です（実験中）。標準では、実在の成人1名の腹部CTから作られた公開・匿名化済みのアトラス（SPL Abdominal Atlas。改変版、[解剖データ](#解剖データ)を参照）の組織ラベルからエコー像を計算します。アトラスにラベルのない肝内の構造（中・左肝静脈、門脈の枝、胆管、肝円索）は、教本の断層模式図に沿うように手で追加しました。教本の6断面の位置では模式図どおりの像を出し、プローブを傾けたり動かしたりすると実CTの解剖の像へ移ります。CT画像そのものや個人を特定できる情報は含みません。正常エコーの正解集や診断用ソフトウェアではありません。解剖は1名分で、教本の典型的な解剖と異なる部分があります。各観察見本との一致は専門医による検証前です。
+腹部エコーのプローブの当て方・傾け方を練習するための教育用の試作です（実験中）。標準では、実在の成人1名の腹部CTから作られた公開・匿名化済みのアトラス（SPL Abdominal Atlas。改変版、[解剖データ](#解剖データ)を参照）の組織ラベルからエコー像を計算します。アトラスにラベルのない肝内の構造（肝静脈、門脈の枝、胆管、肝の区域）は、標準的な人体3Dモデル BodyParts3D のものを、実CTの肝の形に合わせて変形して使っています。肝円索と総胆管だけは手で追加しました。教本の6断面の位置では模式図どおりの像を出し、プローブを傾けたり動かしたりすると実CTの解剖の像へ移ります。CT画像そのものや個人を特定できる情報は含みません。正常エコーの正解集や診断用ソフトウェアではありません。解剖は1名分で、教本の典型的な解剖と異なる部分があります。各観察見本との一致は専門医による検証前です。
 
 ## 使い方
 
@@ -257,6 +257,8 @@ respect to Slicer.
 
 </details>
 
+肝内の血管・胆管・肝の区域は **BodyParts3D, © The Database Center for Life Science licensed under CC Attribution 4.0 International**（[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)）から作りました。立体モデルを実CTの肝の形に合わせて変形し、中心線にして、エコーで見える太さを与えています。変更点は [data/bodyparts3d/LICENSE-BODYPARTS3D.txt](data/bodyparts3d/LICENSE-BODYPARTS3D.txt) にあります。DBCLSはこのアプリを確認・推奨していません。
+
 ## ライセンス
 
-本体は [MIT License](LICENSE) です。QR生成ライブラリは別の [MITライセンス](vendor/LICENSE-qrcodejs) に従います。解剖データは [3D Slicer License](data/spl-abdominal-atlas/LICENSE-SPL-ABDOMINAL-ATLAS.txt) に従います。
+本体は [MIT License](LICENSE) です。QR生成ライブラリは別の [MITライセンス](vendor/LICENSE-qrcodejs) に従います。解剖データは [3D Slicer License](data/spl-abdominal-atlas/LICENSE-SPL-ABDOMINAL-ATLAS.txt) に、BodyParts3D から作ったデータは [CC BY 4.0](data/bodyparts3d/LICENSE-BODYPARTS3D.txt) に従います。
