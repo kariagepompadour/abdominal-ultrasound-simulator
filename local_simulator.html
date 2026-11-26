@@ -552,12 +552,20 @@ const ATLAS_TEXTBOOK_ANCHORS = {
   pan_head: { pos: [-0.07, 7.81], base: { yaw: -4.9, pitch: 3.1, roll: 10.5 } },
   pan_headlong: { pos: [-0.88, 4.86], base: { yaw: 96.2, pitch: -1.7, roll: 4.9 } },
   pan_body: { pos: [0.28, 7.55], base: { yaw: -1.5, pitch: -3.1, roll: -8.9 } },
-  pan_bodylong: { pos: [4.72, 2.04], base: { yaw: 70.5, pitch: -16.3, roll: 2.3 } }
+  pan_bodylong: { pos: [4.72, 2.04], base: { yaw: 70.5, pitch: -16.3, roll: 2.3 } },
+  // 腎・大血管（右腎は右の側面から。実CTには腸腰筋のラベルがなく、脾静脈は膵の背側の一部しか描けない）
+  ren_r_long: { pos: [-3.15, 8.75], base: { yaw: 67.5, pitch: -16.1, roll: 23.6 } },
+  ren_l_long: { pos: [4.24, 8.71], base: { yaw: 51.2, pitch: -12.6, roll: -29.8 } },
+  ren_hilum: { pos: [-5.5, 7.0], base: { yaw: 0, pitch: 0, roll: -5 } },
+  vas_pv: { pos: [-0.14, 3.53], base: { yaw: 82.1, pitch: -29.5, roll: 9.4 } },
+  vas_ce: { pos: [-1.0, 2.5], base: { yaw: 10, pitch: 0, roll: 0 } },
+  vas_sv: { pos: [-1.0, 7.5], base: { yaw: 0, pitch: 0, roll: -5 } }
 };
 const ATLAS_INTERCOSTAL_DEPTH = 7.86;
 const ATLAS_LEFT_FLANK_DEPTH = 12.0;
 const MODEL_TEXTBOOK_ANCHORS = {};
 const MODEL_INTERCOSTAL_DEPTH = 4.5;
+const ATLAS_RIGHT_FLANK_DEPTH = 11.0;
 // 解剖（実CT／模式モデル）を切り替えた後に呼ぶ：基準の位置・角度を入れ替え、今の断面（教本の断面または部位）を選び直して、
 // 表示中のプローブの位置・角度も新しい基準に合わせる。
 function refreshAnatomy() {
@@ -578,6 +586,9 @@ function applyAnatomyZones() {
   // 実CTでは、左側腹部は左の側面から当てる（脾・左腎は胃や結腸のガスの後ろにあり、前からは見えない）
   if (atlas) { ZONE_PROBE_BASES.left_flank = { lateral: true, side: 'left', depth: ATLAS_LEFT_FLANK_DEPTH }; ZONE_DEFAULT_POSES.left_flank = { yaw: -50, pitch: 0, roll: 0 }; }
   else { delete ZONE_PROBE_BASES.left_flank; delete ZONE_DEFAULT_POSES.left_flank; }
+  // 実CTでは、右側腹部も右の側面から当てる（右腎は肝を音響窓にして側面から見る。前からは十二指腸・結腸のガスの後ろ）
+  if (atlas) { ZONE_PROBE_BASES.right_flank = { lateral: true, depth: ATLAS_RIGHT_FLANK_DEPTH }; ZONE_DEFAULT_POSES.right_flank = { yaw: 90, pitch: 0, roll: 0 }; }
+  else { delete ZONE_PROBE_BASES.right_flank; delete ZONE_DEFAULT_POSES.right_flank; }
   Object.entries(TEXTBOOK_VIEWS).forEach(([id, view]) => {
     const model = MODEL_TEXTBOOK_ANCHORS[id], anchor = ATLAS_TEXTBOOK_ANCHORS[id];
     if (!model) return;
@@ -707,12 +718,19 @@ const FINDING_DEFS = {
   sma: { ja: '上腸間膜動脈（SMA）', en: 'SMA', tag: 'SMA' },
   pha: { ja: '固有肝動脈（PHA）', en: 'Proper hepatic artery (PHA)', tag: 'PHA' },
   lrv: { ja: '左腎静脈（LRV）', en: 'Left renal vein (LRV)', tag: 'LRV' },
-  rra: { ja: '右腎動脈（R.RA）', en: 'Right renal artery (R.RA)', tag: 'R.RA' },
+  rra: { ja: '右腎動脈（R.RA）', en: 'Right renal artery (R.RA)', tag: 'R.RA', any: ['rra', 'renalArtery'] },
   pancBody: { ja: '膵体部', en: 'Pancreatic body', tag: { ja: '膵体部', en: 'Pancreas' }, any: ['pancBody', 'pancreas'] },
   pancHead: { ja: '膵頭部', en: 'Pancreatic head', tag: { ja: '膵頭部', en: 'Pancreas' }, any: ['pancHead', 'pancreas'] },
   stomach: { ja: '胃体部', en: 'Gastric body', tag: { ja: '胃体部', en: 'Stomach' } },
   eso: { ja: '食道（食道胃接合部）', en: 'Esophagus (GE junction)', tag: { ja: '食道', en: 'Esophagus' } },
   spleen: { ja: '脾臓', en: 'Spleen', tag: { ja: '脾', en: 'Spleen' } },
+  medulla: { ja: '腎髄質（錐体：低エコー）', en: 'Renal medulla (pyramids, hypoechoic)', tag: { ja: '髄質', en: 'Medulla' } },
+  arcuate: { ja: '弓状動脈（皮質と髄質の境の明るい点）', en: 'Arcuate vessels (bright dots at the corticomedullary junction)', tag: { ja: '弓状動脈', en: 'Arcuate' } },
+  psoas: { ja: '腸腰筋', en: 'Iliopsoas muscle', tag: { ja: '腸腰筋', en: 'Psoas' } },
+  renalArtery: { ja: '腎洞内の腎動脈', en: 'Renal artery in the sinus', tag: { ja: '腎動脈', en: 'Renal a.' } },
+  renalVein: { ja: '腎洞内の腎静脈', en: 'Renal vein in the sinus', tag: { ja: '腎静脈', en: 'Renal v.' } },
+  bowelGas: { ja: '消化管ガス像', en: 'Bowel gas', tag: { ja: 'ガス', en: 'Gas' } },
+  pancTail: { ja: '膵尾部', en: 'Pancreatic tail', tag: { ja: '膵尾部', en: 'Panc. tail' }, any: ['pancTail', 'pancreas'] },
   chd: { ja: '総肝管', en: 'Common hepatic duct', tag: { ja: '総肝管', en: 'CHD' } },
   antrum: { ja: '胃前庭部（横断像）', en: 'Gastric antrum (cross-section)', tag: { ja: '胃前庭部', en: 'Antrum' } },
   lk: { ja: '左腎', en: 'Left kidney', tag: { ja: '左腎', en: 'L kidney' } },
@@ -727,7 +745,7 @@ const FINDING_DEFS = {
   pd: { ja: '主膵管（PD）', en: 'Main pancreatic duct (PD)', tag: 'PD' },
   gda: { ja: '胃十二指腸動脈（GDA）', en: 'Gastroduodenal artery (GDA)', tag: 'GDA' },
   lra: { ja: '左腎動脈（L.RA）', en: 'Left renal artery (L.RA)', tag: 'L.RA' },
-  rrv: { ja: '右腎静脈（R.RV）', en: 'Right renal vein (R.RV)', tag: 'R.RV' }
+  rrv: { ja: '右腎静脈（R.RV）', en: 'Right renal vein (R.RV)', tag: 'R.RV', any: ['rrv', 'renalVein'] }
 };
 function findingFids(id) { return FINDING_DEFS[id] && FINDING_DEFS[id].any ? FINDING_DEFS[id].any : [id]; }
 function findingTag(fid) {
@@ -744,8 +762,8 @@ const TEXTBOOK_VIEWS = {
     zone: 'epigastric', pos: [-0.6, 0.2], bodyMark: [140, 64],
     steps: [
       { id: 'base', ja: '基本', en: 'Basic', pose: { yaw: 0, pitch: 23, roll: 0 },
-        noteJa: '剣状突起の直下に横に当て、頭側へ傾ける。3本の肝静脈が下大静脈へ流入する。',
-        noteEn: 'Transverse just below the xiphoid, tilted cranially. The three hepatic veins drain into the IVC.',
+        noteJa: '剣状突起の直下に横に当て、頭側へ傾ける。3本の肝静脈が下大静脈へ流入する。コツ：まず右肋骨弓下で門脈の横行部を出してから、探触子を正中・頭側へ移し、少し縦向きに起こして奥を覗き込むように扇状に振ると、縁の明るくない3本の低エコーの帯（右・中・左肝静脈）が9時・10時半・12時の方向に並ぶ。腹式呼吸で出にくいときは胸式呼吸で。',
+        noteEn: 'Transverse just below the xiphoid, tilted cranially. The three hepatic veins drain into the IVC. Tip: first find the transverse portal vein under the right costal margin, then move toward the midline and cranially, stand the probe up a little and fan deeper; three bands without bright walls (RHV, MHV, LHV) appear at 9, 10:30 and 12 o’clock. If abdominal breathing does not work, try chest breathing.',
         findings: ['mhv', 'lhv', 'rhv', 'ivc', 'ao', 'spine', 'S2', 'S3', 'S4', 'S5', 'S8'] },
       { id: 'umb', ja: '尾側へ傾ける（門脈臍部）', en: 'Tilt caudally (umbilical portion)', pose: { yaw: 0, pitch: 12, roll: 0 },
         noteJa: '剣状突起の下のやや左に当て、頭側への傾きを弱める。門脈左枝臍部と、そこから出る外側区域の枝（上が S3、下が S2）、左に内側区域(S4)の枝。臍部の背側に静脈管索、その奥に尾状葉(S1)と下大静脈。ここから頭側へ傾けていくと、S2 と S3 の枝の間に左肝静脈が現れる。',
@@ -760,8 +778,8 @@ const TEXTBOOK_VIEWS = {
     zone: 'subcostal_gb', pos: [-1.6, 2.4], bodyMark: [112, 80],
     steps: [
       { id: 'base', ja: '基本', en: 'Basic', pose: { yaw: -16, pitch: 27, roll: 2 },
-        noteJa: '心窩部から右肋骨弓に沿って斜めに当てる。門脈が右枝→左枝横行部→臍部と続き、臍部の先端に肝円索。門脈の背側に尾状葉(S1)、外側区との境に静脈管索。',
-        noteEn: 'Oblique along the right costal margin. RPV → LPV transverse part → umbilical portion with the ligamentum teres at its tip. Caudate (S1) behind the portal vein, ligamentum venosum at its border.',
+        noteJa: '心窩部から右肋骨弓に沿って斜めに当てる。門脈が右枝→左枝横行部→臍部と続き、臍部の先端に肝円索。門脈の背側に尾状葉(S1)、外側区との境に静脈管索。コツ：大きく息を吸わせ、右肋骨弓の下から上腹部を覗き上げるように当てる。肝は皮膚から1〜3 cmより奥に見え、縁の明るい低エコーの帯が門脈（横向きに走る左枝横行部が出やすい）。',
+        noteEn: 'Oblique along the right costal margin. RPV → LPV transverse part → umbilical portion with the ligamentum teres at its tip. Caudate (S1) behind the portal vein, ligamentum venosum at its border. Tip: on deep inspiration, look up into the upper abdomen from under the right costal margin. The liver starts 1–3 cm below the skin; low-echo bands with bright walls are portal veins (the horizontal LPV transverse part is usually easiest).',
         findings: ['rpv', 'lpvTrans', 'lpvUmb', 'ligTeres', 'p4', 'p3', 'p2', 'rpvAnt', 'rpvPost', 'bd', 'rhv', 'ivc', 'ao', 'spine', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7'] },
       { id: 'head', ja: '頭側へ傾ける', en: 'Tilt cranially', pose: { yaw: -16, pitch: 35, roll: 2 },
         noteJa: '振動子面を頭側に傾けると、中肝静脈と前上区域(S8)、輪切りの前区域枝が見える。',
@@ -780,8 +798,8 @@ const TEXTBOOK_VIEWS = {
     zone: 'right_intercostal', pos: [-6.1, 0.5], bodyMark: [74, 82],
     steps: [
       { id: 'base', ja: '基本', en: 'Basic', pose: { yaw: 50, pitch: 0, roll: 16 },
-        noteJa: '右側面の肋間（第7〜9肋間）に、肋骨に沿って当てる。画面左が頭側。下大静脈が画面下を横に走り、右肝静脈がそこから右上へ。門脈右枝から前区域枝（S8・S5）と後区域枝（S6・S7）が分かれ、胆嚢は画面右。',
-        noteEn: 'Right intercostal space (7th–9th), along the ribs; image left is cranial. The IVC runs along the bottom and the RHV rises to the upper right. The right portal vein divides into anterior (S8, S5) and posterior (S6, S7) branches; the gallbladder is on the right.',
+        noteJa: '右側面の肋間（第7〜10肋間）に、肋骨に沿って当てる。画面左が頭側。下大静脈が画面下を横に走り、右肝静脈がそこから右上へ。門脈右枝から前区域枝（S8・S5）と後区域枝（S6・S7）が分かれ、胆嚢は画面右。コツ：第8〜10肋間に沿わせ、息を吐いたところで扇状に振る。縁の明るい帯が画面の右〜下から中央へ走るのが門脈右枝、縁のない帯が画面の左下から中央へ走るのが右肝静脈。この方向からは中・左肝静脈はほとんど見えない。',
+        noteEn: 'Right intercostal space (7th–10th), along the ribs; image left is cranial. The IVC runs along the bottom and the RHV rises to the upper right. The right portal vein divides into anterior (S8, S5) and posterior (S6, S7) branches; the gallbladder is on the right. Tip: along the 8th–10th intercostal spaces, fan the probe on expiration. The bright-walled band running from the lower right to the centre is the right portal vein; the wall-less band from the lower left to the centre is the RHV. The MHV and LHV are hardly seen from here.',
         findings: ['rpv', 'rpvAnt', 'rpvPost', 'p8', 'p5', 'p6', 'p7', 'rhv', 'ivc', 'gb', 'bd', 'S5', 'S6', 'S7', 'S8'] },
       { id: 'postOuter', ja: '外側（背側）へ大きく傾ける', en: 'Tilt well outward (dorsally)', pose: { yaw: 50, pitch: -11, roll: 32 },
         noteJa: '第8肋間で振動子面を外側（背側）へ傾けると、門脈の後区域枝と右肝静脈の末梢が見える。門脈の分岐部を中心に、前上(S8)・前下(S5)・後下(S6)・後上(S7)への枝が放射状に出る。',
@@ -858,8 +876,8 @@ Object.assign(TEXTBOOK_VIEWS, {
     // 参考：教本 p.43（断層模式図）
     zone: 'left_flank', pos: [5.8, 1.0], bodyMark: [212, 82],
     steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: -50, pitch: 0, roll: 0 },
-      noteJa: '左の第9〜10肋間に、前〜後腋窩線のあたりで肋骨に沿って当てる（仰臥位か右側臥位）。三日月形の脾が見え、脾門で脾静脈、深部に左腎の上極（中心部エコー）。前方に胃底部のガス、頭側に肺のガス。',
-      noteEn: 'Along the 9th–10th left intercostal space between the anterior and posterior axillary lines (supine or right lateral decubitus). The crescent spleen with the splenic vein at the hilum and the upper pole of the left kidney behind it; gastric fundus gas in front and lung air cranially.',
+      noteJa: '左の第8〜10肋間に、前〜後腋窩線のあたりで肋骨に沿って当てる（仰臥位か右側臥位）。三日月形の脾が見え、脾門で脾静脈、深部に左腎の上極（中心部エコー）。前方に胃底部のガス、頭側に肺のガス。コツ：左側腹部から背側へ回り込むように当て、まず左肺の空気によるガスエコー（体表から深部へまっすぐきらきら光る所）を探す。脾はそのすぐ尾側に三角形に見える。呼気の方がよく見えることもあり、扇状に振ると脾門部の脾静脈が出る。肺に隠れて見えないのは異常ではない。見えにくければ左前斜位にして探触子を背側へ回り込ませる。',
+      noteEn: 'Along the 8th–10th left intercostal spaces between the anterior and posterior axillary lines (supine or right lateral decubitus). The crescent spleen with the splenic vein at the hilum and the upper pole of the left kidney behind it; gastric fundus gas in front and lung air cranially. Tip: wrap the probe from the left flank toward the back and first find the lung air (a straight, sparkling line from the surface downward); the spleen appears as a triangle just caudal to it. Expiration sometimes works better, and fanning shows the splenic vein at the hilum. A spleen hidden by the lung is not abnormal; if it is hard to see, turn the patient left anterior oblique and move the probe further back.',
       findings: ['spleen', 'sv', 'lk', 'cec', 'fundusGas', 'lungGas'] }]
   },
   spl_long: {
@@ -878,8 +896,8 @@ Object.assign(TEXTBOOK_VIEWS, {
     // 参考：教本 p.52（断層模式図）
     zone: 'subcostal_gb', pos: [-1.6, 2.4], bodyMark: [112, 80],
     steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: -16, pitch: 27, roll: 2 },
-      noteJa: '心窩部から右肋骨弓に沿って斜めに当てる。門脈右枝・左枝と臍部（先端に肝円索）に沿って肝内胆管が走り、胆嚢が見える。肝静脈3本と下大静脈。',
-      noteEn: 'Oblique from the epigastrium along the right costal margin. Intrahepatic bile ducts run with the right and left portal veins and the umbilical portion (ligamentum teres at its tip); the gallbladder, three hepatic veins and the IVC.',
+      noteJa: '心窩部から右肋骨弓に沿って斜めに当てる。門脈右枝・左枝と臍部（先端に肝円索）に沿って肝内胆管が走り、胆嚢が見える。肝静脈3本と下大静脈。コツ：肝内胆管は門脈の枝に沿って走る。区域枝に沿う胆管は径1 mmほどで、それより太く見えれば拡張を考える。左右の肝管は、門脈左枝横行部・右枝の腹側に径2〜3 mmの管として見える。尾状葉の枝は見えない。',
+      noteEn: 'Oblique from the epigastrium along the right costal margin. Intrahepatic bile ducts run with the right and left portal veins and the umbilical portion (ligamentum teres at its tip); the gallbladder, three hepatic veins and the IVC. Tip: intrahepatic ducts run with the portal branches; segmental ducts are about 1 mm, and anything wider suggests dilatation. The left and right hepatic ducts lie anterior to the LPV transverse part and the RPV, 2–3 mm wide. Caudate branches are not seen.',
       findings: ['gb', 'bd', 'rpv', 'lpvTrans', 'lpvUmb', 'ligTeres', 'rpvAnt', 'rpvPost', 'mhv', 'rhv', 'lhv', 'ivc', 'ao', 'spine', 'S2', 'S3', 'S6', 'S7'] }]
   },
   bil_sc: {
@@ -888,8 +906,8 @@ Object.assign(TEXTBOOK_VIEWS, {
     // 参考：教本 p.52（断層模式図）
     zone: 'subcostal_gb', pos: [-3.0, 3.0], bodyMark: [108, 88],
     steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: -25, pitch: 15, roll: 0 },
-      noteJa: '右肋骨弓の下に斜めに当てる。胆嚢の長軸、門脈左枝（横行部・臍部）、右腎と右腎静脈・右腎動脈、下大静脈・大動脈、十二指腸下行部と膵体部・脾静脈（胃は画面の端の外）。',
-      noteEn: 'Oblique under the right costal margin. The gallbladder long axis, left portal vein (transverse and umbilical parts), right kidney with its vein and artery, IVC, aorta, descending duodenum, pancreatic body and splenic vein.',
+      noteJa: '右肋骨弓の下に斜めに当てる。胆嚢の長軸、門脈左枝（横行部・臍部）、右腎と右腎静脈・右腎動脈、下大静脈・大動脈、十二指腸下行部と膵体部・脾静脈（胃は画面の端の外）。コツ：門脈左枝横行部を右へたどると、肝管の先に茄子形の無エコー域として胆嚢が出る。探触子の向きを変えながら扇状に振り、呼吸を調節して頸部から底部まで見る。太った人では胆嚢は深く頭側・外側寄り、やせた人では浅く尾側・正中寄りにあることが多い。',
+      noteEn: 'Oblique under the right costal margin. The gallbladder long axis, left portal vein (transverse and umbilical parts), right kidney with its vein and artery, IVC, aorta, descending duodenum, pancreatic body and splenic vein. Tip: follow the LPV transverse part to the right; the gallbladder appears as an eggplant-shaped anechoic area beyond the hepatic duct. Change the probe angle, fan and control breathing to see it from neck to fundus. In obese people it tends to lie deep, cranial and lateral; in thin people superficial, caudal and medial.',
       findings: ['gb', 'lpvTrans', 'lpvUmb', 'rk', 'rrv', 'rra', 'ivc', 'ao', 'sma', 'sv', 'pancBody', 'duod', 'spine', 'S3', 'S4', 'S5', 'S6'] },
       { id: 'cbd', ja: '尾側へ傾ける（総胆管）', en: 'Tilt caudally (CBD)', pose: { yaw: -25, pitch: 5, roll: 0 },
         noteJa: '条件が良ければ総胆管も描出できる。総胆管は膵頭部の中で背側を走り、下大静脈に接するほど。腹側に肝円索（S4 と S3 の境）、胃十二指腸動脈、膵の背側を上腸間膜静脈・脾静脈、さらに背側に上腸間膜動脈・左腎静脈・大動脈。',
@@ -902,8 +920,8 @@ Object.assign(TEXTBOOK_VIEWS, {
     // 参考：教本 p.53（断層模式図）
     zone: 'subcostal_gb', pos: [-3.0, 3.0], bodyMark: [118, 92],
     steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: 90, pitch: 0, roll: 0 },
-      noteJa: '右季肋部で縦に当てる（画面左が頭側）。胆嚢の背側で、総胆管が門脈の腹側を通って膵頭部へ向かう。中肝静脈が下大静脈へ流入し、その腹側に尾状葉(S1)。',
-      noteEn: 'Longitudinal in the right upper quadrant (image left = cranial). Behind the gallbladder the CBD runs anterior to the portal vein toward the pancreatic head. The MHV drains into the IVC with the caudate (S1) in front.',
+      noteJa: '右季肋部で縦に当てる（画面左が頭側）。胆嚢の背側で、総胆管が門脈の腹側を通って膵頭部へ向かう。中肝静脈が下大静脈へ流入し、その腹側に尾状葉(S1)。コツ：総肝管〜総胆管は門脈本幹の腹側を尾側へ走り、径6 mm以下。下部が消化管ガスで見えないときは、右の腰を浮かせた右前斜位にして肝を音響窓にする。',
+      noteEn: 'Longitudinal in the right upper quadrant (image left = cranial). Behind the gallbladder the CBD runs anterior to the portal vein toward the pancreatic head. The MHV drains into the IVC with the caudate (S1) in front. Tip: the common hepatic duct and CBD run caudally anterior to the main portal vein, up to 6 mm wide. If gas hides the distal part, raise the right flank (right anterior oblique) and use the liver as an acoustic window.',
       findings: ['gb', 'cbd', 'pv', 'smv', 'pancHead', 'mhv', 'ivc', 'S1'] },
       { id: 'hilum', ja: '右へ傾ける（肝門部）', en: 'Tilt to the right (hilum)', pose: { yaw: 90, pitch: 0, roll: 7 },
         noteJa: '総肝管から右肝管にかけて、門脈の腹側に描出される。胆嚢と中肝静脈を通る断面は、機能的な右葉と左葉の境である。',
@@ -916,8 +934,8 @@ Object.assign(TEXTBOOK_VIEWS, {
     // 参考：教本 p.53（断層模式図）
     zone: 'right_intercostal', pos: [-6.1, 0.5], bodyMark: [74, 82],
     steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: 50, pitch: 0, roll: 16 },
-      noteJa: '右肋間走査。門脈右枝から前区域枝（S8・S5）と後区域枝が分かれ、それぞれに肝内胆管が並走する。右肝静脈、下大静脈、画面右に胆嚢と横行結腸。',
-      noteEn: 'Right intercostal. The right portal vein divides into the anterior (S8, S5) and posterior branches, each with an accompanying bile duct; the RHV, IVC, and the gallbladder and transverse colon on the right.',
+      noteJa: '右肋間走査。門脈右枝から前区域枝（S8・S5）と後区域枝が分かれ、それぞれに肝内胆管が並走する。右肝静脈、下大静脈、画面右に胆嚢と横行結腸。コツ：右肋間走査では、胆嚢は門脈右枝の腹側に見える。',
+      noteEn: 'Right intercostal. The right portal vein divides into the anterior (S8, S5) and posterior branches, each with an accompanying bile duct; the RHV, IVC, and the gallbladder and transverse colon on the right. Tip: from the right intercostal space, the gallbladder lies anterior to the right portal vein.',
       findings: ['gb', 'bd', 'rpv', 'rpvAnt', 'rpvPost', 'p8', 'p5', 'p6', 'rhv', 'ivc', 'colon', 'S5', 'S6', 'S7', 'S8'] }]
   },
   pan_head: {
@@ -926,8 +944,8 @@ Object.assign(TEXTBOOK_VIEWS, {
     // 参考：教本 p.72（断層模式図）
     zone: 'epigastric', pos: [-0.5, 3.0], bodyMark: [138, 84],
     steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: 0, pitch: 0, roll: 0 },
-      noteJa: '心窩部の横走査。膵頭部の中に主膵管と総胆管、前縁に胃十二指腸動脈、右に十二指腸下行部。上腸間膜静脈・脾静脈、上腸間膜動脈、大動脈と下大静脈、左腎静脈・左腎動脈、両腎。',
-      noteEn: 'Epigastric transverse. Within the pancreatic head lie the main duct and the CBD, the GDA at its front edge and the descending duodenum to the right; SMV, splenic vein, SMA, aorta, IVC, left renal vein and artery, and both kidneys.',
+      noteJa: '心窩部の横走査。膵頭部の中に主膵管と総胆管、前縁に胃十二指腸動脈、右に十二指腸下行部。上腸間膜静脈・脾静脈、上腸間膜動脈、大動脈と下大静脈、左腎静脈・左腎動脈、両腎。コツ：膵そのものより、まわりの血管を正確に出すのが近道。膵頭部の背側で、総胆管が輪切りに見える。ガスで見えにくいときは、呼吸の調節、探触子で少し押す、坐位や側臥位、飲水（300〜700 mL）などを試す。',
+      noteEn: 'Epigastric transverse. Within the pancreatic head lie the main duct and the CBD, the GDA at its front edge and the descending duodenum to the right; SMV, splenic vein, SMA, aorta, IVC, left renal vein and artery, and both kidneys. Tip: rather than the pancreas itself, find the surrounding vessels first. The CBD is seen in cross-section in the back of the head. If gas gets in the way, try breathing control, gentle compression, sitting or decubitus positions, or drinking 300–700 mL of water.',
       findings: ['pancHead', 'pd', 'cbd', 'gda', 'smv', 'sv', 'sma', 'ao', 'ivc', 'lrv', 'lra', 'gb', 'duod', 'stomach', 'rk', 'lk', 'spine', 'S3'] }]
   },
   pan_headlong: {
@@ -936,8 +954,8 @@ Object.assign(TEXTBOOK_VIEWS, {
     // 参考：教本 p.72（断層模式図）
     zone: 'epigastric', pos: [-1.6, 3.0], bodyMark: [132, 90],
     steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: 90, pitch: 0, roll: 0 },
-      noteJa: '下大静脈の上で縦に当てる（画面左が頭側）。下大静脈の腹側を門脈〜上腸間膜静脈が走り、総胆管が膵頭部の背側へ入る。総肝動脈、胆嚢、十二指腸球部、尾状葉(S1)。',
-      noteEn: 'Longitudinal over the IVC (image left = cranial). The portal vein–SMV runs anterior to the IVC and the CBD enters the back of the pancreatic head; the common hepatic artery, gallbladder, duodenal bulb and caudate (S1).',
+      noteJa: '下大静脈の上で縦に当てる（画面左が頭側）。下大静脈の腹側を門脈〜上腸間膜静脈が走り、総胆管が膵頭部の背側へ入る。総肝動脈、胆嚢、十二指腸球部、尾状葉(S1)。コツ：縦走査では膵は輪切りに見える。門脈本幹を尾側へ追うと上腸間膜静脈へ移り、それを挟む部分が膵頸部、その右側が膵頭部。',
+      noteEn: 'Longitudinal over the IVC (image left = cranial). The portal vein–SMV runs anterior to the IVC and the CBD enters the back of the pancreatic head; the common hepatic artery, gallbladder, duodenal bulb and caudate (S1). Tip: on longitudinal scans the pancreas is seen in cross-section. Follow the main portal vein caudally into the SMV; the part around it is the neck and the part to its right is the head.',
       findings: ['pancHead', 'cbd', 'pv', 'smv', 'cha', 'gb', 'duodBulb', 'ivc', 'S1', 'S4'] }]
   },
   pan_body: {
@@ -946,8 +964,8 @@ Object.assign(TEXTBOOK_VIEWS, {
     // 参考：教本 p.73（断層模式図）
     zone: 'epigastric', pos: [0.5, 2.5], bodyMark: [143, 80],
     steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: 0, pitch: 10, roll: 0 },
-      noteJa: '心窩部の横走査をやや頭側へ。膵体部〜尾部の中央に主膵管、背側を脾静脈が尾部へ走る。腹腔動脈から脾動脈・固有肝動脈、上腸間膜動脈と大動脈。腹側に胃、肝左葉と門脈左枝・肝円索。',
-      noteEn: 'Epigastric transverse, slightly cranial. The main duct runs in the middle of the pancreatic body–tail with the splenic vein behind it; the celiac trunk with the splenic and proper hepatic arteries, SMA and aorta; the stomach in front, the left lobe with the left portal vein and ligamentum teres.',
+      noteJa: '心窩部の横走査をやや頭側へ。膵体部〜尾部の中央に主膵管、背側を脾静脈が尾部へ走る。腹腔動脈から脾動脈・固有肝動脈、上腸間膜動脈と大動脈。腹側に胃、肝左葉と門脈左枝・肝円索。コツ：横走査では脾静脈が目印で、膵は脾静脈の腹側に見える。上腸間膜静脈との合流部から脾臓の方向へ脾静脈を追うと、膵頭部から尾部までたどれる。ガスで見えにくいときは、呼吸の調節、探触子で少し押す、坐位、飲水などを試す。',
+      noteEn: 'Epigastric transverse, slightly cranial. The main duct runs in the middle of the pancreatic body–tail with the splenic vein behind it; the celiac trunk with the splenic and proper hepatic arteries, SMA and aorta; the stomach in front, the left lobe with the left portal vein and ligamentum teres. Tip: on transverse scans the splenic vein is the landmark; the pancreas lies anterior to it. Following the splenic vein from its SMV confluence toward the spleen traces the pancreas from head to tail. If gas gets in the way, try breathing control, gentle compression, sitting up or drinking water.',
       findings: ['pancBody', 'pd', 'sv', 'sma', 'ce', 'sa', 'pha', 'gda', 'smv', 'cbd', 'ao', 'ivc', 'stomach', 'duodBulb', 'ligTeres', 'lpvUmb', 'spine', 'S1', 'S2', 'S3', 'S4'] }]
   },
   pan_bodylong: {
@@ -956,17 +974,94 @@ Object.assign(TEXTBOOK_VIEWS, {
     // 参考：教本 p.73（断層模式図）
     zone: 'epigastric', pos: [1.2, 2.5], bodyMark: [147, 86],
     steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: 90, pitch: 0, roll: 0 },
-      noteJa: '大動脈の上で縦に当てる（画面左が頭側）。肝左葉と胃の背側に膵体部（中に主膵管）、その背側に脾静脈。大動脈から腹腔動脈（総肝動脈・脾動脈）と上腸間膜動脈が出て、その間を左腎静脈が通る。',
-      noteEn: 'Longitudinal over the aorta (image left = cranial). Behind the left lobe and stomach lies the pancreatic body (with the main duct) and the splenic vein; the celiac trunk (CHA, SA) and SMA arise from the aorta, with the left renal vein between the SMA and aorta.',
+      noteJa: '大動脈の上で縦に当てる（画面左が頭側）。肝左葉と胃の背側に膵体部（中に主膵管）、その背側に脾静脈。大動脈から腹腔動脈（総肝動脈・脾動脈）と上腸間膜動脈が出て、その間を左腎静脈が通る。コツ：大動脈から鋭角に分かれる上腸間膜動脈を出し、その腹側が膵体部。さらに左へ移ると膵尾部へ続く。',
+      noteEn: 'Longitudinal over the aorta (image left = cranial). Behind the left lobe and stomach lies the pancreatic body (with the main duct) and the splenic vein; the celiac trunk (CHA, SA) and SMA arise from the aorta, with the left renal vein between the SMA and aorta. Tip: find the SMA branching at an acute angle from the aorta; the pancreatic body lies anterior to it, continuing to the tail as you move to the left.',
       findings: ['pancBody', 'pd', 'sv', 'ao', 'ce', 'cha', 'sa', 'sma', 'lrv', 'stomach', 'p2', 'p3', 'S2', 'S3'] }]
   }
 });
 Object.values(TEXTBOOK_VIEWS).forEach(view => { if (!view.organ) view.organ = 'liver'; });
+// ── 腎（p.113・p.116–117・p.178）と大血管（p.96–98・p.179）の標準断面 ──
+Object.assign(TEXTBOOK_VIEWS, {
+  ren_r_long: {
+    organ: 'renal', ja: '腎-1 右腎 縦走査', en: 'Kidney 1: right kidney, longitudinal',
+    short: { ja: '腎1 右腎・縦', en: 'Ki1 Rt. long.' },
+    // 参考：教本 p.117 上（右縦走査）・p.116・p.178
+    zone: 'right_flank', pos: [-6.0, 7.5], bodyMark: [70, 104],
+    steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: 90, pitch: 0, roll: 0 },
+      noteJa: '右側腹部で、肝を音響窓にして縦に当てる（画面左が頭側）。肝(S6)の背側に右腎の長軸。皮質の内側に低エコーの髄質（錐体）が並び、その境に弓状動脈の明るい点、中央に高エコーの腎中心部エコー（CEC）。背側に腸腰筋。コツ：右腎は肝の右肋間走査より1〜2肋間下で探す。肺のガスの影響がないので吸気・呼気どちらでもよい。腸管ガスが下極を覆うときは、吸気で腸管を尾側へ下げ、探触子を腹側からやや背側へ回り込ませる。',
+      noteEn: 'Longitudinal on the right flank using the liver as a window (image left = cranial). The long axis of the right kidney lies behind the liver (S6): hypoechoic medullary pyramids inside the cortex, bright arcuate dots at their border and the echogenic central echo complex (CEC); the psoas behind. Tip: look 1–2 intercostal spaces below the right intercostal liver view; lung air does not interfere, so either inspiration or expiration works. If bowel gas covers the lower pole, use inspiration to push the bowel down and move the probe from the front slightly backward.',
+      findings: ['rk', 'medulla', 'arcuate', 'cec', 'psoas', 'S6'] }]
+  },
+  ren_l_long: {
+    organ: 'renal', ja: '腎-2 左腎 縦走査', en: 'Kidney 2: left kidney, longitudinal',
+    short: { ja: '腎2 左腎・縦', en: 'Ki2 Lt. long.' },
+    // 参考：教本 p.117 下（左縦走査）・p.178
+    zone: 'left_flank', pos: [5.8, 1.0], bodyMark: [214, 104],
+    steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: 90, pitch: 0, roll: 0 },
+      noteJa: '左側腹部で、脾を音響窓にして縦に当てる（画面左が頭側）。脾の尾側に左腎の長軸。皮質・髄質（錐体）・弓状動脈、CEC の中を腎動脈・腎静脈が走る。頭側に肺のガス。コツ：左腎は脾の左肋間走査より1肋間下で探す。周りに胃や大腸のガスがあるので、最大吸気のときによく見えることが多い。左腎は吸気で肋骨弓の深く頭側に入ると上極が肺のガスで見えにくくなるので、吸気と呼気の両方で全体を見る。',
+      noteEn: 'Longitudinal on the left flank using the spleen as a window (image left = cranial). The long axis of the left kidney lies caudal to the spleen: cortex, medullary pyramids, arcuate dots, and the renal artery and vein running in the CEC; lung air cranially. Tip: look one intercostal space below the left intercostal spleen view. Gastric and colonic gas surround it, so deep inspiration often works best; if the upper pole hides behind the lung, check on both inspiration and expiration.',
+      findings: ['lk', 'medulla', 'arcuate', 'cec', 'renalArtery', 'renalVein', 'spleen', 'lungGas'] }]
+  },
+  ren_hilum: {
+    organ: 'renal', ja: '腎-3 右腎門部 横走査（腎静脈レベル）', en: 'Kidney 3: right renal hilum, transverse (renal vein level)',
+    short: { ja: '腎3 腎門部・横', en: 'Ki3 Hilum trans.' },
+    // 参考：教本 p.113 下・p.98 下（腎静脈レベル横走査）
+    zone: 'subcostal_gb', pos: [-3.0, 3.0], bodyMark: [116, 96],
+    steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: -15, pitch: 0, roll: 0 },
+      noteJa: '脾静脈レベルよりさらに尾側で、右肋骨弓下に横に当てる。腹側から右腎静脈・右腎動脈・腎盂の順に並ぶ。右腎静脈は下大静脈へ流入し、右腎動脈は下大静脈の背側を横切って大動脈から来る。胆嚢、椎体。左腎の静脈・動脈は消化管ガスで見えにくいことが多い。',
+      noteEn: 'Transverse under the right costal margin, caudal to the splenic-vein level. From front to back lie the right renal vein, right renal artery and renal pelvis; the right renal vein drains into the IVC and the right renal artery crosses behind the IVC from the aorta. Gallbladder and vertebra. The left renal vessels are often hidden by bowel gas.',
+      findings: ['rk', 'cec', 'rrv', 'rra', 'ivc', 'ao', 'gb', 'spine', 'bowelGas'] }]
+  },
+  vas_pv: {
+    organ: 'vessels', ja: '大-C 門脈本幹 斜め縦走査', en: 'Vessels C: main portal vein, oblique longitudinal',
+    short: { ja: 'C 門脈本幹', en: 'C Main PV' },
+    // 参考：教本 p.97 上・p.179 C
+    zone: 'subcostal_gb', pos: [-2.4, 3.0], bodyMark: [120, 88],
+    steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: 60, pitch: 0, roll: 0 },
+      noteJa: '門脈本幹に沿って斜めに当てる（画面左が肝門側）。門脈本幹の腹側に接して固有肝動脈と総胆管、背側にやや斜めに長く下大静脈。総胆管は門脈本幹を斜めに横切り、膵頭部で細くなって終わる。尾側に十二指腸球部のガス。',
+      noteEn: 'Oblique along the main portal vein (image left = hilum). The proper hepatic artery and CBD lie on its anterior surface and the IVC runs obliquely behind it. The CBD crosses the portal vein obliquely and tapers off in the pancreatic head; duodenal bulb gas caudally.',
+      findings: ['pv', 'pha', 'cbd', 'ivc', 'duodBulb', 'pancHead'] }]
+  },
+  vas_ce: {
+    organ: 'vessels', ja: '大-E 腹腔動脈レベル 横走査', en: 'Vessels E: celiac level, transverse',
+    short: { ja: 'E 腹腔動脈', en: 'E Celiac' },
+    // 参考：教本 p.98 上・p.179 E
+    zone: 'epigastric', pos: [0.0, 1.5], bodyMark: [142, 82],
+    steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: 0, pitch: 0, roll: 0 },
+      noteJa: '心窩部で探触子をほぼ垂直に立てる。大動脈から腹腔動脈が腹側へ立ち上がり、総肝動脈（患者の右へ）と脾動脈（左へ）が「T字」に分かれる。総肝動脈は固有肝動脈まで追える。門脈と総胆管、肝円索（後ろに音響陰影）、脾静脈の末梢と、その腹側に膵尾部。',
+      noteEn: 'In the epigastrium, hold the probe almost vertical. The celiac trunk rises from the aorta and divides like a “T” into the common hepatic artery (to the patient’s right) and the splenic artery (to the left); the CHA can be followed to the proper hepatic artery. Portal vein and CBD, ligamentum teres (with an acoustic shadow), the distal splenic vein and the pancreatic tail in front of it.',
+      findings: ['ao', 'ce', 'cha', 'sa', 'pha', 'pv', 'cbd', 'ivc', 'ligTeres', 'sv', 'pancTail', 'spine', 'S3', 'S4'] }]
+  },
+  vas_sv: {
+    organ: 'vessels', ja: '大-F 脾静脈レベル 横走査', en: 'Vessels F: splenic vein level, transverse',
+    short: { ja: 'F 脾静脈', en: 'F Splenic v.' },
+    // 参考：教本 p.98 中・p.179 F
+    zone: 'epigastric', pos: [0.0, 3.5], bodyMark: [142, 88],
+    steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: -8, pitch: 0, roll: 0 },
+      noteJa: '腹腔動脈レベルの尾側で、探触子をわずかに反時計回りに回す。脾静脈が長軸像として長く見え、上腸間膜静脈との合流部が太い「オタマジャクシ」の頭の形になって門脈本幹へ続く。上腸間膜動脈は大動脈と脾静脈にはさまれて輪切りに見え、左腎静脈は大動脈と上腸間膜動脈の間を横に走る。膵は脾静脈の腹側。',
+      noteEn: 'Caudal to the celiac level, rotate the probe slightly counterclockwise. The splenic vein is seen in long axis; its confluence with the SMV forms the head of a “tadpole” continuing into the portal vein. The SMA is seen in cross-section between the aorta and splenic vein, and the left renal vein runs between the aorta and SMA. The pancreas lies anterior to the splenic vein.',
+      findings: ['sv', 'smv', 'sma', 'ao', 'ivc', 'lrv', 'pancBody', 'ligTeres', 'bowelGas', 'spine', 'S3', 'S4'] }]
+  }
+});
 const TEXTBOOK_ORDER = ['liver_hv', 'liver_pv', 'liver_ic', 'liver_ao_long', 'liver_ivc_s4', 'liver_ivc_rl',
-  'spl_ic', 'spl_long', 'bil_ep', 'bil_sc', 'bil_long', 'bil_ic', 'pan_head', 'pan_headlong', 'pan_body', 'pan_bodylong'];
+  'spl_ic', 'spl_long', 'bil_ep', 'bil_sc', 'bil_long', 'bil_ic', 'pan_head', 'pan_headlong', 'pan_body', 'pan_bodylong',
+  'ren_r_long', 'ren_l_long', 'ren_hilum', 'vas_pv', 'vas_ce', 'vas_sv'];
 const TEXTBOOK_ORGANS = [
   { id: 'liver', ja: '肝', en: 'Liver' }, { id: 'spleen', ja: '脾', en: 'Spleen' },
-  { id: 'biliary', ja: '胆道', en: 'Biliary' }, { id: 'pancreas', ja: '膵', en: 'Pancreas' }];
+  { id: 'biliary', ja: '胆道', en: 'Biliary' }, { id: 'pancreas', ja: '膵', en: 'Pancreas' },
+  { id: 'renal', ja: '腎', en: 'Kidney' },
+  // 大血管：脈管の走査のコツの A〜F の6断面。A・B・D は肝の断面と同じ断面なので、肝の断面をそのまま並べる（ボタンの名前だけ大血管用）。
+  { id: 'vessels', ja: '大血管', en: 'Vessels', views: [
+    { id: 'liver_ao_long', short: { ja: 'A 大動脈・縦', en: 'A Aorta long.' } },
+    { id: 'liver_ivc_rl', short: { ja: 'B 下大静脈・縦', en: 'B IVC long.' } },
+    { id: 'vas_pv' },
+    { id: 'liver_hv', short: { ja: 'D 肝静脈・横', en: 'D Hepatic veins' } },
+    { id: 'vas_ce' }, { id: 'vas_sv' }] }];
+// 臓器のボタン列に並ぶ断面（{ id, short }）
+function organViews(organId) {
+  const organ = TEXTBOOK_ORGANS.find(o => o.id === organId);
+  return organ.views || TEXTBOOK_ORDER.filter(id => TEXTBOOK_VIEWS[id].organ === organId).map(id => ({ id }));
+}
 // エコー1フレームで見えた構造（fid）の数。チェックリストは直近1.5秒のどこかで見えたものに印を付ける。
 const findingSeenAt = new Map();
 const FINDING_MIN_SAMPLES = 4;
@@ -1036,19 +1131,22 @@ function textbookFindingCounts(visibleOnly = false) {
   Object.defineProperty(cnt, 'shadowedFraction', { value: shallow.reduce((n, v) => n + v, 0) / 160 });
   return cnt;
 }
-// 教本の断面のボタン：臓器（肝・脾・胆道・膵）を選ぶと、その臓器の断面のボタンが並ぶ。
+// 標準断面のボタン：臓器（肝・脾・胆道・膵・腎・大血管）を選ぶと、その臓器の断面のボタンが並ぶ。
 let textbookOrgan = 'liver', textbookOrganSyncedView = null;
 // 臓器のボタンは、その臓器の最初の断面を選んだのと同じにする（すでにその臓器の断面を選んでいるときはそのまま）。
 function selectTextbookOrgan(organ) {
   textbookOrgan = organ;
-  if (state.textbookView && TEXTBOOK_VIEWS[state.textbookView].organ === organ) { updateTextbookPanel(); return; }
-  selectTextbookView(TEXTBOOK_ORDER.find(id => TEXTBOOK_VIEWS[id].organ === organ));
+  const list = organViews(organ);
+  if (state.textbookView && list.some(v => v.id === state.textbookView)) { updateTextbookPanel(); return; }
+  textbookOrganSyncedView = list[0].id;   // 大血管の列の A のように、ほかの臓器の断面でも列はそのまま
+  selectTextbookView(list[0].id);
 }
 function renderTextbookToolbar() {
   const organs = document.getElementById('textbookOrganButtons'), views = document.getElementById('textbookViewButtons');
   if (!organs || !views) return;
   // 断面を選び直したときだけ、その断面の臓器のボタン列に合わせる（臓器ボタンで別の臓器の列を見ているときは変えない）。
-  if (state.textbookView && state.textbookView !== textbookOrganSyncedView) textbookOrgan = TEXTBOOK_VIEWS[state.textbookView].organ;
+  if (state.textbookView && state.textbookView !== textbookOrganSyncedView && !organViews(textbookOrgan).some(v => v.id === state.textbookView))
+    textbookOrgan = TEXTBOOK_VIEWS[state.textbookView].organ;
   textbookOrganSyncedView = state.textbookView;
   organs.replaceChildren(...TEXTBOOK_ORGANS.map(o => {
     const b = document.createElement('button');
@@ -1057,9 +1155,9 @@ function renderTextbookToolbar() {
     b.addEventListener('click', () => selectTextbookOrgan(o.id));
     return b;
   }));
-  views.replaceChildren(...TEXTBOOK_ORDER.filter(id => TEXTBOOK_VIEWS[id].organ === textbookOrgan).map(id => {
+  views.replaceChildren(...organViews(textbookOrgan).map(({ id, short }) => {
     const b = document.createElement('button');
-    b.id = 'btnTextbook_' + id; b.textContent = TEXTBOOK_VIEWS[id].short[state.lang];
+    b.id = 'btnTextbook_' + id; b.textContent = (short || TEXTBOOK_VIEWS[id].short)[state.lang];
     b.classList.toggle('active', state.textbookView === id);
     b.addEventListener('click', () => selectTextbookView(id));
     return b;
@@ -1083,7 +1181,7 @@ function textbookFindingStates() {
 // 画面の向きはエコーと同じ（横走査：画面左＝患者右、縦走査と肋間走査：画面左＝頭側）。
 const SCHEMA_DRAW_COLORS = { liver: '#3a3326', hv: '#5fb7f2', pv: '#b07ae8', bd: '#7ee787', cbd: '#7ee787', ivc: '#3d8fd6', vein: '#8fb8e6',
   art: '#e06a6a', gb: '#62b87a', panc: '#b9895d', stomach: '#8b949e', eso: '#8b949e', lig: '#f0f6fc', bone: '#8b949e',
-  spleen: '#5d4a6e', kidney: '#6b4f3a', sinus: '#d9c9a3', gas: '#6e7781', lung: '#9aa7b3', bowel: '#7d8590' };
+  spleen: '#5d4a6e', kidney: '#6b4f3a', sinus: '#d9c9a3', gas: '#6e7781', lung: '#9aa7b3', bowel: '#7d8590', pyramid: '#3b2a52', arcuate: '#e06a6a', muscle: '#6e5040' };
 function drawTextbookSchema(id, canvas) {
   if (!canvas) return;
   const scene = SCHEMA_SCENES[id];
@@ -1709,6 +1807,120 @@ Object.assign(SCHEMA_SCENES, {
     ]
   }
 });
+// ── 腎（p.113・p.117）と大血管（p.97–98）の断面のシェーマ（走査法のページの写真とシェーマの組をなぞった） ──
+// 腎は、皮質の中に低エコーの髄質（錐体）、錐体の外側の縁に弓状動脈の明るい点、中央に腎中心部エコー（CEC）。
+Object.assign(SCHEMA_SCENES, {
+  ren_r_long: {
+    s: 0.036, cx: 165, top: 70,
+    segment(x, y) { return y < 330 ? 'S6' : null; },
+    prims: [
+      { t: 'ell', c: [118, 198], r: [4, 4], kind: 'arcuate', fid: 'arcuate' },
+      { t: 'ell', c: [192, 160], r: [4, 4], kind: 'arcuate', fid: 'arcuate' },
+      { t: 'ell', c: [262, 150], r: [4, 4], kind: 'arcuate', fid: 'arcuate' },
+      { t: 'ell', c: [250, 268], r: [4, 4], kind: 'arcuate', fid: 'arcuate' },
+      { t: 'ell', c: [140, 212], r: [20, 15], kind: 'pyramid', fid: 'medulla' },
+      { t: 'ell', c: [205, 175], r: [18, 15], kind: 'pyramid', fid: 'medulla' },
+      { t: 'ell', c: [262, 168], r: [15, 15], kind: 'pyramid', fid: 'medulla' },
+      { t: 'ell', c: [236, 250], r: [19, 16], kind: 'pyramid', fid: 'medulla' },
+      { t: 'ell', c: [168, 282], r: [16, 15], kind: 'pyramid', fid: 'medulla' },
+      { t: 'ell', c: [100, 292], r: [13, 12], kind: 'pyramid', fid: 'medulla' },
+      { t: 'poly', kind: 'sinus', fid: 'cec', pts: [[52,286],[110,252],[170,226],[225,198],[262,184],[268,200],[222,226],[160,258],[100,284],[60,300]] },
+      { t: 'ell', c: [178, 238], r: [178, 74], rot: -0.42, kind: 'kidney', fid: 'rk' },
+      { t: 'poly', kind: 'muscle', fid: 'psoas', pts: [[-200,342],[600,328],[600,520],[-200,520]] },
+      { t: 'poly', kind: 'liver', pts: [[-420,40],[820,40],[820,330],[300,330],[-420,345]] }
+    ]
+  },
+  ren_l_long: {
+    s: 0.03, cx: 300, top: 60,
+    segment() { return null; },
+    prims: [
+      { t: 'tube', pts: [[250, 238, 4], [340, 212, 4], [430, 180, 3]], kind: 'art', fid: 'renalArtery' },
+      { t: 'tube', pts: [[262, 256, 6], [360, 222, 6], [445, 192, 5]], kind: 'vein', fid: 'renalVein' },
+      { t: 'ell', c: [152, 205], r: [4, 4], kind: 'arcuate', fid: 'arcuate' },
+      { t: 'ell', c: [262, 148], r: [4, 4], kind: 'arcuate', fid: 'arcuate' },
+      { t: 'ell', c: [352, 105], r: [4, 4], kind: 'arcuate', fid: 'arcuate' },
+      { t: 'ell', c: [440, 228], r: [4, 4], kind: 'arcuate', fid: 'arcuate' },
+      { t: 'ell', c: [172, 222], r: [24, 20], kind: 'pyramid', fid: 'medulla' },
+      { t: 'ell', c: [268, 172], r: [20, 22], kind: 'pyramid', fid: 'medulla' },
+      { t: 'ell', c: [352, 130], r: [24, 20], kind: 'pyramid', fid: 'medulla' },
+      { t: 'ell', c: [410, 130], r: [16, 14], kind: 'pyramid', fid: 'medulla' },
+      { t: 'ell', c: [425, 218], r: [24, 17], kind: 'pyramid', fid: 'medulla' },
+      { t: 'ell', c: [305, 262], r: [20, 14], kind: 'pyramid', fid: 'medulla' },
+      { t: 'poly', kind: 'sinus', fid: 'cec', pts: [[165,270],[230,240],[300,220],[360,180],[420,160],[452,170],[442,196],[380,226],[320,242],[250,266],[180,286]] },
+      { t: 'ell', c: [312, 205], r: [192, 100], rot: -0.18, kind: 'kidney', fid: 'lk' },
+      { t: 'poly', kind: 'spleen', fid: 'spleen', pts: [[110,92],[520,80],[520,96],[350,82],[300,92],[230,118],[170,165],[128,215],[110,250]] },
+      { t: 'poly', kind: 'lung', fid: 'lungGas', pts: [[-200,92],[110,92],[110,700],[-200,700]] }
+    ]
+  },
+  ren_hilum: {
+    orient: 'trans', s: 0.025, cx: 270, top: 40,
+    segment() { return 'S6'; },
+    prims: [
+      { t: 'ell', c: [240, 198], r: [64, 42], rot: -0.1, kind: 'gb', fid: 'gb' },
+      { t: 'tube', pts: [[355, 172, 5], [455, 160, 5]], kind: 'pv', fid: 'pv' },
+      { t: 'tube', pts: [[120, 300, 7], [170, 294, 8], [195, 288, 9]], kind: 'vein', fid: 'rrv' },
+      { t: 'tube', pts: [[110, 338, 5], [200, 322, 6], [300, 312, 6], [392, 304, 6]], kind: 'art', fid: 'rra' },
+      { t: 'tube', pts: [[190, 286, 14], [300, 280, 16], [400, 282, 14], [450, 286, 8]], kind: 'ivc', fid: 'ivc' },
+      { t: 'tube', pts: [[420, 290, 4], [480, 292, 4]], kind: 'vein', fid: 'lrv' },
+      { t: 'ell', c: [435, 330], r: [48, 40], kind: 'art', fid: 'ao' },
+      { t: 'poly', kind: 'gas', fid: 'bowelGas', pts: [[412,248],[480,240],[520,262],[524,330],[488,312],[452,282],[412,268]] },
+      { t: 'ell', c: [70, 325], r: [10, 8], kind: 'pyramid', fid: 'medulla' },
+      { t: 'poly', kind: 'sinus', fid: 'cec', pts: [[20,330],[120,315],[190,312],[150,345],[60,360],[10,352]] },
+      { t: 'ell', c: [80, 340], r: [128, 68], rot: 0.12, kind: 'kidney', fid: 'rk' },
+      { t: 'bone', c: [330, 490], r: 140, fid: 'spine' },
+      { t: 'poly', kind: 'liver', pts: [[-420,40],[820,40],[820,240],[420,248],[300,268],[190,276],[100,272],[-420,280]] }
+    ]
+  },
+  vas_ce: {
+    orient: 'trans', s: 0.019, cx: 180, top: 55,
+    segment(x, y) { return y < 175 ? (x < 150 ? 'S4' : 'S3') : null; },
+    prims: [
+      { t: 'ell', c: [156, 85], r: [17, 26], kind: 'lig', fid: 'ligTeres' },
+      { t: 'ell', c: [62, 200], r: [15, 13], kind: 'cbd', fid: 'cbd' },
+      { t: 'tube', pts: [[78, 186, 6], [98, 182, 6]], kind: 'art', fid: 'pha' },
+      { t: 'tube', pts: [[182, 176, 7], [140, 180, 6], [98, 182, 6]], kind: 'art', fid: 'cha' },
+      { t: 'tube', pts: [[186, 174, 7], [250, 160, 7], [300, 166, 7], [335, 188, 6]], kind: 'art', fid: 'sa' },
+      { t: 'tube', pts: [[215, 238, 11], [200, 205, 10], [184, 180, 8]], kind: 'art', fid: 'ce' },
+      { t: 'ell', c: [150, 210], r: [86, 28], kind: 'pv', fid: 'pv' },
+      { t: 'ell', c: [58, 258], r: [55, 22], kind: 'ivc', fid: 'ivc' },
+      { t: 'ell', c: [198, 266], r: [60, 40], kind: 'art', fid: 'ao' },
+      { t: 'tube', pts: [[272, 214, 8], [306, 250, 8], [328, 300, 8]], kind: 'vein', fid: 'sv' },
+      { t: 'poly', kind: 'panc', fid: 'pancTail', pts: [[300,172],[345,182],[352,245],[330,295],[300,255],[290,205]] },
+      { t: 'bone', c: [235, 420], r: 110, fid: 'spine' },
+      { t: 'poly', kind: 'liver', pts: [[-420,50],[820,50],[820,175],[340,175],[250,160],[100,175],[-420,190]] }
+    ]
+  },
+  vas_sv: {
+    orient: 'trans', s: 0.024, cx: 180, top: 60,
+    segment(x, y) { return y < 150 ? (x < 120 ? 'S4' : 'S3') : null; },
+    prims: [
+      { t: 'tube', pts: [[120, 62, 5], [122, 105, 6], [122, 145, 9]], kind: 'lig', fid: 'ligTeres' },
+      { t: 'ell', c: [238, 228], r: [14, 14], kind: 'art', fid: 'sma' },
+      { t: 'tube', pts: [[140, 215, 22], [188, 212, 19]], kind: 'vein', fid: 'smv' },
+      { t: 'tube', pts: [[188, 212, 16], [262, 205, 13], [322, 222, 10], [355, 246, 8]], kind: 'vein', fid: 'sv' },
+      { t: 'tube', pts: [[255, 258, 4], [292, 270, 4]], kind: 'vein', fid: 'lrv' },
+      { t: 'poly', kind: 'panc', fid: 'pancBody', pts: [[60,195],[100,160],[150,150],[250,155],[355,170],[362,205],[352,242],[280,238],[230,252],[150,258],[90,252],[60,232]] },
+      { t: 'ell', c: [60, 282], r: [56, 30], kind: 'ivc', fid: 'ivc' },
+      { t: 'ell', c: [205, 278], r: [42, 38], kind: 'art', fid: 'ao' },
+      { t: 'poly', kind: 'gas', fid: 'bowelGas', pts: [[-200,200],[0,188],[100,152],[110,166],[55,210],[-200,240]] },
+      { t: 'bone', c: [150, 455], r: 140, fid: 'spine' },
+      { t: 'poly', kind: 'liver', pts: [[-420,55],[820,55],[820,175],[350,165],[250,150],[120,148],[-420,165]] }
+    ]
+  },
+  vas_pv: {
+    s: 0.03, cx: 170, top: 60,
+    segment() { return null; },
+    prims: [
+      { t: 'tube', pts: [[180, 232, 4], [200, 226, 4]], kind: 'art', fid: 'pha' },
+      { t: 'tube', pts: [[110, 242, 5], [160, 238, 5], [200, 234, 4]], kind: 'cbd', fid: 'cbd' },
+      { t: 'tube', pts: [[48, 262, 17], [120, 258, 16], [200, 252, 12]], kind: 'pv', fid: 'pv' },
+      { t: 'tube', pts: [[-100, 345, 22], [60, 330, 22], [200, 305, 20]], kind: 'ivc', fid: 'ivc' },
+      { t: 'poly', kind: 'gas', fid: 'duodBulb', pts: [[205,150],[255,105],[260,400],[205,400]] },
+      { t: 'poly', kind: 'panc', fid: 'pancHead', pts: [[262,200],[360,200],[360,272],[262,282]] },
+      { t: 'poly', kind: 'liver', pts: [[-420,60],[820,60],[820,100],[260,100],[205,150],[205,340],[-420,350]] }
+    ]
+  }
+});
 function polyLabelPoint(pts) {
   // 多角形の中にある、重心に近い点（ラベルの位置）。
   const c = [pts.reduce((a, q) => a + q[0], 0) / pts.length, pts.reduce((a, q) => a + q[1], 0) / pts.length];
@@ -1774,12 +1986,15 @@ function vesselLook(kind, inside, organKey, fid) {
   return inside ? { val: look[0], shadow: 0, enhance: look[1], organKey, fid } : { val: look[2], shadow: 0, enhance: 0, organKey: null, fid };
 }
 // 実質臓器・ガスの見え方（脾・胆道・膵の断層模式図で使う）。肺のガスは多重反射の縞にする。
-const ORGAN_LOOK_KINDS = new Set(['spleen', 'kidney', 'sinus', 'gas', 'lung', 'bowel']);
+const ORGAN_LOOK_KINDS = new Set(['spleen', 'kidney', 'sinus', 'gas', 'lung', 'bowel', 'pyramid', 'arcuate', 'muscle']);
 // depthCm：その構造の表面（探触子側）からの深さ。ガスは表面だけが明るく、奥は汚い音響陰影。肺は胸膜の線と多重反射（A-line）。
 function organLook(kind, fid, depthCm) {
   if (kind === 'spleen') return { val: 108, shadow: 0, enhance: 0, organKey: 'spleen', fid };
   if (kind === 'panc') return { val: 138, shadow: 0, enhance: 0, organKey: 'pancreas', fid };
   if (kind === 'kidney') return { val: 78, shadow: 0, enhance: 0, organKey: fid === 'lk' ? 'ltKidneyCort' : 'kidneyCort', fid };
+  if (kind === 'pyramid') return { val: 38, shadow: 0, enhance: 0, organKey: 'kidneyMedulla', fid };
+  if (kind === 'arcuate') return { val: 215, shadow: 0, enhance: 0, organKey: null, fid };
+  if (kind === 'muscle') return { val: (depthCm % 0.35) < 0.07 ? 120 : 58, shadow: 0, enhance: 0, organKey: null, fid };   // 腸腰筋：線状の筋束
   if (kind === 'sinus') return { val: 190, shadow: 0, enhance: 0, organKey: 'kidneyCec', fid };
   if (kind === 'gb') return { val: 10, shadow: 0, enhance: 0.35, organKey: 'gb', fid };
   if (kind === 'lung') {
@@ -3619,6 +3834,7 @@ async function loadAtlas() {
       for (let j = NJ - 1; j >= 0; j--) if (ATLAS.data[(k * NJ + j) * NI + i]) { surface[k * NI + i] = (ATLAS.skinJ - j) * ATLAS.vz; break; }
     }
     ATLAS.surface = surface;
+    ATLAS.kidneyDepth = computeKidneyDepth();
     // BodyParts3D の肝内血管（変形して実CTの肝に合わせた中心線）。読めなければ手で置いた中心線のまま。
     try {
       const vesselResponse = await fetch('data/bodyparts3d/liver_vessels.json', { cache: 'no-cache' });
@@ -3634,6 +3850,60 @@ async function loadAtlas() {
     ATLAS.failed = true;
     console.warn('Atlas unavailable; using the schematic model.', error);
   }
+}
+// 腎の各ボクセルの、腎の外側の表面（腎周囲の脂肪との境）からの深さ（0.05 cm 単位、255 まで）。
+// 実CTには腎の皮質・髄質の区別がないので、この深さから髄質（錐体）と弓状動脈の位置を決める。
+function computeKidneyDepth() {
+  const { data, NI, NJ, NK, vx, vy, vz } = ATLAS;
+  const inside = c => c === 13 || c === 14 || c === 15;
+  let i0 = NI, i1 = -1, j0 = NJ, j1 = -1, k0 = NK, k1 = -1;
+  for (let k = 0; k < NK; k++) for (let j = 0; j < NJ; j++) for (let i = 0; i < NI; i++) {
+    if (!inside(data[(k * NJ + j) * NI + i])) continue;
+    if (i < i0) i0 = i; if (i > i1) i1 = i; if (j < j0) j0 = j; if (j > j1) j1 = j; if (k < k0) k0 = k; if (k > k1) k1 = k;
+  }
+  const depth = new Uint8Array(NI * NJ * NK);
+  if (i1 < 0) return depth;
+  i0 = Math.max(1, i0 - 1); j0 = Math.max(1, j0 - 1); k0 = Math.max(1, k0 - 1); i1 = Math.min(NI - 2, i1 + 1); j1 = Math.min(NJ - 2, j1 + 1); k1 = Math.min(NK - 2, k1 + 1);
+  const W = i1 - i0 + 1, H = j1 - j0 + 1, D = k1 - k0 + 1, dist = new Float32Array(W * H * D);
+  const at = (i, j, k) => ((k - k0) * H + (j - j0)) * W + (i - i0);
+  for (let k = k0; k <= k1; k++) for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) dist[at(i, j, k)] = inside(data[(k * NJ + j) * NI + i]) ? 1e9 : 0;
+  // 3次元の距離の近似（前向き・後ろ向きの2回の走査、各軸のボクセルの大きさで重み付け）
+  const nb = [];
+  for (let dk = -1; dk <= 1; dk++) for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) {
+    if (!di && !dj && !dk) continue;
+    nb.push([di, dj, dk, Math.hypot(di * vx, dj * vz, dk * vy)]);
+  }
+  const fwd = nb.filter(([di, dj, dk]) => dk < 0 || (dk === 0 && (dj < 0 || (dj === 0 && di < 0))));
+  const bwd = nb.filter(n => !fwd.includes(n));
+  const pass = (list, order) => {
+    for (const k of order.k) for (const j of order.j) for (const i of order.i) {
+      const a = at(i, j, k); if (!dist[a]) continue;
+      let m = dist[a];
+      for (const [di, dj, dk, w] of list) { const v = dist[at(i + di, j + dj, k + dk)] + w; if (v < m) m = v; }
+      dist[a] = m;
+    }
+  };
+  const range = (a, b, rev) => { const r = []; for (let v = a; v <= b; v++) r.push(v); return rev ? r.reverse() : r; };
+  pass(fwd, { k: range(k0 + 1, k1 - 1), j: range(j0 + 1, j1 - 1), i: range(i0 + 1, i1 - 1) });
+  pass(bwd, { k: range(k0 + 1, k1 - 1, true), j: range(j0 + 1, j1 - 1, true), i: range(i0 + 1, i1 - 1, true) });
+  for (let k = k0; k <= k1; k++) for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+    const d = dist[at(i, j, k)];
+    if (d && d < 1e8) depth[(k * NJ + j) * NI + i] = Math.min(255, Math.round(d / 0.05));
+  }
+  return depth;
+}
+// 腎実質（皮質）の点を、皮質・髄質（錐体）・弓状動脈に分ける。皮質の厚さは約 0.8 cm（正常 6〜12 mm）。
+// 錐体どうしの間（腎柱）は、なめらかなノイズで決める。
+function kidneyParenchymaLook(x, y, z, c) {
+  const { NI, NJ, vx, vy, vz, midI, xiphoidK, skinJ } = ATLAS;
+  const i = Math.round(x / vx + midI), k = Math.round(y / vy + xiphoidK), j = Math.round(skinJ - z / vz);
+  const d = (ATLAS.kidneyDepth ? ATLAS.kidneyDepth[(k * NJ + j) * NI + i] : 0) * 0.05;
+  const key = c === 14 ? 'ltKidneyCort' : 'kidneyCort', fid = c === 14 ? 'lk' : 'rk';
+  if (d < 0.6) return { val: d < 0.1 ? 150 : 92, shadow: 0, enhance: 0, organKey: key, fid };   // 被膜と皮質
+  const col = sampleNoiseSmooth(x * 1.6 + 11, y * 1.6, z * 1.6 + 5);
+  if (col < 0.42) return { val: 92, shadow: 0, enhance: 0, organKey: key, fid };                // 腎柱（ベルタン柱）
+  if (d < 0.78 && sampleNoiseSmooth(x * 9, y * 9 + 3, z * 9) > 0.62) return { val: 205, shadow: 0, enhance: 0, organKey: key, fid: 'arcuate' }; // 弓状動脈
+  return { val: 38, shadow: 0, enhance: 0, organKey: c === 14 ? 'ltKidneyMedulla' : 'kidneyMedulla', fid: 'medulla' };      // 髄質（錐体）
 }
 // 骨盤（膀胱）は実CTの範囲外なので、模式モデルのまま
 function atlasReady() { return anatomyMode === 'atlas' && ATLAS.ready && state.selectedZone !== 'pelvis_bladder'; }
@@ -3834,6 +4104,7 @@ function atlasSample(x, y, z) {
     const seg = 'S' + (c - 80);
     return { val: seg === 'S1' ? 96 : 100, shadow: 0, enhance: 0, organKey: seg === 'S1' ? null : ['S2', 'S3', 'S4'].includes(seg) ? 'liverLt' : 'liverRt', segmentKey: seg, fid: seg };
   }
+  if (c === 13 || c === 14) return kidneyParenchymaLook(x, y, z, c);
   if (c === 10) {
     const seg = atlasLiverSegment(x, y, z);
     return { val: seg === 'S1' ? 96 : 100, shadow: 0, enhance: 0, organKey: seg === 'S1' ? null : ['S2', 'S3', 'S4'].includes(seg) ? 'liverLt' : 'liverRt', segmentKey: seg, fid: seg };

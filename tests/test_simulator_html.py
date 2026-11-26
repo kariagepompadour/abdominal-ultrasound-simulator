@@ -827,10 +827,14 @@ class TextbookViewTest(BrowserTestBase):
         self.assertEqual(self.page.evaluate("TEXTBOOK_ORDER"),
                          ['liver_hv', 'liver_pv', 'liver_ic', 'liver_ao_long', 'liver_ivc_s4', 'liver_ivc_rl',
                           'spl_ic', 'spl_long', 'bil_ep', 'bil_sc', 'bil_long', 'bil_ic',
-                          'pan_head', 'pan_headlong', 'pan_body', 'pan_bodylong'])
-        self.assertEqual(self.page.evaluate("TEXTBOOK_ORDER.filter(id => SCHEMA_SCENES[id]).length"), 16)
+                          'pan_head', 'pan_headlong', 'pan_body', 'pan_bodylong',
+                          'ren_r_long', 'ren_l_long', 'ren_hilum', 'vas_pv', 'vas_ce', 'vas_sv'])
+        self.assertEqual(self.page.evaluate("TEXTBOOK_ORDER.filter(id => SCHEMA_SCENES[id]).length"), 22)
         organs = self.page.evaluate("Object.fromEntries(TEXTBOOK_ORGANS.map(o => [o.id, TEXTBOOK_ORDER.filter(id => TEXTBOOK_VIEWS[id].organ === o.id).length]))")
-        self.assertEqual(organs, {'liver': 6, 'spleen': 2, 'biliary': 4, 'pancreas': 4})
+        self.assertEqual(organs, {'liver': 6, 'spleen': 2, 'biliary': 4, 'pancreas': 4, 'renal': 3, 'vessels': 3})
+        # 大血管の列は脈管の走査のコツの A〜F：A・B・D は肝の断面を共有する
+        self.assertEqual(self.page.evaluate("organViews('vessels').map(v => v.id)"),
+                         ['liver_ao_long', 'liver_ivc_rl', 'vas_pv', 'liver_hv', 'vas_ce', 'vas_sv'])
         # 教本名を出さないので、教本のページも画面には出さない（ソースのコメントにだけ残す）
         self.assertEqual(self.page.evaluate("TEXTBOOK_ORDER.filter(id => 'pages' in TEXTBOOK_VIEWS[id])"), [])
         notes = self.page.evaluate("TEXTBOOK_ORDER.flatMap(id => TEXTBOOK_VIEWS[id].steps.flatMap(s => [s.noteJa, s.noteEn]))")
@@ -839,7 +843,7 @@ class TextbookViewTest(BrowserTestBase):
         self.assertEqual(missing, [])
 
     def test_textbook_toolbar_groups_the_views_by_organ(self):
-        self.assertEqual(self.page.locator('#textbookOrganButtons button').count(), 4)
+        self.assertEqual(self.page.locator('#textbookOrganButtons button').count(), 6)
         self.assertEqual(self.page.locator('#textbookViewButtons button').count(), 6)
         self.page.click('#btnOrgan_pancreas')
         self.assertEqual(self.page.locator('#textbookViewButtons button').count(), 4)
@@ -855,6 +859,16 @@ class TextbookViewTest(BrowserTestBase):
         self.assertEqual(self.state('[state.textbookView, state.selectedZone]'), ['spl_ic', 'left_flank'])
         self.page.click('#btnTextbook_spl_long')
         self.assertEqual(self.state('state.textbookView'), 'spl_long')
+        # 大血管：A を押すと肝④と同じ断面。列は大血管のまま
+        self.page.click('#btnOrgan_vessels')
+        self.assertEqual(self.state('state.textbookView'), 'liver_ao_long')
+        self.assertEqual(self.page.locator('#textbookViewButtons button').count(), 6)
+        self.assertIn('A', self.page.text_content('#btnTextbook_liver_ao_long'))
+        self.page.click('#btnTextbook_liver_hv')
+        self.assertTrue(self.page.locator('#btnOrgan_vessels').evaluate("b => b.classList.contains('active')"))
+        self.page.click('#btnOrgan_liver')
+        self.assertEqual(self.state('state.textbookView'), 'liver_hv')   # 肝の列にもある断面なのでそのまま
+        self.assertIn('①', self.page.text_content('#btnTextbook_liver_hv'))
         self.page.click('#btnLang')
         self.assertIn('Standard views', self.page.text_content('#textbookToolbarLabel'))
         self.assertEqual(self.page.text_content('#btnOrgan_spleen'), 'Spleen')
@@ -1094,6 +1108,18 @@ class AtlasAnatomyTest(BrowserTestBase):
           }
           return bad; }''')
         self.assertEqual(outside, [])
+        self.assertEqual(self.errors, [])
+
+    def test_real_ct_kidney_has_cortex_medulla_and_arcuate_dots(self):
+        # 実CTの腎には皮質・髄質の区別がないので、腎の表面からの深さで錐体（低エコー）と弓状動脈を描く
+        self.open_atlas('?anatomy=atlas&schema=off')
+        for view in ('ren_r_long', 'ren_hilum'):
+            counts = self.page.evaluate(f"() => {{ selectTextbookView('{view}'); return textbookFindingCounts(true); }}")
+            with self.subTest(view=view):
+                self.assertGreaterEqual(counts.get('medulla', {}).get('n', 0), 12)
+                kidney = counts.get('rk', {}).get('n', 0) + counts.get('medulla', {}).get('n', 0)
+                self.assertGreater(counts.get('rk', {}).get('n', 0), 0.2 * kidney)   # 皮質も残る
+        self.assertEqual(self.page.evaluate("ZONE_PROBE_BASES.right_flank.lateral"), True)
         self.assertEqual(self.errors, [])
 
     def test_spleen_views_use_a_probe_on_the_left_side_of_the_body(self):
