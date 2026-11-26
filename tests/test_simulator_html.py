@@ -812,7 +812,8 @@ class TextbookViewTest(BrowserTestBase):
 
     def visible(self, counts, finding):
         fids = self.page.evaluate(f"findingFids('{finding}')")
-        return any(counts.get(fid, {}).get('n', 0) >= self.MIN_SAMPLES for fid in fids)
+        # 主膵管（正常は径 2 mm 以下）は細い線・点にしか見えないので基準を下げる（アプリの findingMinSamples と同じ考え方）
+        return any(counts.get(fid, {}).get('n', 0) >= (5 if fid == 'pd' else self.MIN_SAMPLES) for fid in fids)
 
     def assert_layout(self, view, relations):
         c = self.counts(view)
@@ -1039,7 +1040,8 @@ class AtlasAnatomyTest(BrowserTestBase):
 
     def visible(self, counts, finding):
         fids = self.page.evaluate(f"findingFids('{finding}')")
-        return any(counts.get(fid, {}).get('n', 0) >= self.MIN_SAMPLES for fid in fids)
+        # 主膵管（正常は径 2 mm 以下）は細い線・点にしか見えないので基準を下げる（アプリの findingMinSamples と同じ考え方）
+        return any(counts.get(fid, {}).get('n', 0) >= (5 if fid == 'pd' else self.MIN_SAMPLES) for fid in fids)
 
     def counts(self, view, step='base'):
         # 実CTでは、肋骨・ガスの音響陰影に隠れたものは「見えた」に数えない
@@ -1078,7 +1080,8 @@ class AtlasAnatomyTest(BrowserTestBase):
             counts = self.page.evaluate(f"() => {{ selectTextbookView('{view}'); return textbookFindingCounts(true); }}")
             for fid in fids:
                 with self.subTest(view=view, fid=fid):
-                    self.assertGreaterEqual(counts.get(fid, {}).get('n', 0), 12)
+                    # 主膵管は正常の太さ（径 2 mm 以下）なので細い線にしか見えない：数え方の基準を下げる
+                    self.assertGreaterEqual(counts.get(fid, {}).get('n', 0), 5 if fid == 'pd' else 12)
         # 主膵管は膵の中だけ、総胆管は十二指腸・門脈のラベルの中には描かない
         outside = self.page.evaluate('''() => {
           const bad = [];

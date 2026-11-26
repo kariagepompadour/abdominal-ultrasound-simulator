@@ -713,6 +713,7 @@ const FINDING_DEFS = {
   stomach: { ja: '胃体部', en: 'Gastric body', tag: { ja: '胃体部', en: 'Stomach' } },
   eso: { ja: '食道（食道胃接合部）', en: 'Esophagus (GE junction)', tag: { ja: '食道', en: 'Esophagus' } },
   spleen: { ja: '脾臓', en: 'Spleen', tag: { ja: '脾', en: 'Spleen' } },
+  chd: { ja: '総肝管', en: 'Common hepatic duct', tag: { ja: '総肝管', en: 'CHD' } },
   antrum: { ja: '胃前庭部（横断像）', en: 'Gastric antrum (cross-section)', tag: { ja: '胃前庭部', en: 'Antrum' } },
   lk: { ja: '左腎', en: 'Left kidney', tag: { ja: '左腎', en: 'L kidney' } },
   rk: { ja: '右腎', en: 'Right kidney', tag: { ja: '右腎', en: 'R kidney' } },
@@ -889,7 +890,11 @@ Object.assign(TEXTBOOK_VIEWS, {
     steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: -25, pitch: 15, roll: 0 },
       noteJa: '右肋骨弓の下に斜めに当てる。胆嚢の長軸、門脈左枝（横行部・臍部）、右腎と右腎静脈・右腎動脈、下大静脈・大動脈、十二指腸下行部と膵体部・脾静脈（胃は画面の端の外）。',
       noteEn: 'Oblique under the right costal margin. The gallbladder long axis, left portal vein (transverse and umbilical parts), right kidney with its vein and artery, IVC, aorta, descending duodenum, pancreatic body and splenic vein.',
-      findings: ['gb', 'lpvTrans', 'lpvUmb', 'rk', 'rrv', 'rra', 'ivc', 'ao', 'sma', 'sv', 'pancBody', 'duod', 'spine', 'S3', 'S4', 'S5', 'S6'] }]
+      findings: ['gb', 'lpvTrans', 'lpvUmb', 'rk', 'rrv', 'rra', 'ivc', 'ao', 'sma', 'sv', 'pancBody', 'duod', 'spine', 'S3', 'S4', 'S5', 'S6'] },
+      { id: 'cbd', ja: '尾側へ傾ける（総胆管）', en: 'Tilt caudally (CBD)', pose: { yaw: -25, pitch: 5, roll: 0 },
+        noteJa: '条件が良ければ総胆管も描出できる。総胆管は膵頭部の中で背側を走り、下大静脈に接するほど。腹側に肝円索（S4 と S3 の境）、胃十二指腸動脈、膵の背側を上腸間膜静脈・脾静脈、さらに背側に上腸間膜動脈・左腎静脈・大動脈。',
+        noteEn: 'Under good conditions the CBD can be seen; within the pancreatic head it runs dorsally, almost touching the IVC. In front lie the ligamentum teres (S4/S3 border) and the GDA; behind the pancreas the SMV and splenic vein, and deeper the SMA, left renal vein and aorta.',
+        findings: ['cbd', 'gb', 'ligTeres', 'gda', 'pancHead', 'smv', 'sv', 'sma', 'lrv', 'ivc', 'ao', 'spine', 'S3', 'S4'] }]
   },
   bil_long: {
     organ: 'biliary', ja: '胆-3 縦走査（胆嚢・総胆管）', en: 'Biliary 3: longitudinal (GB and CBD)',
@@ -899,7 +904,11 @@ Object.assign(TEXTBOOK_VIEWS, {
     steps: [{ id: 'base', ja: '基本', en: 'Basic', pose: { yaw: 90, pitch: 0, roll: 0 },
       noteJa: '右季肋部で縦に当てる（画面左が頭側）。胆嚢の背側で、総胆管が門脈の腹側を通って膵頭部へ向かう。中肝静脈が下大静脈へ流入し、その腹側に尾状葉(S1)。',
       noteEn: 'Longitudinal in the right upper quadrant (image left = cranial). Behind the gallbladder the CBD runs anterior to the portal vein toward the pancreatic head. The MHV drains into the IVC with the caudate (S1) in front.',
-      findings: ['gb', 'cbd', 'pv', 'smv', 'pancHead', 'mhv', 'ivc', 'S1'] }]
+      findings: ['gb', 'cbd', 'pv', 'smv', 'pancHead', 'mhv', 'ivc', 'S1'] },
+      { id: 'hilum', ja: '右へ傾ける（肝門部）', en: 'Tilt to the right (hilum)', pose: { yaw: 90, pitch: 0, roll: 7 },
+        noteJa: '総肝管から右肝管にかけて、門脈の腹側に描出される。胆嚢と中肝静脈を通る断面は、機能的な右葉と左葉の境である。',
+        noteEn: 'The common hepatic duct and right hepatic duct are seen anterior to the portal vein. The plane through the gallbladder and the MHV is the functional border between the right and left lobes.',
+        findings: ['chd', 'bd', 'pv', 'gb', 'mhv', 'ivc'] }]
   },
   bil_ic: {
     organ: 'biliary', ja: '胆-4 右肋間走査', en: 'Biliary 4: right intercostal',
@@ -961,6 +970,9 @@ const TEXTBOOK_ORGANS = [
 // エコー1フレームで見えた構造（fid）の数。チェックリストは直近1.5秒のどこかで見えたものに印を付ける。
 const findingSeenAt = new Map();
 const FINDING_MIN_SAMPLES = 4;
+// 正常でも細くしか見えない構造（主膵管は径 2 mm 以下）は、少ない点数で「出ている」とする。
+const FINDING_MIN_SAMPLES_FOR = { pd: 2 };
+function findingMinSamples(fid) { return FINDING_MIN_SAMPLES_FOR[fid] || FINDING_MIN_SAMPLES; }
 
 function currentTextbookStep() {
   const view = state.textbookView && TEXTBOOK_VIEWS[state.textbookView];
@@ -1421,7 +1433,7 @@ Object.assign(SCHEMA_SCENES, {
     prims: [
       { t: 'ell', c: [178, 230], r: [11, 10], kind: 'art', fid: 'gda' },
       { t: 'ell', c: [228, 316], r: [10, 10], kind: 'cbd', fid: 'cbd' },
-      { t: 'tube', pts: [[225, 290, 5], [245, 252, 5], [275, 236, 5]], kind: 'bd', fid: 'pd' },
+      { t: 'tube', pts: [[225, 290, 4], [245, 252, 4], [275, 236, 4]], kind: 'bd', fid: 'pd' },
       { t: 'ell', c: [285, 282], r: [20, 16], kind: 'vein', fid: 'smv' },
       { t: 'tube', pts: [[290, 272, 12], [330, 247, 13], [380, 240, 13], [432, 244, 11]], kind: 'vein', fid: 'sv' },
       { t: 'ell', c: [368, 272], r: [12, 10], kind: 'art', fid: 'sma' },
@@ -1476,7 +1488,7 @@ Object.assign(SCHEMA_SCENES, {
       { t: 'tube', pts: [[120, 240, 16], [200, 215, 15], [262, 198, 14]], kind: 'pv', fid: 'lpvTrans' },
       { t: 'tube', pts: [[200, 295, 5], [215, 290, 5]], kind: 'art', fid: 'pha' },
       { t: 'tube', pts: [[165, 305, 5], [200, 300, 5]], kind: 'art', fid: 'gda' },
-      { t: 'tube', pts: [[200, 330, 7], [270, 318, 7], [330, 320, 7]], kind: 'bd', fid: 'pd' },
+      { t: 'tube', pts: [[200, 330, 4], [270, 318, 4], [330, 320, 4]], kind: 'bd', fid: 'pd' },
       { t: 'ell', c: [213, 375], r: [17, 14], kind: 'vein', fid: 'smv' },
       { t: 'ell', c: [163, 383], r: [10, 9], kind: 'cbd', fid: 'cbd' },
       { t: 'ell', c: [290, 372], r: [9, 9], kind: 'art', fid: 'sma' },
@@ -1498,7 +1510,7 @@ Object.assign(SCHEMA_SCENES, {
     prims: [
       { t: 'ell', c: [168, 105], r: [9, 8], kind: 'pv', fid: 'p3' },
       { t: 'ell', c: [75, 212], r: [10, 10], kind: 'pv', fid: 'p2' },
-      { t: 'ell', c: [278, 222], r: [7, 7], kind: 'bd', fid: 'pd' },
+      { t: 'ell', c: [278, 222], r: [5, 4.5], kind: 'bd', fid: 'pd' },
       { t: 'ell', c: [285, 232], r: [75, 45], kind: 'panc', fid: 'pancBody' },
       { t: 'ell', c: [255, 287], r: [20, 13], kind: 'vein', fid: 'sv' },
       { t: 'ell', c: [350, 318], r: [15, 8], kind: 'vein', fid: 'lrv' },
@@ -1655,6 +1667,45 @@ Object.assign(SCHEMA_SCENES, {
       { t: 'poly', kind: 'panc', fid: 'pancHead', pts: [[180,322],[260,268],[400,240],[540,240],[540,350],[220,357]] },
       { t: 'tube', pts: [[-40, 412, 46], [540, 384, 34]], kind: 'ivc', fid: 'ivc' },
       { t: 'poly', kind: 'liver', pts: [[-420,112],[200,88],[300,90],[820,128],[820,240],[400,240],[260,268],[170,320],[-420,312]] }
+    ]
+  }
+});
+// ── 胆道の段階のシェーマ（走査法のページ p.54–55 の写真とシェーマの組をなぞった） ──
+Object.assign(SCHEMA_SCENES, {
+  // 右肋骨弓下走査を尾側へ傾けた所：膵頭部の中の総胆管。p.54 下
+  'bil_sc:cbd': {
+    orient: 'trans', s: 0.03, cx: 195, top: 65,
+    segment(x, y) { return y < 160 ? (x < 122 ? 'S4' : 'S3') : null; },
+    prims: [
+      { t: 'tube', pts: [[125, 60, 3], [120, 112, 4], [134, 146, 4]], kind: 'lig', fid: 'ligTeres' },
+      { t: 'ell', c: [160, 171], r: [12, 8], kind: 'art', fid: 'gda' },
+      { t: 'ell', c: [150, 224], r: [10, 9], kind: 'cbd', fid: 'cbd' },
+      { t: 'ell', c: [300, 228], r: [10, 9], kind: 'art', fid: 'sma' },
+      { t: 'ell', c: [220, 207], r: [36, 12], kind: 'vein', fid: 'smv' },
+      { t: 'tube', pts: [[252, 206, 10], [300, 210, 9], [345, 230, 8]], kind: 'vein', fid: 'sv' },
+      { t: 'poly', kind: 'panc', fid: 'pancHead', pts: [[140,160],[250,166],[330,158],[330,240],[290,246],[150,246],[132,210]] },
+      { t: 'poly', kind: 'gas', fid: 'stomach', pts: [[322,160],[420,148],[420,222],[365,216]] },
+      { t: 'tube', pts: [[170, 256, 6], [290, 251, 6], [370, 244, 5]], kind: 'vein', fid: 'lrv' },
+      { t: 'ell', c: [105, 272], r: [43, 25], kind: 'ivc', fid: 'ivc' },
+      { t: 'ell', c: [245, 272], r: [32, 22], kind: 'art', fid: 'ao' },
+      { t: 'ell', c: [84, 180], r: [64, 72], kind: 'gb', fid: 'gb' },
+      { t: 'bone', c: [225, 420], r: 115, fid: 'spine' },
+      { t: 'poly', kind: 'liver', pts: [[-420,58],[820,58],[820,150],[330,152],[250,166],[140,160],[150,120],[20,140],[-420,230]] }
+    ]
+  },
+  // 縦走査を右へ傾けた所：肝門部の総肝管〜右肝管と、その背側の門脈。p.55 上
+  'bil_long:hilum': {
+    s: 0.027, cx: 210, top: 60,
+    segment() { return null; },
+    prims: [
+      { t: 'tube', pts: [[186, 207, 4], [230, 210, 4], [256, 213, 4]], kind: 'bd', fid: 'bd' },
+      { t: 'tube', pts: [[256, 213, 5], [272, 217, 5]], kind: 'cbd', fid: 'chd' },
+      { t: 'ell', c: [205, 230], r: [22, 15], kind: 'pv', fid: 'pv' },
+      { t: 'ell', c: [246, 236], r: [26, 17], kind: 'pv', fid: 'pv' },
+      { t: 'ell', c: [345, 165], r: [96, 34], rot: -0.75, kind: 'gb', fid: 'gb' },
+      { t: 'tube', pts: [[40, 286, 11], [62, 228, 8], [80, 172, 3]], kind: 'hv', fid: 'mhv' },
+      { t: 'tube', pts: [[-200, 345, 26], [0, 318, 26], [200, 288, 24], [420, 230, 18]], kind: 'ivc', fid: 'ivc' },
+      { t: 'poly', kind: 'liver', pts: [[-420,60],[820,60],[820,205],[410,205],[250,252],[50,290],[-420,300]] }
     ]
   }
 });
@@ -3667,8 +3718,8 @@ const ATLAS_PAPILLA = [-2.05, 9.25, 10.6];
 const ATLAS_DUCT_PATHS = [
   { name: 'CBD', key: 'cbd', fid: 'cbd', radius: 0.3, taper: 0.8,
     points: [[-3.4, 4.0, 9.7], [-3.5, 4.8, 10.6], [-2.6, 5.6, 10.7], [-2.0, 6.3, 10.5], [-2.1, 7.0, 10.25], [-2.25, 7.8, 10.35], [-2.2, 8.5, 10.5], ATLAS_PAPILLA] },
-  // 主膵管は乳頭部側が太く（径 3 mm）、尾部へ向かって細くなる
-  { name: 'MPD', key: 'bd', fid: 'pd', radius: 0.15, taper: 0.65, onlyIn: 12,
+  // 主膵管は乳頭部側が太く（径 2 mm：正常は 2 mm 以下）、尾部へ向かって細くなる
+  { name: 'MPD', key: 'bd', fid: 'pd', radius: 0.1, taper: 0.7, onlyIn: 12,
     points: [ATLAS_PAPILLA, [-1.4, 8.4, 10.5], [-0.8, 7.3, 10.2], [0.0, 6.3, 9.8], [1.0, 5.6, 9.35], [2.0, 5.3, 9.35], [3.0, 5.0, 9.7],
       [4.0, 4.5, 10.4], [5.2, 4.0, 11.7], [7.0, 4.0, 13.0], [9.0, 3.9, 13.9], [10.4, 3.9, 14.5]] }
 ];
@@ -4488,7 +4539,7 @@ function renderEcho(time) {
     const landmarkKeys = ZONE_GUIDES[state.selectedZone].landmarkKeys;
     const textbookStep = currentTextbookStep();
     const now = performance.now();
-    findingCentroids.forEach((acc, fid) => { if (acc.count >= FINDING_MIN_SAMPLES) findingSeenAt.set(fid, now); });
+    findingCentroids.forEach((acc, fid) => { if (acc.count >= findingMinSamples(fid)) findingSeenAt.set(fid, now); });
     if (state.showAnatomy && textbookStep) {
       // 教本の断面：その段階の所見を教本の略称で示す（区域名は枠なし、血管・構造は枠付き）。
       // 教本の所見の並び順（血管・構造を先、区域名を後）で、重なるラベルは後のものを省く。
@@ -4497,7 +4548,7 @@ function renderEcho(time) {
       const wanted = new Set(order.keys());
       ctx.font = 'bold 12px sans-serif';
       const placed = [];
-      Array.from(findingCentroids).filter(([fid, acc]) => wanted.has(fid) && acc.count >= FINDING_MIN_SAMPLES && findingTag(fid))
+      Array.from(findingCentroids).filter(([fid, acc]) => wanted.has(fid) && acc.count >= findingMinSamples(fid) && findingTag(fid))
         .sort((a, b) => ((FINDING_DEFS[a[0]].segment ? 100 : 0) + order.get(a[0])) - ((FINDING_DEFS[b[0]].segment ? 100 : 0) + order.get(b[0])))
         .forEach(([fid, acc]) => {
           const label = findingTag(fid), segment = FINDING_DEFS[fid].segment;
@@ -4539,7 +4590,7 @@ function renderEcho(time) {
     const labels = landmarkKeys.filter(k => (organCentroids.get(k)?.count || 0) >= 4).map(k => getOrganLabel(k));
     if (textbookStep) {
       const view = TEXTBOOK_VIEWS[state.textbookView], ja = state.lang === 'ja';
-      const seen = textbookStep.findings.filter(id => findingFids(id).some(fid => (findingCentroids.get(fid)?.count || 0) >= FINDING_MIN_SAMPLES));
+      const seen = textbookStep.findings.filter(id => findingFids(id).some(fid => (findingCentroids.get(fid)?.count || 0) >= findingMinSamples(fid)));
       // 傾けの段階がある断面（肝）は、段階を選べる場所（別画面）を添える。
       const stepHint = view.steps.length > 1
         ? (ja ? `  ·  ${textbookStep.ja}（傾け方の段階は「解剖シェーマを別画面で見る」で選べます）` : `  ·  ${textbookStep.en} (choose the tilt steps in “Open Anatomy Window”)`) : '';
