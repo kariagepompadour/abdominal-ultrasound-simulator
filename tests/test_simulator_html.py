@@ -832,6 +832,8 @@ class TextbookViewTest(BrowserTestBase):
         self.assertEqual(organs, {'liver': 6, 'spleen': 2, 'biliary': 4, 'pancreas': 4})
         # 教本名を出さないので、教本のページも画面には出さない（ソースのコメントにだけ残す）
         self.assertEqual(self.page.evaluate("TEXTBOOK_ORDER.filter(id => 'pages' in TEXTBOOK_VIEWS[id])"), [])
+        notes = self.page.evaluate("TEXTBOOK_ORDER.flatMap(id => TEXTBOOK_VIEWS[id].steps.flatMap(s => [s.noteJa, s.noteEn]))")
+        self.assertEqual([n for n in notes if re.search(r'\bp\.\s?\d', n) or '教本' in n], [])
         missing = self.page.evaluate("TEXTBOOK_ORDER.flatMap(id => TEXTBOOK_VIEWS[id].steps.flatMap(s => s.findings.filter(f => !FINDING_DEFS[f])))")
         self.assertEqual(missing, [])
 
@@ -1104,12 +1106,29 @@ class AtlasAnatomyTest(BrowserTestBase):
         self.assertGreaterEqual(counts.get('spleen', {}).get('n', 0), 12)
         self.assertEqual(self.errors, [])
 
-    def test_tilt_steps_are_drawn_from_the_real_ct_not_the_schema(self):
+    def test_tilt_steps_without_a_textbook_schema_are_drawn_from_the_real_ct(self):
+        # 教本の走査法のページに写真とシェーマの組がない段階（肝② 頭側・尾側）は実CTの像
         self.open_atlas()
-        for view, step in (('liver_pv', 'head'), ('liver_pv', 'foot'), ('liver_ic', 'post'), ('liver_ic', 'ant')):
+        for view, step in (('liver_pv', 'head'), ('liver_pv', 'foot')):
             with self.subTest(view=view, step=step):
                 self.page.evaluate(f"selectTextbookView('{view}', '{step}')")
                 self.assertIsNone(self.page.evaluate('activeSchema()'))
+
+    def test_tilt_steps_with_a_textbook_schema_follow_that_schema(self):
+        # 走査法のページ（p.12・p.14–15・p.17）の写真とシェーマの組から作った段階は、その段階のシェーマどおりの像
+        self.open_atlas()
+        steps = (('liver_hv', 'umb'), ('liver_ic', 'postOuter'), ('liver_ic', 'post'), ('liver_ic', 'antTrunk'),
+                 ('liver_ic', 'ant'), ('liver_ic', 'rhv'), ('liver_ivc_s4', 'caudate'), ('liver_ivc_s4', 'teres'))
+        for view, step in steps:
+            with self.subTest(view=view, step=step):
+                self.page.evaluate(f"selectTextbookView('{view}', '{step}')")
+                self.assertEqual(self.page.evaluate('[activeSchema().id, activeSchema().w]'), [f'{view}:{step}', 1])
+        # 段階のあいだでは、近い方の段階のシェーマに移る
+        self.page.evaluate("selectTextbookView('liver_ic', 'base')")
+        self.assertEqual(self.page.evaluate('activeSchema().id'), 'liver_ic')
+        self.page.evaluate("state.roll = TEXTBOOK_VIEWS.liver_ic.steps.find(s => s.id === 'post').pose.roll - 1; state.pitch = TEXTBOOK_VIEWS.liver_ic.steps.find(s => s.id === 'post').pose.pitch; state.yaw = TEXTBOOK_VIEWS.liver_ic.steps.find(s => s.id === 'post').pose.yaw")
+        self.assertEqual(self.page.evaluate('activeSchema().id'), 'liver_ic:post')
+        self.assertEqual(self.errors, [])
 
     def test_hepatic_vein_plane_of_the_real_ct_matches_the_textbook_layout(self):
         # 教本 p.10「心窩部横走査」：シェーマなし（実CTと肝静脈の配置）でも、RHV・MHV・LHV が IVC へ流入し、Ao・椎体が並ぶ。

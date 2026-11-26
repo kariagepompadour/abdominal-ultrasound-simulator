@@ -713,6 +713,7 @@ const FINDING_DEFS = {
   stomach: { ja: '胃体部', en: 'Gastric body', tag: { ja: '胃体部', en: 'Stomach' } },
   eso: { ja: '食道（食道胃接合部）', en: 'Esophagus (GE junction)', tag: { ja: '食道', en: 'Esophagus' } },
   spleen: { ja: '脾臓', en: 'Spleen', tag: { ja: '脾', en: 'Spleen' } },
+  antrum: { ja: '胃前庭部（横断像）', en: 'Gastric antrum (cross-section)', tag: { ja: '胃前庭部', en: 'Antrum' } },
   lk: { ja: '左腎', en: 'Left kidney', tag: { ja: '左腎', en: 'L kidney' } },
   rk: { ja: '右腎', en: 'Right kidney', tag: { ja: '右腎', en: 'R kidney' } },
   cec: { ja: '腎中心部エコー（CEC）', en: 'Central echo complex (renal sinus)', tag: 'CEC' },
@@ -744,7 +745,11 @@ const TEXTBOOK_VIEWS = {
       { id: 'base', ja: '基本', en: 'Basic', pose: { yaw: 0, pitch: 23, roll: 0 },
         noteJa: '剣状突起の直下に横に当て、頭側へ傾ける。3本の肝静脈が下大静脈へ流入する。',
         noteEn: 'Transverse just below the xiphoid, tilted cranially. The three hepatic veins drain into the IVC.',
-        findings: ['mhv', 'lhv', 'rhv', 'ivc', 'ao', 'spine', 'S2', 'S3', 'S4', 'S5', 'S8'] }
+        findings: ['mhv', 'lhv', 'rhv', 'ivc', 'ao', 'spine', 'S2', 'S3', 'S4', 'S5', 'S8'] },
+      { id: 'umb', ja: '尾側へ傾ける（門脈臍部）', en: 'Tilt caudally (umbilical portion)', pose: { yaw: 0, pitch: 12, roll: 0 },
+        noteJa: '剣状突起の下のやや左に当て、頭側への傾きを弱める。門脈左枝臍部と、そこから出る外側区域の枝（上が S3、下が S2）、左に内側区域(S4)の枝。臍部の背側に静脈管索、その奥に尾状葉(S1)と下大静脈。ここから頭側へ傾けていくと、S2 と S3 の枝の間に左肝静脈が現れる。',
+        noteEn: 'Just below the xiphoid, slightly to the left, with less cranial tilt. The umbilical portion of the left portal vein with its lateral-segment branches (S3 above, S2 below) and S4 branches to the left; behind it the ligamentum venosum, the caudate (S1) and the IVC. Tilting cranially from here brings in the LHV between the S2 and S3 branches.',
+        findings: ['lpvUmb', 'p3', 'p2', 'p4', 'ligVenosum', 'ivc', 'S1', 'S2', 'S3', 'S4'] }
     ]
   },
   liver_pv: {
@@ -758,12 +763,12 @@ const TEXTBOOK_VIEWS = {
         noteEn: 'Oblique along the right costal margin. RPV → LPV transverse part → umbilical portion with the ligamentum teres at its tip. Caudate (S1) behind the portal vein, ligamentum venosum at its border.',
         findings: ['rpv', 'lpvTrans', 'lpvUmb', 'ligTeres', 'p4', 'p3', 'p2', 'rpvAnt', 'rpvPost', 'bd', 'rhv', 'ivc', 'ao', 'spine', 'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7'] },
       { id: 'head', ja: '頭側へ傾ける', en: 'Tilt cranially', pose: { yaw: -16, pitch: 35, roll: 2 },
-        noteJa: '振動子面を頭側に傾けると、中肝静脈と前上区域(S8)、輪切りの前区域枝が見える（p.13）。',
-        noteEn: 'Tilting cranially shows the MHV, S8 and the anterior branch in cross-section (p.13).',
+        noteJa: '振動子面を頭側に傾けると、中肝静脈と前上区域(S8)、輪切りの前区域枝が見える。',
+        noteEn: 'Tilting cranially shows the MHV, S8 and the anterior branch in cross-section.',
         findings: ['mhv', 'S8', 'rpvAnt'] },
       { id: 'foot', ja: '尾側へ傾ける', en: 'Tilt caudally', pose: { yaw: -16, pitch: 15, roll: 2 },
-        noteJa: '尾側に傾けると、胆嚢と後下区域(S6)が見える（p.13）。',
-        noteEn: 'Tilting caudally shows the gallbladder and S6 (p.13).',
+        noteJa: '尾側に傾けると、胆嚢と後下区域(S6)が見える。',
+        noteEn: 'Tilting caudally shows the gallbladder and S6.',
         findings: ['gb', 'S6'] }
     ]
   },
@@ -777,14 +782,26 @@ const TEXTBOOK_VIEWS = {
         noteJa: '右側面の肋間（第7〜9肋間）に、肋骨に沿って当てる。画面左が頭側。下大静脈が画面下を横に走り、右肝静脈がそこから右上へ。門脈右枝から前区域枝（S8・S5）と後区域枝（S6・S7）が分かれ、胆嚢は画面右。',
         noteEn: 'Right intercostal space (7th–9th), along the ribs; image left is cranial. The IVC runs along the bottom and the RHV rises to the upper right. The right portal vein divides into anterior (S8, S5) and posterior (S6, S7) branches; the gallbladder is on the right.',
         findings: ['rpv', 'rpvAnt', 'rpvPost', 'p8', 'p5', 'p6', 'p7', 'rhv', 'ivc', 'gb', 'bd', 'S5', 'S6', 'S7', 'S8'] },
-      { id: 'post', ja: '背側へ傾ける', en: 'Tilt dorsally', pose: { yaw: 50, pitch: -9, roll: 25 },
-        noteJa: '振動子面をやや外側（背側）へ傾けると、後区域枝が上枝(S7)と下枝(S6)に分かれ、右肝静脈が見える（p.15）。',
-        noteEn: 'Tilting slightly outward (dorsally) shows the posterior branch dividing into S7 and S6, with the RHV (p.15).',
-        findings: ['rpvPost', 'p7', 'p6', 'rhv', 'S7', 'S6'] },
-      { id: 'ant', ja: '腹側へ傾ける', en: 'Tilt ventrally', pose: { yaw: 55, pitch: -6, roll: -5 },
-        noteJa: '内側（腹側）へ傾けると、前区域枝の本幹が上枝(S8)と下枝(S5)に分かれる（p.15）。',
-        noteEn: 'Tilting inward (ventrally) shows the anterior branch dividing into S8 and S5 (p.15).',
-        findings: ['rpvAnt', 'p8', 'p5', 'S8', 'S5'] }
+      { id: 'postOuter', ja: '外側（背側）へ大きく傾ける', en: 'Tilt well outward (dorsally)', pose: { yaw: 50, pitch: -11, roll: 32 },
+        noteJa: '第8肋間で振動子面を外側（背側）へ傾けると、門脈の後区域枝と右肝静脈の末梢が見える。門脈の分岐部を中心に、前上(S8)・前下(S5)・後下(S6)・後上(S7)への枝が放射状に出る。',
+        noteEn: 'In the 8th intercostal space, tilting outward (dorsally) shows the posterior portal branch and the peripheral RHV; branches to S8, S5, S6 and S7 radiate from the portal bifurcation.',
+        findings: ['rpvPost', 'p6', 'p7', 'p8', 'p5', 'rhv', 'ivc', 'gb', 'S5', 'S6', 'S7', 'S8'] },
+      { id: 'post', ja: '外側（背側）へ傾ける', en: 'Tilt outward (dorsally)', pose: { yaw: 50, pitch: -9, roll: 25 },
+        noteJa: 'そこから探触子を少しずつ起こしていくと、後区域枝が上枝(S7)と下枝(S6)に分かれていくのが見える。',
+        noteEn: 'Raising the probe little by little shows the posterior branch dividing into the superior (S7) and inferior (S6) branches.',
+        findings: ['rpvPost', 'p7', 'p6', 'rhv', 'ivc', 'S7', 'S6'] },
+      { id: 'antTrunk', ja: '内側（腹側）へ傾ける', en: 'Tilt inward (ventrally)', pose: { yaw: 52, pitch: -7, roll: 6 },
+        noteJa: '振動子面を内側（腹側）へ傾けると、前区域枝の本幹が見えてくる。画面右に胆嚢。',
+        noteEn: 'Tilting inward (ventrally) brings in the trunk of the anterior branch, with the gallbladder on the right.',
+        findings: ['rpvAnt', 'p8', 'p5', 'rhv', 'ivc', 'gb', 'S8', 'S5'] },
+      { id: 'ant', ja: 'さらに内側へ傾ける', en: 'Tilt further inward', pose: { yaw: 55, pitch: -6, roll: -5 },
+        noteJa: 'さらに内側へ傾けると、前区域枝が上枝(S8)と下枝(S5)に分かれていくのが分かる。',
+        noteEn: 'Tilting further inward shows the anterior branch dividing into the superior (S8) and inferior (S5) branches.',
+        findings: ['rpvAnt', 'p8', 'p5', 'rhv', 'ivc', 'S8', 'S5'] },
+      { id: 'rhv', ja: '内側へ大きく傾ける（右肝静脈）', en: 'Tilt well inward (RHV)', pose: { yaw: 57, pitch: -5, roll: -14 },
+        noteJa: '右肝静脈は、振動子面が内側へ向かうにつれて下大静脈への流入部に近づく。右肝静脈の両側に前区域(S8・S5)と後区域(S7・S6)の枝が見え、右葉の4区域の境界が分かる。',
+        noteEn: 'As the plane turns inward the RHV approaches its junction with the IVC; the anterior (S8, S5) and posterior (S7, S6) branches lie on either side, showing the borders of the four right-lobe segments.',
+        findings: ['rhv', 'ivc', 'p8', 'p5', 'p6', 'p7', 'S5', 'S6', 'S7', 'S8'] }
     ]
   }
 };
@@ -809,7 +826,15 @@ TEXTBOOK_VIEWS.liver_ivc_s4 = {
     { id: 'base', ja: '基本', en: 'Basic', pose: { yaw: 90, pitch: 0, roll: 10 },
       noteJa: '縦走査。下大静脈の腹側に尾状葉(S1)、下大静脈の背側を右腎動脈が横切る。門脈左枝臍部から高輝度の肝円索が索状に続く。門脈・固有肝動脈・上腸間膜静脈と膵頭部（頸部）。',
       noteEn: 'Longitudinal. Caudate (S1) anterior to the IVC, right renal artery behind it. The echogenic ligamentum teres continues from the umbilical portion. PV, proper hepatic artery, SMV and pancreatic neck.',
-      findings: ['lpvUmb', 'ligTeres', 'pha', 'pv', 'smv', 'pancHead', 'ivc', 'lhv', 'rra', 'S1'] }
+      findings: ['lpvUmb', 'ligTeres', 'pha', 'pv', 'smv', 'pancHead', 'ivc', 'lhv', 'rra', 'S1'] },
+    { id: 'caudate', ja: '右へ傾ける（尾状葉の面）', en: 'Tilt to the right (caudate plane)', pose: { yaw: 90, pitch: 0, roll: 16 },
+      noteJa: '尾状葉の横断面。下大静脈の腹側に尾状葉(S1)、外側区域との境に静脈管索。下大静脈の背側を右腎動脈が横切る。門脈・固有肝動脈と膵頭部、その腹側に胃前庭部の横断像。',
+      noteEn: 'Caudate plane. The caudate (S1) lies anterior to the IVC with the ligamentum venosum at its border; the right renal artery crosses behind the IVC. PV, proper hepatic artery and pancreatic head, with the gastric antrum in cross-section in front.',
+      findings: ['S1', 'ligVenosum', 'ivc', 'rra', 'pv', 'pha', 'pancHead', 'antrum', 'lhv', 'S2', 'S3'] },
+    { id: 'teres', ja: '左へ傾ける（肝円索の面）', en: 'Tilt to the left (ligamentum teres plane)', pose: { yaw: 90, pitch: 0, roll: 2 },
+      noteJa: '肝円索の縦断面。高エコーの肝円索が門脈左枝臍部に連なって索状に見える。その背側で門脈の腹側を総胆管が走り、上腸間膜静脈と膵頭部、下大静脈。',
+      noteEn: 'Ligamentum teres plane. The echogenic ligamentum teres continues from the umbilical portion as a cord; behind it the CBD runs anterior to the portal vein, with the SMV, pancreatic head and IVC.',
+      findings: ['ligTeres', 'lpvUmb', 'cbd', 'pv', 'smv', 'pancHead', 'ivc', 'S4'] }
   ]
 };
 TEXTBOOK_VIEWS.liver_ivc_rl = {
@@ -1055,7 +1080,12 @@ function drawTextbookSchema(id, canvas) {
   g.fillStyle = '#0d1117'; g.fillRect(0, 0, W, H);
   if (!scene) return;
   // 肝と主要構造が収まる範囲に合わせて拡大する。
-  const boxes = scene.prims.filter(p => p.t !== 'bone').map(p => p.box);
+  // 左右へ延ばした肝（傾けの段階のシェーマ）は、ほかの構造の範囲を少し広げた所までに切る。
+  const inner = scene.prims.filter(p => p.t !== 'bone' && p.kind !== 'liver').map(p => p.box);
+  const ix0 = Math.min(...inner.map(b => b[0])), iy0 = Math.min(...inner.map(b => b[1])), ix1 = Math.max(...inner.map(b => b[2])), iy1 = Math.max(...inner.map(b => b[3]));
+  const mx = (ix1 - ix0) * 0.25, my = (iy1 - iy0) * 0.25;
+  const boxes = scene.prims.filter(p => p.t !== 'bone').map(p => p.kind === 'liver'
+    ? [Math.max(p.box[0], ix0 - mx), Math.max(p.box[1], iy0 - my), Math.min(p.box[2], ix1 + mx), Math.min(p.box[3], iy1 + my)] : p.box);
   const x0 = Math.min(...boxes.map(b => b[0])), y0 = Math.min(...boxes.map(b => b[1]));
   const x1 = Math.max(...boxes.map(b => b[2])), y1 = Math.max(...boxes.map(b => b[3]));
   const hdr = Math.max(14, Math.round(W / 24));   // 上の向きの表示の高さ（大きい別画面では文字も大きく）
@@ -1482,6 +1512,152 @@ Object.assign(SCHEMA_SCENES, {
     ]
   }
 });
+// ── 肝の傾けの段階のシェーマ（教本の走査法のページ p.12・p.14–15・p.17 の「エコー写真＋シェーマ」の組をなぞった） ──
+// 走査法のページのシェーマは写真の範囲だけなので、左右の外側は肝として延ばした。点線（教本で淡く描かれた枝）は細めの管にした。
+function angleSegment(cx, cy, x, y, table) {
+  // 中心からの向き（右＝0°、上＝90°）で区域を決める。table：[上限の角度, 区域] を角度の小さい順に。
+  const a = Math.atan2(cy - y, x - cx) * 180 / Math.PI;
+  for (const [lim, seg] of table) if (a < lim) return seg;
+  return table[table.length - 1][1];
+}
+Object.assign(SCHEMA_SCENES, {
+  // 心窩部横走査：門脈左枝臍部の面（肝静脈面より尾側に傾けた所）。p.12 上
+  'liver_hv:umb': {
+    orient: 'trans', s: 0.03, cx: 175, top: 40,
+    segment(x, y) {
+      const lv = x < 170 ? 292 - x * 0.08 : x < 250 ? 278 + (x - 170) * 0.53 : 320 + (x - 250) * 0.25;
+      if (y > lv) return 'S1';
+      if (x < 132) return 'S4';
+      return y < 140 - (x - 190) * 0.2 ? 'S3' : 'S2';
+    },
+    prims: [
+      { t: 'tube', pts: [[170, 279, 3], [250, 320, 3], [338, 342, 3]], kind: 'lig', fid: 'ligVenosum' },
+      { t: 'ell', c: [186, 370], r: [36, 18], kind: 'ivc', fid: 'ivc' },
+      { t: 'tube', pts: [[165, 150, 24], [165, 200, 26], [165, 248, 24]], kind: 'pv', fid: 'lpvUmb' },
+      { t: 'tube', pts: [[188, 146, 9], [250, 132, 8], [305, 121, 7]], kind: 'pv', fid: 'p3', duct: 1 },
+      { t: 'tube', pts: [[188, 256, 9], [235, 252, 8], [280, 249, 7]], kind: 'pv', fid: 'p2', duct: -1 },
+      { t: 'tube', pts: [[132, 154, 6], [80, 158, 5], [25, 160, 4]], kind: 'pv', fid: 'p4' },
+      { t: 'tube', pts: [[130, 262, 6], [80, 266, 5], [25, 270, 4]], kind: 'pv', fid: 'p4' },
+      { t: 'poly', kind: 'liver', pts: [[-420,40],[820,40],[820,400],[290,372],[240,378],[150,410],[50,455],[-420,470]] }
+    ]
+  },
+  // 右肋間走査：外側（背側）へ大きく傾けた所。門脈の後区域枝と右肝静脈の末梢。p.14 上
+  'liver_ic:postOuter': {
+    s: 0.023, cx: 215, top: 70,
+    segment(x, y) { return angleSegment(255, 290, x, y, [[-30, 'S7'], [50, 'S6'], [105, 'S5'], [195, 'S8'], [400, 'S7']]); },
+    prims: [
+      { t: 'ell', c: [418, 240], r: [40, 78], rot: 0.5, kind: 'gb', fid: 'gb' },
+      { t: 'ell', c: [255, 290], r: [34, 18], kind: 'pv', fid: 'rpvPost' },
+      { t: 'tube', pts: [[262, 296, 15], [330, 330, 14], [385, 332, 13]], kind: 'pv', fid: 'rpv', duct: 1 },
+      { t: 'tube', pts: [[280, 280, 12], [340, 225, 11], [392, 168, 9]], kind: 'pv', fid: 'p6', duct: -1 },
+      { t: 'tube', pts: [[255, 280, 9], [272, 190, 8], [300, 100, 6]], kind: 'pv', fid: 'p5' },
+      { t: 'tube', pts: [[240, 282, 9], [150, 235, 8], [55, 185, 6]], kind: 'pv', fid: 'p8' },
+      { t: 'tube', pts: [[240, 300, 10], [175, 322, 9], [112, 340, 7]], kind: 'pv', fid: 'p7', duct: -1 },
+      { t: 'tube', pts: [[195, 406, 14], [232, 335, 11], [285, 205, 7], [330, 110, 4]], kind: 'hv', fid: 'rhv' },
+      { t: 'tube', pts: [[20, 424, 10], [170, 418, 12], [260, 392, 26], [330, 378, 30], [395, 400, 18]], kind: 'ivc', fid: 'ivc' },
+      { t: 'poly', kind: 'liver', pts: [[-420,20],[820,20],[820,400],[395,398],[300,360],[180,412],[20,412],[-420,420]] }
+    ]
+  },
+  // 右肋間走査：外側へ傾けて少し起こした所。後区域枝が上枝（S7）と下枝（S6）に分かれる。p.14 下
+  'liver_ic:post': {
+    s: 0.023, cx: 215, top: 70,
+    segment(x, y) { return angleSegment(225, 265, x, y, [[-40, 'S7'], [40, 'S6'], [110, 'S5'], [190, 'S8'], [400, 'S7']]); },
+    prims: [
+      { t: 'tube', pts: [[300, 345, 17], [258, 295, 17], [228, 262, 15]], kind: 'pv', fid: 'rpv', duct: 1 },
+      { t: 'tube', pts: [[228, 268, 12], [212, 292, 11]], kind: 'pv', fid: 'rpvPost' },
+      { t: 'tube', pts: [[212, 296, 9], [150, 310, 8], [92, 318, 6]], kind: 'pv', fid: 'p7', duct: -1 },
+      { t: 'tube', pts: [[236, 268, 9], [300, 242, 8], [362, 210, 6]], kind: 'pv', fid: 'p6' },
+      { t: 'tube', pts: [[226, 250, 11], [236, 190, 10], [300, 95, 6]], kind: 'pv', fid: 'p5', duct: -1 },
+      { t: 'tube', pts: [[215, 242, 9], [120, 226, 8], [38, 222, 6]], kind: 'pv', fid: 'p8' },
+      { t: 'tube', pts: [[168, 378, 13], [176, 345, 10], [192, 318, 6]], kind: 'hv', fid: 'rhv' },
+      { t: 'tube', pts: [[40, 402, 28], [240, 406, 28], [300, 400, 22]], kind: 'ivc', fid: 'ivc' },
+      { t: 'poly', kind: 'liver', pts: [[-420,15],[820,15],[820,330],[300,345],[240,376],[150,350],[60,374],[-420,380]] }
+    ]
+  },
+  // 右肋間走査：内側（腹側）へ傾けた所。前区域枝の本幹。p.15 上
+  'liver_ic:antTrunk': {
+    s: 0.023, cx: 195, top: 70,
+    segment(x, y) { return x < 165 + (250 - y) * 0.3 ? 'S8' : 'S5'; },
+    prims: [
+      { t: 'ell', c: [328, 172], r: [46, 150], rot: 0.55, kind: 'gb', fid: 'gb' },
+      { t: 'tube', pts: [[272, 358, 18], [236, 310, 17]], kind: 'pv', fid: 'rpv', duct: 1 },
+      { t: 'tube', pts: [[236, 310, 16], [188, 252, 14], [162, 226, 12]], kind: 'pv', fid: 'rpvAnt', duct: -1 },
+      { t: 'tube', pts: [[160, 225, 10], [100, 210, 9], [20, 196, 7]], kind: 'pv', fid: 'p8', duct: 1 },
+      { t: 'tube', pts: [[172, 232, 9], [202, 160, 8], [252, 110, 7], [276, 90, 6]], kind: 'pv', fid: 'p5' },
+      { t: 'tube', pts: [[88, 440, 13], [120, 350, 10], [160, 280, 8], [196, 218, 5]], kind: 'hv', fid: 'rhv' },
+      { t: 'tube', pts: [[60, 446, 15], [250, 432, 15], [380, 420, 14]], kind: 'ivc', fid: 'ivc' },
+      { t: 'poly', kind: 'liver', pts: [[-420,20],[820,20],[820,400],[250,415],[80,430],[-420,440]] }
+    ]
+  },
+  // 右肋間走査：さらに内側へ傾けた所。前区域枝が上枝（S8）と下枝（S5）に分かれる。p.15 中
+  'liver_ic:ant': {
+    s: 0.023, cx: 195, top: 70,
+    segment(x, y) { return x < 130 + (y > 232 ? (y - 232) * 0.5 : 0) ? 'S8' : 'S5'; },
+    prims: [
+      { t: 'tube', pts: [[350, 392, 17], [286, 322, 17], [212, 244, 15]], kind: 'pv', fid: 'rpvAnt', duct: 1 },
+      { t: 'tube', pts: [[200, 232, 13], [100, 240, 12], [10, 255, 11]], kind: 'pv', fid: 'p8', duct: -1 },
+      { t: 'tube', pts: [[206, 220, 11], [240, 142, 10], [262, 98, 8]], kind: 'pv', fid: 'p5', duct: -1 },
+      { t: 'tube', pts: [[264, 100, 6], [340, 100, 5]], kind: 'pv', fid: 'p5' },
+      { t: 'tube', pts: [[256, 350, 8], [300, 305, 8], [336, 270, 6]], kind: 'pv', fid: 'p6' },
+      { t: 'tube', pts: [[80, 445, 18], [150, 330, 15], [222, 240, 11], [300, 165, 8], [345, 120, 5]], kind: 'hv', fid: 'rhv' },
+      { t: 'ell', c: [190, 472], r: [66, 42], kind: 'ivc', fid: 'ivc' },
+      { t: 'poly', kind: 'liver', pts: [[-420,15],[820,15],[820,480],[260,475],[190,430],[120,495],[-420,470]] }
+    ]
+  },
+  // 右肋間走査：腹側へ大きく傾けた所。右肝静脈が下大静脈へ流入する。p.15 下
+  'liver_ic:rhv': {
+    s: 0.023, cx: 195, top: 70,
+    segment(x, y) { return angleSegment(215, 265, x, y, [[-60, 'S7'], [60, 'S6'], [120, 'S5'], [200, 'S8'], [400, 'S7']]); },
+    prims: [
+      { t: 'tube', pts: [[92, 425, 15], [104, 330, 13], [118, 242, 10], [150, 192, 8], [186, 150, 7], [205, 70, 5]], kind: 'hv', fid: 'rhv' },
+      { t: 'tube', pts: [[118, 242, 8], [108, 180, 7], [104, 110, 5]], kind: 'hv', fid: 'rhv' },
+      { t: 'tube', pts: [[230, 275, 11], [290, 300, 10]], kind: 'pv', fid: 'rpv' },
+      { t: 'tube', pts: [[225, 268, 9], [262, 222, 8], [312, 115, 6]], kind: 'pv', fid: 'p6' },
+      { t: 'tube', pts: [[215, 285, 9], [150, 330, 8], [60, 385, 6]], kind: 'pv', fid: 'p7' },
+      { t: 'tube', pts: [[205, 232, 8], [120, 170, 7], [35, 92, 5]], kind: 'pv', fid: 'p8' },
+      { t: 'tube', pts: [[208, 230, 8], [205, 150, 7], [210, 62, 5]], kind: 'pv', fid: 'p5' },
+      { t: 'tube', pts: [[-40, 436, 17], [200, 436, 17], [300, 426, 14]], kind: 'ivc', fid: 'ivc' },
+      { t: 'poly', kind: 'liver', pts: [[-420,15],[820,15],[820,370],[240,420],[100,418],[-420,372]] }
+    ]
+  },
+  // 縦走査・下大静脈面：尾状葉の横断面（尾状葉の面）。p.17 (a)
+  'liver_ivc_s4:caudate': {
+    s: 0.025, cx: 230, top: 75,
+    segment(x, y) {
+      if (pointInPolygon(x, y, [[130,240],[180,225],[290,222],[340,215],[330,240],[120,265]])) return 'S1';
+      if (y < 125 - x * 0.1) return 'S3';
+      return x < 330 - (y - 65) * 1.05 ? 'S2' : null;
+    },
+    prims: [
+      { t: 'ell', c: [435, 232], r: [12, 9], kind: 'art', fid: 'rra' },
+      { t: 'ell', c: [270, 190], r: [15, 10], kind: 'art', fid: 'pha' },
+      { t: 'ell', c: [330, 196], r: [36, 25], kind: 'pv', fid: 'pv' },
+      { t: 'ell', c: [218, 122], r: [11, 13], kind: 'pv', fid: 'p3' },
+      { t: 'ell', c: [146, 200], r: [13, 13], kind: 'pv', fid: 'p2' },
+      { t: 'tube', pts: [[330, 68, 3], [235, 150, 3], [140, 236, 3]], kind: 'lig', fid: 'ligVenosum' },
+      { t: 'tube', pts: [[62, 282, 12], [80, 230, 8], [95, 182, 4]], kind: 'hv', fid: 'lhv' },
+      { t: 'ell', c: [412, 90], r: [56, 28], kind: 'bowel', fid: 'antrum' },
+      { t: 'poly', kind: 'panc', fid: 'pancHead', pts: [[318,140],[360,122],[440,120],[480,140],[485,170],[450,190],[400,210],[370,218],[350,200],[320,175]] },
+      { t: 'tube', pts: [[-60, 318, 20], [0, 308, 20], [180, 276, 19], [330, 245, 18], [430, 215, 18], [560, 175, 18]], kind: 'ivc', fid: 'ivc' },
+      { t: 'poly', kind: 'liver', pts: [[-420,120],[20,108],[200,70],[820,68],[300,110],[240,170],[185,225],[290,222],[820,215],[300,240],[0,295],[-420,300]] }
+    ]
+  },
+  // 縦走査・下大静脈面より左：肝円索の縦断面（肝円索の面）。p.17 (b)
+  'liver_ivc_s4:teres': {
+    s: 0.025, cx: 255, top: 80,
+    segment(x, y) { return y < 300 && x < 520 ? 'S4' : null; },
+    prims: [
+      { t: 'tube', pts: [[200, 190, 12], [300, 178, 11], [400, 165, 8], [500, 155, 6]], kind: 'lig', fid: 'ligTeres' },
+      { t: 'tube', pts: [[96, 250, 9], [150, 222, 13], [205, 196, 13]], kind: 'pv', fid: 'lpvUmb' },
+      { t: 'tube', pts: [[-40, 310, 6], [100, 318, 6], [180, 327, 6]], kind: 'cbd', fid: 'cbd' },
+      { t: 'tube', pts: [[-40, 338, 12], [180, 340, 12], [262, 336, 13]], kind: 'pv', fid: 'pv' },
+      { t: 'tube', pts: [[262, 336, 17], [420, 326, 17], [540, 318, 14]], kind: 'vein', fid: 'smv' },
+      { t: 'poly', kind: 'panc', fid: 'pancHead', pts: [[180,322],[260,268],[400,240],[540,240],[540,350],[220,357]] },
+      { t: 'tube', pts: [[-40, 412, 46], [540, 384, 34]], kind: 'ivc', fid: 'ivc' },
+      { t: 'poly', kind: 'liver', pts: [[-420,112],[200,88],[300,90],[820,128],[820,240],[400,240],[260,268],[170,320],[-420,312]] }
+    ]
+  }
+});
 function polyLabelPoint(pts) {
   // 多角形の中にある、重心に近い点（ラベルの位置）。
   const c = [pts.reduce((a, q) => a + q[0], 0) / pts.length, pts.reduce((a, q) => a + q[1], 0) / pts.length];
@@ -1540,8 +1716,9 @@ function tubeHit(p, x, y) {
 function vesselLook(kind, inside, organKey, fid) {
   // 3Dモデル（sampleVascularVolume）と同じ見え方：門脈と胆管は壁が明るく厚い、肝静脈は壁がほとんど見えない。
   const look = {
-    pv: [15, 0.15, 205], hv: [15, 0.15, 140], vein: [15, 0.15, 150], ivc: [11, 0.32, 140],
-    art: [12, 0.25, 195], bd: [22, 0.04, 205], cbd: [18, 0.08, 200], gb: [10, 0.35, 185]
+    // 後方エコーの増強（2つ目の値）は胆嚢だけ強く、細い血管ではほとんど出ない（血管の奥に四角く明るい所ができないように）。
+    pv: [15, 0.04, 205], hv: [15, 0.04, 140], vein: [15, 0.04, 150], ivc: [11, 0.12, 140],
+    art: [12, 0.05, 195], bd: [22, 0.02, 205], cbd: [18, 0.04, 200], gb: [10, 0.35, 185]
   }[kind];
   return inside ? { val: look[0], shadow: 0, enhance: look[1], organKey, fid } : { val: look[2], shadow: 0, enhance: 0, organKey: null, fid };
 }
@@ -1640,8 +1817,10 @@ function sampleSchemaScene(scene, lCm, aCm) {
 }
 // 定位置（教本断面の基本の位置・角度）からのずれで、シェーマ準拠の像の割合を決める。
 // 位置 0.4 cm・角度 3° 程度までは教本の像のまま、位置 1.2 cm・角度 8〜10° で3Dモデルの像だけになる。
-function schemaWeightFor(view) {
-  const base = view.steps[0].pose;
+// 断面の段階（傾け）ごとのシェーマ：基本の段階は SCHEMA_SCENES[断面]、ほかの段階は SCHEMA_SCENES['断面:段階']。
+function schemaKey(viewId, stepId) { return !stepId || stepId === 'base' ? viewId : `${viewId}:${stepId}`; }
+function schemaWeightFor(view, step) {
+  const base = (step || view.steps[0]).pose;
   const D = Math.max(Math.hypot(state.px - view.pos[0], state.py - view.pos[1]) / 1.2,
     Math.abs(state.yaw - base.yaw) / 10, Math.abs(state.pitch - base.pitch) / 8, Math.abs(state.roll - base.roll) / 8);
   if (D <= 0.35) return 1;
@@ -1655,11 +1834,15 @@ function activeSchema() {
   let best = null;
   for (const id of TEXTBOOK_ORDER) {
     const view = TEXTBOOK_VIEWS[id];
-    if (view.zone !== state.selectedZone || !SCHEMA_SCENES[id]) continue;
-    const w = schemaWeightFor(view);
-    // 同じ位置に複数の断面があるときは、いま選んでいる教本の断面を優先する。
-    const pref = id === state.textbookView ? 1e-3 : 0;
-    if (w > 0 && (!best || w + pref > best.w + best.pref)) best = { id, scene: SCHEMA_SCENES[id], w, pref };
+    if (view.zone !== state.selectedZone) continue;
+    for (const step of view.steps) {
+      const key = schemaKey(id, step.id);
+      if (!SCHEMA_SCENES[key]) continue;
+      const w = schemaWeightFor(view, step);
+      // 同じ位置に複数の断面があるときは、いま選んでいる断面・段階を優先する。
+      const pref = id === state.textbookView ? (step.id === (state.textbookStep || 'base') ? 2e-3 : 1e-3) : 0;
+      if (w > 0 && (!best || w + pref > best.w + best.pref)) best = { id: key, view: id, step: step.id, scene: SCHEMA_SCENES[key], w, pref };
+    }
   }
   return best;
 }
@@ -2363,7 +2546,8 @@ function updateTextbookDetail(doc, changed) {
       const label = doc.createElement('span'); label.textContent = ja ? FINDING_DEFS[f.id].ja : FINDING_DEFS[f.id].en;
       li.append(mark, label); return li;
     }));
-    drawTextbookSchema(state.textbookView, doc.getElementById('tbCanvas'));
+    const stepKey = schemaKey(state.textbookView, step.id);
+    drawTextbookSchema(SCHEMA_SCENES[stepKey] ? stepKey : state.textbookView, doc.getElementById('tbCanvas'));
   }
   const seen = new Map(items.map(f => [f.id, f.seen]));
   doc.querySelectorAll('#tbFindings li').forEach(li => {
