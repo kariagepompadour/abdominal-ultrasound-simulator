@@ -1069,6 +1069,28 @@ class AtlasAnatomyTest(BrowserTestBase):
                     counts = self.counts(view, step)
                     self.assertEqual([f for f in findings if not self.visible(counts, f)], [])
 
+    def test_real_ct_has_the_main_pancreatic_duct_and_the_cbd_in_the_pancreatic_head(self):
+        # 実CTには膵管・膵内総胆管のラベルがないので中心線を置いた。標準断面の定位置の実CTの像（シェーマなし）にも出る。
+        self.open_atlas('?anatomy=atlas&schema=off')
+        for view, fids in (('pan_head', ['pd', 'cbd']), ('pan_body', ['pd', 'cbd']), ('pan_headlong', ['cbd']), ('bil_long', ['cbd'])):
+            counts = self.page.evaluate(f"() => {{ selectTextbookView('{view}'); return textbookFindingCounts(true); }}")
+            for fid in fids:
+                with self.subTest(view=view, fid=fid):
+                    self.assertGreaterEqual(counts.get(fid, {}).get('n', 0), 12)
+        # 主膵管は膵の中だけ、総胆管は十二指腸・門脈のラベルの中には描かない
+        outside = self.page.evaluate('''() => {
+          const bad = [];
+          for (const seg of ATLAS_VESSEL_SEGMENTS) {
+            if (seg.path.fid !== 'pd' && seg.path.fid !== 'cbd') continue;
+            for (let t = 0; t <= 1; t += 0.25) {
+              const p = seg.start.map((v, k) => v + seg.delta[k] * t), c = atlasClass(...p), v = atlasSample(...p);
+              if (v.fid === seg.path.fid && (seg.path.fid === 'pd' ? c !== 12 : [19, 22, 32].includes(c))) bad.push([seg.path.fid, c]);
+            }
+          }
+          return bad; }''')
+        self.assertEqual(outside, [])
+        self.assertEqual(self.errors, [])
+
     def test_spleen_views_use_a_probe_on_the_left_side_of_the_body(self):
         self.open_atlas()
         self.page.evaluate("selectTextbookView('spl_ic')")

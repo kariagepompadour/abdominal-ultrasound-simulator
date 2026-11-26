@@ -542,17 +542,17 @@ const ATLAS_TEXTBOOK_ANCHORS = {
   liver_ivc_s4: { pos: [-0.67, 3.98], base: { yaw: 83.5, pitch: -0.1, roll: 7.1 } },
   liver_ivc_rl: { pos: [-1.63, 4.97], base: { yaw: 88.6, pitch: -11.4, roll: 5.5 } },
   // 脾・胆道・膵：基本の位置ではシェーマ準拠の像を出す。基準の位置・角度は、そこから動かしたときに実CTで同じ臓器が見え、
-  // 皮下の肋骨・ガスの陰影が少ない所を探索で選んだ（tools の jsearch）。
+  // 皮下の肋骨・ガスの陰影が少ない所を探索で選んだ（tools の jsearch。膵・胆道は主膵管・総胆管を足したあとに選び直した）。
   spl_ic: { pos: [6.71, 5.06], base: { yaw: -39.6, pitch: 4.7, roll: -14.7 } },
   spl_long: { pos: [6.47, 6.81], base: { yaw: 75.4, pitch: -18.2, roll: -17.9 } },
   bil_ep: { pos: [-4.06, 5.96], base: { yaw: -14.2, pitch: 15.6, roll: -3.4 } },
   bil_sc: { pos: [-5.0, 6.21], base: { yaw: -35.5, pitch: 9.9, roll: -5.3 } },
-  bil_long: { pos: [-3.28, 6.0], base: { yaw: 95.2, pitch: -16.7, roll: -4.0 } },
+  bil_long: { pos: [-3.47, 5.06], base: { yaw: 79.8, pitch: -11.4, roll: -12.1 } },
   bil_ic: { pos: [-5.61, 5.92], base: { yaw: 47.9, pitch: 0.0, roll: 8.9 } },
-  pan_head: { pos: [0.59, 6.41], base: { yaw: 3.3, pitch: -11.2, roll: 4.8 } },
-  pan_headlong: { pos: [-1.21, 5.5], base: { yaw: 87.0, pitch: -6.6, roll: -1.1 } },
+  pan_head: { pos: [-0.07, 7.81], base: { yaw: -4.9, pitch: 3.1, roll: 10.5 } },
+  pan_headlong: { pos: [-0.88, 4.86], base: { yaw: 96.2, pitch: -1.7, roll: 4.9 } },
   pan_body: { pos: [0.28, 7.55], base: { yaw: -1.5, pitch: -3.1, roll: -8.9 } },
-  pan_bodylong: { pos: [3.5, 3.71], base: { yaw: 77.7, pitch: -1.8, roll: -3.6 } }
+  pan_bodylong: { pos: [4.72, 2.04], base: { yaw: 70.5, pitch: -16.3, roll: 2.3 } }
 };
 const ATLAS_INTERCOSTAL_DEPTH = 7.86;
 const ATLAS_LEFT_FLANK_DEPTH = 12.0;
@@ -3389,7 +3389,8 @@ async function loadAtlas() {
       const vesselResponse = await fetch('data/bodyparts3d/liver_vessels.json', { cache: 'no-cache' });
       if (vesselResponse.ok) {
         const lines = await vesselResponse.json();
-        buildAtlasVessels(lines.map(line => ({ key: line.key, fid: line.fid, pts: line.p, r: line.r, solid: line.solid })));
+        buildAtlasVessels(lines.filter(line => line.fid !== 'cbd').map(line => ({ key: line.key, fid: line.fid, pts: line.p, r: line.r, solid: line.solid }))
+          .concat(ATLAS_DUCT_PATHS));
         ATLAS.bodyParts3d = true;
       }
     } catch (error) { console.warn('BodyParts3D vessels unavailable; using hand-placed vessels.', error); }
@@ -3473,8 +3474,21 @@ const ATLAS_VESSEL_PATHS = [
   { name: 'P3', key: 'pv', fid: 'p3', duct: 0.1, radius: 0.25, points: [[-2.6, 3.3, 6.2], [0.5, 3.6, 5.6], [3.5, 3.6, 5.2]] },
   { name: 'P4', key: 'pv', fid: 'p4', radius: 0.22, points: [[-2.65, 3.3, 7.0], [-3.4, 3.4, 6.6], [-4.2, 3.2, 6.0]] },
   { name: 'Lig. teres', key: 'ligTeres', fid: 'ligTeres', radius: 0.32, solid: true, points: [ATLAS_UP_TIP, [-2.6, 3.6, 5.2], [-2.4, 4.6, 4.4], [-2.0, 7.0, 3.6]] },
-  { name: 'CBD', key: 'cbd', fid: 'cbd', radius: 0.3, points: [[-3.4, 4.0, 9.7], [-3.0, 6.0, 10.6], [-2.4, 8.5, 11.2]] }
 ];
+// 実CTの膵には主膵管・膵内の総胆管のラベルがない。実CTの膵（ラベル12）の形から、膵尾部→体部→頸部（上腸間膜静脈の腹側）→
+// 頭部を通って乳頭部へ向かう主膵管の中心線を置いた（各点は膵の断面の中央付近）。総胆管は肝門から下行し、
+// 十二指腸と門脈を避けて膵頭部の背外側を通り、乳頭部で主膵管と合流する。主膵管は膵の中だけに、総胆管は脂肪・膵の中だけに描く
+// （十二指腸・門脈のラベルの所では描かない）。
+const ATLAS_PAPILLA = [-2.05, 9.25, 10.6];
+const ATLAS_DUCT_PATHS = [
+  { name: 'CBD', key: 'cbd', fid: 'cbd', radius: 0.3, taper: 0.8,
+    points: [[-3.4, 4.0, 9.7], [-3.5, 4.8, 10.6], [-2.6, 5.6, 10.7], [-2.0, 6.3, 10.5], [-2.1, 7.0, 10.25], [-2.25, 7.8, 10.35], [-2.2, 8.5, 10.5], ATLAS_PAPILLA] },
+  // 主膵管は乳頭部側が太く（径 3 mm）、尾部へ向かって細くなる
+  { name: 'MPD', key: 'bd', fid: 'pd', radius: 0.15, taper: 0.65, onlyIn: 12,
+    points: [ATLAS_PAPILLA, [-1.4, 8.4, 10.5], [-0.8, 7.3, 10.2], [0.0, 6.3, 9.8], [1.0, 5.6, 9.35], [2.0, 5.3, 9.35], [3.0, 5.0, 9.7],
+      [4.0, 4.5, 10.4], [5.2, 4.0, 11.7], [7.0, 4.0, 13.0], [9.0, 3.9, 13.9], [10.4, 3.9, 14.5]] }
+];
+ATLAS_VESSEL_PATHS.push(...ATLAS_DUCT_PATHS);
 ATLAS_VESSEL_PATHS.filter(path => path.duct).forEach(path => {
   ATLAS_VESSEL_PATHS.push({
     name: path.name + ' duct', key: 'bd', fid: 'bd', radius: path.duct,
@@ -3531,7 +3545,7 @@ function buildAtlasVessels(paths) {
   g.cells = cells;
 }
 buildAtlasVessels(ATLAS_VESSEL_PATHS);
-function sampleAtlasVessels(x, y, z) {
+function sampleAtlasVessels(x, y, z, c) {
   const g = VESSEL_GRID;
   if (x < g.x0 || y < g.y0 || z < g.z0) return null;
   const i = Math.floor((x - g.x0) / g.cell), j = Math.floor((y - g.y0) / g.cell), k = Math.floor((z - g.z0) / g.cell);
@@ -3545,6 +3559,8 @@ function sampleAtlasVessels(x, y, z) {
     const t = Math.max(0, Math.min(1, ((x - p[0]) * d[0] + (y - p[1]) * d[1] + (z - p[2]) * d[2]) / segment.length2));
     const dx = x - p[0] - t * d[0], dy = y - p[1] - t * d[1], dz = z - p[2] - t * d[2], d2 = dx * dx + dy * dy + dz * dz;
     const radius = segment.r0 + (segment.r1 - segment.r0) * t, key = segment.path.key, fid = segment.path.fid;
+    // 膵の中には主膵管と総胆管だけ、主膵管は膵の中だけ、門脈のラベルの中には管を描かない
+    if (c === 12 ? fid !== 'pd' && fid !== 'cbd' : segment.path.onlyIn ? segment.path.onlyIn !== c : c === 32 && key === 'cbd') continue;
     if (segment.path.solid) { if (d2 <= radius * radius) return { val: 215, shadow: 0.25, enhance: 0, organKey: key, fid }; continue; }
     // 門脈と胆管はグリソン鞘で壁が明るい。肝静脈は壁がほとんど見えない（境界の反射だけ）。
     const wall = key === 'pv' ? 0.07 : key === 'bd' || key === 'cbd' ? 0.05 : 0;
@@ -3569,8 +3585,8 @@ function atlasSample(x, y, z) {
   const c = atlasClass(x, y, z);
   if (c === 0) return { val: 0, shadow: 0, enhance: 0, organKey: null };
   // 肝内の血管・胆管・肝円索（肝・肝門の脂肪・軟部組織の中だけに描く）
-  if (c === 10 || (c >= 81 && c <= 88) || c === 1 || c === 2 || c === 6 || c === 32) {
-    const vessel = sampleAtlasVessels(x, y, z);
+  if (c === 10 || (c >= 81 && c <= 88) || c === 1 || c === 2 || c === 6 || c === 32 || c === 12) {
+    const vessel = sampleAtlasVessels(x, y, z, c);
     if (vessel) return vessel;
   }
   const look = ATLAS_LOOK[c] || ATLAS_LOOK[1];
