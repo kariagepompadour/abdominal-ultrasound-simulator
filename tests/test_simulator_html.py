@@ -995,6 +995,25 @@ class TextbookViewTest(BrowserTestBase):
         self.assertFalse(popup.locator('#textbookDetail').is_visible())
         self.assertEqual(self.errors, [])
 
+    def test_anatomy_window_follows_a_language_switch(self):
+        self.page.evaluate("selectTextbookView('liver_ic', 'ant')")
+        with self.page.expect_popup() as info:
+            self.page.click('#btnSchemata')
+        popup = info.value
+        popup.wait_for_timeout(600)
+        self.assertIn('さらに内側へ傾ける', popup.text_content('#tbSteps'))
+        self.assertIn('前区域枝', popup.text_content('#tbFindings'))
+        self.page.click('#btnLang')
+        popup.wait_for_timeout(700)
+        self.assertIn('Tilt further inward', popup.text_content('#tbSteps'))
+        self.assertIn('Right anterior branch', popup.text_content('#tbFindings'))
+        self.assertIn('Tilting further inward', popup.text_content('#tbNote'))
+        self.assertIn('Standard view', popup.text_content('button[data-kind="textbook"]'))
+        self.page.click('#btnLang')
+        popup.wait_for_timeout(700)
+        self.assertIn('さらに内側へ傾ける', popup.text_content('#tbSteps'))
+        self.assertEqual(self.errors, [])
+
     def test_zone_selection_leaves_the_textbook_view(self):
         self.page.evaluate("selectTextbookView('liver_hv')")
         self.page.keyboard.press('ArrowRight')
@@ -1113,12 +1132,25 @@ class AtlasAnatomyTest(BrowserTestBase):
     def test_real_ct_kidney_has_cortex_medulla_and_arcuate_dots(self):
         # 実CTの腎には皮質・髄質の区別がないので、腎の表面からの深さで錐体（低エコー）と弓状動脈を描く
         self.open_atlas('?anatomy=atlas&schema=off')
-        for view in ('ren_r_long', 'ren_hilum'):
+        for view, kidney_fid in (('ren_r_long', 'rk'), ('ren_l_long', 'lk'), ('ren_hilum', 'rk')):
             counts = self.page.evaluate(f"() => {{ selectTextbookView('{view}'); return textbookFindingCounts(true); }}")
             with self.subTest(view=view):
                 self.assertGreaterEqual(counts.get('medulla', {}).get('n', 0), 12)
-                kidney = counts.get('rk', {}).get('n', 0) + counts.get('medulla', {}).get('n', 0)
-                self.assertGreater(counts.get('rk', {}).get('n', 0), 0.2 * kidney)   # 皮質も残る
+                self.assertGreaterEqual(counts.get('arcuate', {}).get('n', 0), 5)
+                kidney = counts.get(kidney_fid, {}).get('n', 0) + counts.get('medulla', {}).get('n', 0)
+                self.assertGreater(counts.get(kidney_fid, {}).get('n', 0), 0.2 * kidney)   # 皮質も残る
+        # 弓状動脈は皮質と髄質の境（腎の表面から 0.6〜0.78 cm）だけに出る。皮質の表層・髄質の奥には出ない。
+        depths = self.page.evaluate("""() => {
+          const { NI, NJ, NK, vx, vy, vz, midI, xiphoidK, skinJ } = ATLAS, out = [];
+          for (let k = 0; k < NK; k++) for (let j = 0; j < NJ; j += 2) for (let i = 0; i < NI; i += 2) {
+            const c = ATLAS.data[(k * NJ + j) * NI + i];
+            if (c !== 13 && c !== 14) continue;
+            const s = kidneyParenchymaLook((i - midI) * vx, (k - xiphoidK) * vy, (skinJ - j) * vz, c);
+            if (s.fid === 'arcuate') out.push(ATLAS.kidneyDepth[(k * NJ + j) * NI + i] * 0.05);
+          }
+          return out; }""")
+        self.assertGreater(len(depths), 20)
+        self.assertTrue(all(0.55 <= d <= 0.8 for d in depths), (min(depths), max(depths)))
         self.assertEqual(self.page.evaluate("ZONE_PROBE_BASES.right_flank.lateral"), True)
         self.assertEqual(self.errors, [])
 

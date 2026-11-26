@@ -681,8 +681,8 @@ const FINDING_DEFS = {
   ao: { ja: '大動脈（Ao）', en: 'Aorta (Ao)', tag: 'Ao' },
   spine: { ja: '椎体', en: 'Vertebral body', tag: { ja: '椎体', en: 'Vertebra' } },
   S1: { ja: 'S1 尾状葉', en: 'S1 caudate lobe', tag: 'S1', segment: true },
-  S2: { ja: 'S2 外側後区域', en: 'S2 lateral posterior', tag: 'S2', segment: true },
-  S3: { ja: 'S3 外側前区域', en: 'S3 lateral anterior', tag: 'S3', segment: true },
+  S2: { ja: 'S2 外側後区域（外側上区域）', en: 'S2 left lateral posterior (superior) segment', tag: 'S2', segment: true },
+  S3: { ja: 'S3 外側前区域（外側下区域）', en: 'S3 left lateral anterior (inferior) segment', tag: 'S3', segment: true },
   S4: { ja: 'S4 内側区域', en: 'S4 medial', tag: 'S4', segment: true },
   S5: { ja: 'S5 前下区域', en: 'S5 anterior inferior', tag: 'S5', segment: true },
   S6: { ja: 'S6 後下区域', en: 'S6 posterior inferior', tag: 'S6', segment: true },
@@ -2803,8 +2803,8 @@ function updateTextbookDetail(doc, changed) {
     }));
     steps.style.display = view.steps.length < 2 ? 'none' : 'flex';
     doc.getElementById('tbCaption').textContent = ja
-      ? '見本：この断面の構造と位置関係を示す模式図（このアプリ独自の作図。向きはエコーと同じ）'
-      : 'Reference: schematic of the structures and layout of this view (original drawing; same orientation as the echo)';
+      ? '見本：標準的な断層模式図の構造の位置関係を参考に、楕円・管などの単純な図形で作図した模式図（向きはエコーと同じ）'
+      : 'Reference: a schematic built from simple shapes, following the structural layout of standard section diagrams (same orientation as the echo)';
     doc.getElementById('tbFindingsTitle').textContent = ja ? 'この断面の所見（今のエコーに出ているものに ✓）' : 'Findings of this view (✓ = in the current image)';
     doc.getElementById('tbFindings').replaceChildren(...items.map(f => {
       const li = doc.createElement('li'); li.dataset.finding = f.id;
@@ -4302,7 +4302,7 @@ function drawTargetReferenceView(zone, view) {
   if (textbookId) {
     drawTextbookSchema(textbookId, canvas);
     g.font = '10px sans-serif'; g.textAlign = 'left'; g.fillStyle = '#e3b341';
-    g.fillText(ja ? '独自に作図した見本' : 'Original schematic', 12, 293);
+    g.fillText(ja ? '単純な図形で作図した模式図' : 'Schematic built from simple shapes', 12, 293);
     return;
   }
   g.clearRect(0, 0, canvas.width, canvas.height);
