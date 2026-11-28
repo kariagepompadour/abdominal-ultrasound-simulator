@@ -531,35 +531,50 @@ const ATLAS_ZONE_STARTS = {
   epigastric: [-0.5, 3.0], subcostal_gb: [-3.0, 5.0], right_intercostal: [-6.0, 4.8],
   right_flank: [-6.0, 7.5], left_flank: [6.0, 5.5], pelvis_bladder: [0.0, 7.0]
 };
-// 教本6断面の定位置（実CT上）。実CT＋BodyParts3D の肝内血管で、その断面と傾けの段階の所見が、肋骨やガスの陰影に隠れずに
-// 最も多く見え、浅い所の陰影が少ない位置・角度を探して決めた。
+// 教本の各断面の定位置（実CT上）。標準断面は「答え」ではなく「目標」：この1例のCTの解剖で、その断面と傾けの段階の所見が、
+// 肋骨・ガス・肺に隠れずに最も多く見え、浅い所の陰影が少ない位置・角度を探して決めた（tools の psearch。前の定位置から
+// 位置 ±1.5 cm・角度 ±20° の範囲。TotalSegmentator の構造と横隔膜を足したあとに選び直した）。
 // 角度の段階（頭側・尾側へ傾けるなど）は、教本と同じ差分を基本の角度に足す。
 const ATLAS_TEXTBOOK_ANCHORS = {
-  liver_hv: { pos: [-0.36, 6.05], base: { yaw: -16.5, pitch: 27.6, roll: 9.9 } },
-  liver_pv: { pos: [-4.61, 6.95], base: { yaw: -33.2, pitch: 22.0, roll: 7.3 } },
-  liver_ic: { pos: [-5.95, 4.8], base: { yaw: 28.6, pitch: -2.9, roll: 13.0 } },
-  liver_ao_long: { pos: [2.87, 2.87], base: { yaw: 79.4, pitch: -10.2, roll: 1.0 } },
-  liver_ivc_s4: { pos: [-0.67, 3.98], base: { yaw: 83.5, pitch: -0.1, roll: 7.1 } },
-  liver_ivc_rl: { pos: [-1.63, 4.97], base: { yaw: 88.6, pitch: -11.4, roll: 5.5 } },
+  liver_hv: { pos: [-1.59, 4.97], base: { yaw: -18.4, pitch: 20.4, roll: 11.7 } },
+  liver_pv: { pos: [-4.23, 8.25], base: { yaw: -39.8, pitch: 39.7, roll: 7.2 } },
+  liver_ic: { pos: [-4.49, 4.41], base: { yaw: 27.9, pitch: -14.6, roll: 9.9 } },
+  liver_ao_long: { pos: [3.98, 2.93], base: { yaw: 79, pitch: -7.2, roll: 7.6 } },
+  liver_ivc_s4: { pos: [-0.28, 2.71], base: { yaw: 84.8, pitch: -20.1, roll: 6.9 } },
+  liver_ivc_rl: { pos: [-0.81, 4.49], base: { yaw: 83.1, pitch: -13, roll: 6.7 } },
   // 脾・胆道・膵：基本の位置ではシェーマ準拠の像を出す。基準の位置・角度は、そこから動かしたときに実CTで同じ臓器が見え、
-  // 皮下の肋骨・ガスの陰影が少ない所を探索で選んだ（tools の jsearch。膵・胆道は主膵管・総胆管を足したあとに選び直した）。
-  spl_ic: { pos: [6.71, 5.06], base: { yaw: -39.6, pitch: 4.7, roll: -14.7 } },
-  spl_long: { pos: [6.47, 6.81], base: { yaw: 75.4, pitch: -18.2, roll: -17.9 } },
+  // 皮下の肋骨・ガスの陰影が少ない所を探索で選んだ（tools の psearch。上の肝と同じ決め方）。
+  spl_ic: { pos: [6.62, 5.52], base: { yaw: -39.8, pitch: -14.6, roll: -2.3 } },
+  spl_long: { pos: [7.16, 5.95], base: { yaw: 68.7, pitch: -27.1, roll: -28.1 } },
   bil_ep: { pos: [-4.06, 5.96], base: { yaw: -14.2, pitch: 15.6, roll: -3.4 } },
-  bil_sc: { pos: [-5.0, 6.21], base: { yaw: -35.5, pitch: 9.9, roll: -5.3 } },
-  bil_long: { pos: [-3.47, 5.06], base: { yaw: 79.8, pitch: -11.4, roll: -12.1 } },
-  bil_ic: { pos: [-5.61, 5.92], base: { yaw: 47.9, pitch: 0.0, roll: 8.9 } },
+  bil_sc: { pos: [-5.31, 4.71], base: { yaw: -39, pitch: -1.3, roll: -25.3 } },
+  bil_long: { pos: [-2.53, 5.29], base: { yaw: 79, pitch: -17.1, roll: -7.3 } },
+  bil_ic: { pos: [-6.3, 7.1], base: { yaw: 33.3, pitch: 10.2, roll: 3.9 } },
   pan_head: { pos: [-0.07, 7.81], base: { yaw: -4.9, pitch: 3.1, roll: 10.5 } },
-  pan_headlong: { pos: [-0.88, 4.86], base: { yaw: 96.2, pitch: -1.7, roll: 4.9 } },
-  pan_body: { pos: [0.28, 7.55], base: { yaw: -1.5, pitch: -3.1, roll: -8.9 } },
-  pan_bodylong: { pos: [4.72, 2.04], base: { yaw: 70.5, pitch: -16.3, roll: 2.3 } },
+  pan_headlong: { pos: [-0.88, 4.68], base: { yaw: 97, pitch: -3.7, roll: 7 } },
+  pan_body: { pos: [0.31, 7.86], base: { yaw: 16.1, pitch: 9.5, roll: -8.4 } },
+  pan_bodylong: { pos: [6, 3.24], base: { yaw: 75.1, pitch: -29.8, roll: 9.4 } },
   // 腎・大血管（右腎は右の側面から。実CTには腸腰筋のラベルがなく、脾静脈は膵の背側の一部しか描けない）
-  ren_r_long: { pos: [-3.15, 8.75], base: { yaw: 67.5, pitch: -16.1, roll: 23.6 } },
-  ren_l_long: { pos: [4.24, 8.71], base: { yaw: 51.2, pitch: -12.6, roll: -29.8 } },
+  ren_r_long: { pos: [-3.09, 8.78], base: { yaw: 47.5, pitch: -16.3, roll: 15.8 } },
+  ren_l_long: { pos: [4.56, 8.7], base: { yaw: 31.2, pitch: -13.2, roll: -32.6 } },
   ren_hilum: { pos: [-5.5, 7.0], base: { yaw: 0, pitch: 0, roll: -5 } },
   vas_pv: { pos: [-0.14, 3.53], base: { yaw: 82.1, pitch: -29.5, roll: 9.4 } },
-  vas_ce: { pos: [-1.0, 2.5], base: { yaw: 10, pitch: 0, roll: 0 } },
-  vas_sv: { pos: [-1.0, 7.5], base: { yaw: 0, pitch: 0, roll: -5 } }
+  vas_ce: { pos: [-0.21, 1.71], base: { yaw: 5.2, pitch: -13.1, roll: -9.8 } },
+  vas_sv: { pos: [-1.03, 7.51], base: { yaw: -0.3, pitch: 2.5, roll: -4.6 } }
+};
+// 傾けの段階の角度の補正（実CTのみ、[yaw, pitch, roll] 度）。教本と同じ差分では所見が断面から外れる段階だけ、
+// 傾け・回しの向き（差分の符号）を変えず大きさを半分以上残す範囲で、その段階の所見が最も多く見える角度を探した（tools の psearch）。
+const ATLAS_STEP_ADJUST = {
+  'liver_hv:umb': [-11.7, 5.3, 6.1],
+  'liver_ivc_s4:teres': [-5.2, -3.8, 2.2],
+  'liver_ivc_s4:caudate': [2.1, -0.2, -2.8],
+  'liver_ic:rhv': [2.8, -11.8, 8.2],
+  'liver_ic:postOuter': [6.8, 0.1, -5.9],
+  'liver_ic:post': [6.2, 0.6, -2],
+  'liver_ic:antTrunk': [6.3, 0.7, -0.2],
+  'bil_sc:cbd': [0.1, 0, -0.8],
+  'bil_sc:base': [-7.1, 1, 9.3],
+  'bil_long:hilum': [4, -7.6, -2.9],
 };
 const ATLAS_INTERCOSTAL_DEPTH = 7.86;
 const ATLAS_LEFT_FLANK_DEPTH = 12.0;
@@ -597,7 +612,8 @@ function applyAnatomyZones() {
     const m0 = model.poses[0];
     view.steps.forEach((step, i) => {
       const m = model.poses[i];
-      step.pose = { yaw: anchor.base.yaw + m.yaw - m0.yaw, pitch: anchor.base.pitch + m.pitch - m0.pitch, roll: anchor.base.roll + m.roll - m0.roll };
+      const d = ATLAS_STEP_ADJUST[id + ':' + step.id] || [0, 0, 0];
+      step.pose = { yaw: anchor.base.yaw + m.yaw - m0.yaw + d[0], pitch: anchor.base.pitch + m.pitch - m0.pitch + d[1], roll: anchor.base.roll + m.roll - m0.roll + d[2] };
     });
   });
 }
@@ -741,6 +757,7 @@ const FINDING_DEFS = {
   ribShadow: { ja: '肋骨による音響陰影', en: 'Acoustic shadow of the ribs', tag: { ja: '肋骨', en: 'Rib' } },
   colon: { ja: '横行結腸（ガス）', en: 'Transverse colon (gas)', tag: { ja: '横行結腸', en: 'Colon' } },
   duod: { ja: '十二指腸下行部', en: 'Descending duodenum', tag: { ja: '十二指腸', en: 'Duod.' } },
+  diaphragm: { ja: '横隔膜（高エコーの線）', en: 'Diaphragm (bright line)', tag: { ja: '横隔膜', en: 'Diaphragm' } },
   costalCartilage: { ja: '肋軟骨（低エコー）', en: 'Costal cartilage (hypoechoic)', tag: { ja: '肋軟骨', en: 'Cartilage' } },
   duodBulb: { ja: '十二指腸球部', en: 'Duodenal bulb', tag: { ja: '十二指腸球部', en: 'Bulb' } },
   pd: { ja: '主膵管（PD）', en: 'Main pancreatic duct (PD)', tag: 'PD' },
@@ -1118,17 +1135,19 @@ function clearTextbookView() {
 // テスト・確認用：呼吸の動きを除いた現在の断面で、各構造が占めるサンプル数と画面上の位置（横 cm・深さ cm）。
 // visibleOnly：音響陰影（肋骨・ガス）の奥に隠れた点は数えない（実際に画面で見えるものだけ）。
 function textbookFindingCounts(visibleOnly = false) {
-  const frame = currentProbeFrame(), o = probeOrigin(), cnt = {}, schema = activeSchema(), shadow = new Float32Array(160), shallow = new Uint8Array(160);
+  const frame = currentProbeFrame(), o = probeOrigin(), cnt = {}, schema = activeSchema(), shadow = new Float32Array(160), shallow = new Uint8Array(160), lung = new Uint8Array(160);
   for (let r = 0; r < 120; r++) for (let c = 0; c < 160; c++) {
     const th = (c / 159 * 2 - 1) * halfAngle, dCm = (r + 0.5) / 120 * ECHO_DEPTH_CM, [lCm, aCm] = probeRayPoint(dCm, th);
     const s = sampleEchoPoint(o, frame, lCm, aCm, 0, schema);
     if (s.shadow > shadow[c]) { shadow[c] = s.shadow; if (s.shadow >= 0.5 && dCm < 6) shallow[c] = 1; }
-    if (!s.fid || (visibleOnly && shadow[c] >= 0.5 && s.shadow < 0.5)) continue;
+    // 肺：胸膜より奥は多重反射（または横隔膜の鏡面像）になり、奥の臓器は見えない（renderEcho と同じ）
+    if (s.reverb && shadow[c] < 0.5 && !lung[c]) { lung[c] = 1; if (dCm < 6) shallow[c] = 1; }
+    if (!s.fid || (visibleOnly && ((shadow[c] >= 0.5 && s.shadow < 0.5) || (lung[c] && s.fid !== 'lungGas')))) continue;
     const a = cnt[s.fid] || (cnt[s.fid] = { n: 0, lateral: 0, depth: 0 });
     a.n++; a.lateral += lCm; a.depth += aCm;
   }
   for (const a of Object.values(cnt)) { a.lateral /= a.n; a.depth /= a.n; }
-  // 浅い所（6 cm まで）で始まる陰影の割合：肋骨・ガスで画面が隠れている程度（椎体や肺の深い陰影は含めない）
+  // 浅い所（6 cm まで）で始まる陰影の割合：肋骨・ガス・肺で画面が隠れている程度（椎体や深い所の陰影は含めない）
   Object.defineProperty(cnt, 'shadowedFraction', { value: shallow.reduce((n, v) => n + v, 0) / 160 });
   return cnt;
 }
@@ -2298,8 +2317,8 @@ function updateDataCredit() {
   // 肝の区域（解剖データに含まれる）は BodyParts3D 由来なので、肝内血管のファイルを読めなかったときも BodyParts3D の表記を出す
   const ccLink = '<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>';
   el.innerHTML = state.lang === 'ja'
-    ? `解剖：SPL Abdominal Atlas（Talos, Jakab, Kikinis 2015）の改変版・3D Slicer License（${link}）。研究・教育用で、臨床には使えません。` + ` ${ATLAS.bodyParts3d ? '肝内の血管・胆管・区域' : '肝の区域'}：BodyParts3D, © The Database Center for Life Science licensed under CC Attribution 4.0 International（${ccLink}、変形して使用、${bpLink}）。肺・十二指腸・食道・肋軟骨：同じCTから TotalSegmentator（Wasserthal ほか 2023、Apache-2.0）で抽出。`
-    : `Anatomy: modified from the SPL Abdominal Atlas (Talos, Jakab, Kikinis 2015), 3D Slicer License (${link}). For research and education only; not for clinical use.` + ` ${ATLAS.bodyParts3d ? 'Intrahepatic vessels, bile ducts and segments' : 'Liver segments'}: BodyParts3D, © The Database Center for Life Science licensed under CC Attribution 4.0 International (${ccLink}; deformed; ${bpLink}). Lung, duodenum, oesophagus and costal cartilage: extracted from the same CT with TotalSegmentator (Wasserthal et al. 2023, Apache-2.0).`;
+    ? `解剖：SPL Abdominal Atlas（Talos, Jakab, Kikinis 2015）の改変版・3D Slicer License（${link}）。研究・教育用で、臨床には使えません。` + ` ${ATLAS.bodyParts3d ? '肝内の血管・胆管・区域' : '肝の区域'}：BodyParts3D, © The Database Center for Life Science licensed under CC Attribution 4.0 International（${ccLink}、変形して使用、${bpLink}）。肺・十二指腸・食道・肋軟骨・横隔膜：同じCTから TotalSegmentator（Wasserthal ほか 2023、Apache-2.0）で抽出。`
+    : `Anatomy: modified from the SPL Abdominal Atlas (Talos, Jakab, Kikinis 2015), 3D Slicer License (${link}). For research and education only; not for clinical use.` + ` ${ATLAS.bodyParts3d ? 'Intrahepatic vessels, bile ducts and segments' : 'Liver segments'}: BodyParts3D, © The Database Center for Life Science licensed under CC Attribution 4.0 International (${ccLink}; deformed; ${bpLink}). Lung, duodenum, oesophagus, costal cartilage and diaphragm: extracted from the same CT with TotalSegmentator (Wasserthal et al. 2023, Apache-2.0).`;
 }
 function applyLanguage() {
   updateDataCredit();
@@ -3957,6 +3976,8 @@ const ATLAS_LOOK = {
   24: [150, 0, 0, 'stomachWall', 'duod'], 25: [32, 0, 0.12, 'bowelWall', 'duod'], 27: [215, 0.82, 0, 'gas', 'duod'],
   28: [150, 0, 0, 'stomachWall', 'duodBulb'], 29: [32, 0, 0.12, 'bowelWall', 'duodBulb'], 9: [215, 0.82, 0, 'gas', 'duodBulb'],
   26: [140, 0, 0, 'stomachWall', 'eso'],
+  // 横隔膜（atlas/ts_diaphragm.py：TotalSegmentator の胸腔と腹腔の境）。肝・脾の奥で肺に入ると鏡面像（renderEcho）
+  55: [200, 0, 0, 'diaphragm', 'diaphragm'],
   51: [15, 0, 0.15, 'pv', 'smv'], 52: [15, 0, 0.15, 'ivc', 'lrv'], 53: [12, 0, 0.2, 'ao', 'lra'], 54: [64, 0, 0, null, 'psoas'],
   48: [12, 0, 0.2, 'ao', 'iliacArtery'], 49: [15, 0, 0.15, 'ivc', 'iliacVein'], 50: [12, 0, 0.2, 'ao', null]
 };
@@ -4742,6 +4763,8 @@ function lungReverb(dCm, pleuraCm) {
   const band = n >= 2 && off < 0.12 ? 170 * Math.pow(0.6, n - 2) : 0;
   return { val: 22 + band, shadow: 0, enhance: 0, organKey: 'lung', fid: 'lungGas' };
 }
+// 鏡面像の強さ：肝・脾の中を通った長さ（cm）が 0.5 以下は A ラインだけ、2.5 以上は鏡面像だけ
+function diaphragmMirrorWeight(parenCm) { return Math.min(1, Math.max(0, (parenCm - 0.5) / 2)); }
 function renderEcho(time) {
   if (!state.frozen) {
     const data = imgData.data, frame = currentProbeFrame(), origin = probeOrigin(), schema = activeSchema();
@@ -4752,16 +4775,32 @@ function renderEcho(time) {
     const sampleStart = performance.now(), rayStep = echoRayStep;
     for (let rIdx = 0; rIdx < NUM_RAYS; rIdx += rayStep) {
       const th = ((rIdx / (NUM_RAYS - 1)) * 2 - 1) * halfAngle;
-      let rayShadow = 0, rayEnhance = 0, runSamples = 0, pleuraCm = 0;
+      let rayShadow = 0, rayEnhance = 0, runSamples = 0, pleuraCm = 0, mirrorIdx = -1, mirrorW = 0, parenCm = 0;
       for (let sIdx = 0; sIdx < NUM_SAMPLES; sIdx++) {
         const frac = sIdx / (NUM_SAMPLES - 1), dCm = frac * ECHO_DEPTH_CM, [lCm, aCm] = probeRayPoint(dCm, th);
         const wx = origin[0] + frame.ux * lCm + frame.bx * aCm;
         const wy = origin[1] + frame.uy * lCm + frame.by * aCm + respY;
         const wz = origin[2] + frame.uz * lCm + frame.bz * aCm;
         let s = sampleEchoPoint(origin, frame, lCm, aCm, respY, schema);
+        const idx = rIdx * NUM_SAMPLES + sIdx;
         // 肺：走査線が最初に肺に入った所（胸膜）は明るい線、その奥は胸膜までの距離ごとに薄れていく横線（A ライン）だけになる。
-        if (pleuraCm) s = lungReverb(dCm, pleuraCm);
-        else if (s.reverb && rayShadow < 0.5) { pleuraCm = Math.max(0.5, dCm); }
+        // ただし肝・脾の中を通ってから肺に入った（横隔膜の面で反射した）ときは、その手前の像が
+        // 横隔膜を鏡にして奥へ折り返して見える（鏡面像）。肝・脾の中を通った長さが 0.5→2.5 cm で、A ラインから鏡面像へ徐々に移す
+        // （隣の走査線どうしで見え方が急に切り替わって縦の縞にならないように）。
+        let mirrored = -1;
+        if (pleuraCm) {
+          s = lungReverb(dCm, pleuraCm);
+          if (mirrorW > 0 && dCm - pleuraCm >= 0.18) {
+            mirrored = 2 * mirrorIdx - sIdx;
+            const m = mirrored >= 0 ? (realisticEcho ? baseBuffer[rIdx * NUM_SAMPLES + mirrored] : polarBuffer[rIdx * NUM_SAMPLES + mirrored]) * 0.72 : 18;
+            s.val = mirrorW * m + (1 - mirrorW) * s.val;
+            if (mirrorW < 0.5) mirrored = -1;
+          }
+        } else if (s.reverb && rayShadow < 0.5) {
+          pleuraCm = Math.max(0.5, dCm); mirrorIdx = sIdx;
+          mirrorW = diaphragmMirrorWeight(parenCm);
+          s = lungReverb(dCm, pleuraCm);
+        } else if (s.organKey === 'liverRt' || s.organKey === 'liverLt' || s.organKey === 'spleen' || s.segmentKey) parenCm += ECHO_DEPTH_CM / (NUM_SAMPLES - 1);
         if (s.fid && (rIdx & 3) === 0 && (sIdx & 3) === 0 && !(realisticEcho && rayShadow >= 0.5 && s.shadow < 0.5)) {
           const rPx = rMin + frac * (rMax - rMin);
           const acc = findingCentroids.get(s.fid) || { sumX: 0, sumY: 0, count: 0 };
@@ -4779,12 +4818,12 @@ function renderEcho(time) {
         // 後方エコーの増強：液体の中を通った距離に応じて強くするが、1つの液体の区間で数えるのは 2.5 cm まで
         // （血管が走査線とほぼ平行に走ると、その奥だけが帯状に明るくなるのを防ぐ）。
         if (s.enhance > 0) { if (runSamples++ < ENHANCE_RUN_SAMPLES) rayEnhance = Math.min(0.45, rayEnhance + s.enhance * 0.014); } else runSamples = 0;
-        const idx = rIdx * NUM_SAMPLES + sIdx;
         if (realisticEcho) {
           // 組織の明るさ・音響陰影/増強・スペックルを分けて持ち、あとで実機らしく合成する。
           baseBuffer[idx] = s.val;
           attenBuffer[idx] = gainFactor * (1 + rayEnhance) * (1 - rayShadow * 0.9) * (1 - 0.18 * frac);
-          const sp = sampleNoiseSmooth(wx * 26, wy * 26, wz * 30) * 0.65 + sampleNoiseSmooth(wx * 11 + 37, wy * 11, wz * 13) * 0.35;
+          const sp = mirrored >= 0 ? speckleBuffer[rIdx * NUM_SAMPLES + mirrored]
+            : sampleNoiseSmooth(wx * 26, wy * 26, wz * 30) * 0.65 + sampleNoiseSmooth(wx * 11 + 37, wy * 11, wz * 13) * 0.35;
           speckleBuffer[idx] = sp;
         } else {
           const sp = sampleNoise(wx * 14, wy * 14, wz * 22);

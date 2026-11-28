@@ -1161,9 +1161,16 @@ class AtlasAnatomyTest(BrowserTestBase):
         for fid in ('smv', 'sma', 'lrv', 'lra', 'ao'):
             with self.subTest(fid=fid):
                 self.assertGreaterEqual(counts.get(fid, {}).get('n', 0), 12)
-        # 左腎静脈は大動脈と上腸間膜動脈の間（深さで大動脈より浅く、上腸間膜動脈より深い）
-        self.assertLess(counts['sma']['depth'], counts['lrv']['depth'])
-        self.assertLess(counts['lrv']['depth'], counts['ao']['depth'])
+        # 左腎静脈は大動脈と上腸間膜動脈の間：大動脈の真上を浅い方から見ると、上腸間膜動脈→左腎静脈→大動脈の順
+        order = self.page.evaluate("""(lateral) => {
+          const o = probeOrigin(), frame = currentProbeFrame(), first = {};
+          for (let a = 0; a < ECHO_DEPTH_CM; a += 0.02) for (const l of [lateral - 0.3, lateral, lateral + 0.3]) {
+            const s = sampleEchoPoint(o, frame, l, a, 0, activeSchema());
+            if (['sma', 'lrv', 'ao'].includes(s.fid) && !(s.fid in first)) first[s.fid] = a;
+          }
+          return ['sma', 'lrv', 'ao'].map(f => first[f]); }""", counts['ao']['lateral'])
+        self.assertLess(order[0], order[1])
+        self.assertLess(order[1], order[2])
         # 上腸間膜静脈は門脈より尾側、腸腰筋は右腎の縦走査で腎の背側
         y = self.page.evaluate("""() => {
           const { data, NI, NJ, NK, vy, xiphoidK } = ATLAS, ys = { 32: [], 51: [] };
@@ -1190,16 +1197,27 @@ class AtlasAnatomyTest(BrowserTestBase):
         self.assertEqual(classes, [True, True, True, True, True])
         self.assertEqual(self.errors, [])
 
+    def test_real_ct_has_a_diaphragm_with_a_mirror_image(self):
+        # 横隔膜（atlas/ts_diaphragm.py：TotalSegmentator の胸腔と腹腔の境）
+        self.open_atlas('?anatomy=atlas&schema=off')
+        self.assertTrue(self.page.evaluate("() => new Set(ATLAS.data).has(55)"))
+        for view in ('liver_hv', 'liver_ivc_s4', 'bil_long', 'spl_ic'):
+            counts = self.page.evaluate(f"() => {{ selectTextbookView('{view}'); return textbookFindingCounts(true); }}")
+            with self.subTest(view=view):
+                self.assertGreaterEqual(counts.get('diaphragm', {}).get('n', 0), 12)
+        # 肝・脾を通って肺に入ると鏡面像、胸壁からすぐ肺に入ると A ライン
+        self.assertEqual(self.page.evaluate("[diaphragmMirrorWeight(0.3), diaphragmMirrorWeight(1.5), diaphragmMirrorWeight(4)]"), [0, 0.5, 1])
+        self.assertEqual(self.errors, [])
+
     def test_spleen_views_use_a_probe_on_the_left_side_of_the_body(self):
-        self.open_atlas()
+        self.open_atlas('?anatomy=atlas&schema=off')
         self.page.evaluate("selectTextbookView('spl_ic')")
         self.assertEqual(self.state('ZONE_PROBE_BASES.left_flank.side'), 'left')
         origin = self.state('probeOrigin()')
         self.assertGreater(origin[0], 5)            # 患者の左（x が正）の体表
         frame = self.state('currentProbeFrame()')
         self.assertLess(frame['bx'], -0.5)          # 左の側面から体の中（右）へ向かう
-        self.page.evaluate("state.yaw += 20")       # 定位置から外れると実CTの脾が見える
-        counts = self.page.evaluate("textbookFindingCounts(true)")
+        counts = self.page.evaluate("textbookFindingCounts(true)")   # 実CTの脾が見える
         self.assertGreaterEqual(counts.get('spleen', {}).get('n', 0), 12)
         self.assertEqual(self.errors, [])
 
@@ -1324,7 +1342,7 @@ class AtlasAnatomyTest(BrowserTestBase):
         self.assertEqual(self.page.evaluate("TEXTBOOK_VIEWS.liver_hv.pos"), [-0.6, 0.2])
         self.page.evaluate("() => { anatomyMode = 'atlas'; refreshAnatomy(); }")
         self.assertEqual(self.page.evaluate("() => [state.px, state.py, state.yaw, state.pitch, state.roll, ZONE_PROBE_BASES.right_intercostal.depth]"), atlas_view)
-        self.assertEqual([round(v, 2) for v in atlas_view], [-5.95, 4.8, 28.6, -11.9, 22.0, 7.86])
+        self.assertEqual([round(v, 2) for v in atlas_view], [-4.49, 4.41, 34.1, -23, 16.9, 7.86])
 
     def test_atlas_data_and_license_are_served(self):
         self.open_atlas()
