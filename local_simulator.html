@@ -741,6 +741,7 @@ const FINDING_DEFS = {
   ribShadow: { ja: '肋骨による音響陰影', en: 'Acoustic shadow of the ribs', tag: { ja: '肋骨', en: 'Rib' } },
   colon: { ja: '横行結腸（ガス）', en: 'Transverse colon (gas)', tag: { ja: '横行結腸', en: 'Colon' } },
   duod: { ja: '十二指腸下行部', en: 'Descending duodenum', tag: { ja: '十二指腸', en: 'Duod.' } },
+  costalCartilage: { ja: '肋軟骨（低エコー）', en: 'Costal cartilage (hypoechoic)', tag: { ja: '肋軟骨', en: 'Cartilage' } },
   duodBulb: { ja: '十二指腸球部', en: 'Duodenal bulb', tag: { ja: '十二指腸球部', en: 'Bulb' } },
   pd: { ja: '主膵管（PD）', en: 'Main pancreatic duct (PD)', tag: 'PD' },
   gda: { ja: '胃十二指腸動脈（GDA）', en: 'Gastroduodenal artery (GDA)', tag: 'GDA' },
@@ -2297,8 +2298,8 @@ function updateDataCredit() {
   // 肝の区域（解剖データに含まれる）は BodyParts3D 由来なので、肝内血管のファイルを読めなかったときも BodyParts3D の表記を出す
   const ccLink = '<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>';
   el.innerHTML = state.lang === 'ja'
-    ? `解剖：SPL Abdominal Atlas（Talos, Jakab, Kikinis 2015）の改変版・3D Slicer License（${link}）。研究・教育用で、臨床には使えません。` + ` ${ATLAS.bodyParts3d ? '肝内の血管・胆管・区域' : '肝の区域'}：BodyParts3D, © The Database Center for Life Science licensed under CC Attribution 4.0 International（${ccLink}、変形して使用、${bpLink}）。`
-    : `Anatomy: modified from the SPL Abdominal Atlas (Talos, Jakab, Kikinis 2015), 3D Slicer License (${link}). For research and education only; not for clinical use.` + ` ${ATLAS.bodyParts3d ? 'Intrahepatic vessels, bile ducts and segments' : 'Liver segments'}: BodyParts3D, © The Database Center for Life Science licensed under CC Attribution 4.0 International (${ccLink}; deformed; ${bpLink}).`;
+    ? `解剖：SPL Abdominal Atlas（Talos, Jakab, Kikinis 2015）の改変版・3D Slicer License（${link}）。研究・教育用で、臨床には使えません。` + ` ${ATLAS.bodyParts3d ? '肝内の血管・胆管・区域' : '肝の区域'}：BodyParts3D, © The Database Center for Life Science licensed under CC Attribution 4.0 International（${ccLink}、変形して使用、${bpLink}）。肺・十二指腸・食道・肋軟骨：同じCTから TotalSegmentator（Wasserthal ほか 2023、Apache-2.0）で抽出。`
+    : `Anatomy: modified from the SPL Abdominal Atlas (Talos, Jakab, Kikinis 2015), 3D Slicer License (${link}). For research and education only; not for clinical use.` + ` ${ATLAS.bodyParts3d ? 'Intrahepatic vessels, bile ducts and segments' : 'Liver segments'}: BodyParts3D, © The Database Center for Life Science licensed under CC Attribution 4.0 International (${ccLink}; deformed; ${bpLink}). Lung, duodenum, oesophagus and costal cartilage: extracted from the same CT with TotalSegmentator (Wasserthal et al. 2023, Apache-2.0).`;
 }
 function applyLanguage() {
   updateDataCredit();
@@ -3951,6 +3952,11 @@ const ATLAS_LOOK = {
   39: [12, 0, 0.2, 'ao', 'cha'], 40: [12, 0, 0.2, 'ao', 'pha'], 41: [12, 0, 0.2, 'ao', 'gda'], 42: [12, 0, 0.2, 'sma', 'sma'], 43: [12, 0, 0.2, 'ao', 'ima'],
   44: [12, 0, 0.2, 'ao', 'lha'], 45: [12, 0, 0.2, 'ao', 'rha'], 46: [12, 0, 0.2, 'ao', 'rra'], 47: [15, 0, 0.15, 'ivc', 'rrv'],
   // SPL に最初から分かれて入っていたラベルを分け直したもの（atlas/split_labels.py）
+  // TotalSegmentator で SPL の元CTから取った構造（atlas/ts_overlay.py）。肺（7）は胸膜の線から奥が多重反射（renderEcho で描く）
+  7: [225, 0, 0, null, 'lungGas'], 8: [42, 0.12, 0, null, 'costalCartilage'],
+  24: [150, 0, 0, 'stomachWall', 'duod'], 25: [32, 0, 0.12, 'bowelWall', 'duod'], 27: [215, 0.82, 0, 'gas', 'duod'],
+  28: [150, 0, 0, 'stomachWall', 'duodBulb'], 29: [32, 0, 0.12, 'bowelWall', 'duodBulb'], 9: [215, 0.82, 0, 'gas', 'duodBulb'],
+  26: [140, 0, 0, 'stomachWall', 'eso'],
   51: [15, 0, 0.15, 'pv', 'smv'], 52: [15, 0, 0.15, 'ivc', 'lrv'], 53: [12, 0, 0.2, 'ao', 'lra'], 54: [64, 0, 0, null, 'psoas'],
   48: [12, 0, 0.2, 'ao', 'iliacArtery'], 49: [15, 0, 0.15, 'ivc', 'iliacVein'], 50: [12, 0, 0.2, 'ao', null]
 };
@@ -4107,6 +4113,7 @@ function atlasSample(x, y, z) {
     return { val: seg === 'S1' ? 96 : 100, shadow: 0, enhance: 0, organKey: seg === 'S1' ? null : ['S2', 'S3', 'S4'].includes(seg) ? 'liverLt' : 'liverRt', segmentKey: seg, fid: seg };
   }
   if (c === 13 || c === 14) return kidneyParenchymaLook(x, y, z, c);
+  if (c === 7) return { val: 225, shadow: 0, enhance: 0, organKey: 'lung', fid: 'lungGas', reverb: true };
   if (c === 10) {
     const seg = atlasLiverSegment(x, y, z);
     return { val: seg === 'S1' ? 96 : 100, shadow: 0, enhance: 0, organKey: seg === 'S1' ? null : ['S2', 'S3', 'S4'].includes(seg) ? 'liverLt' : 'liverRt', segmentKey: seg, fid: seg };
@@ -4729,6 +4736,12 @@ function drawVesselMiniMap() {
 }
 
 const ENHANCE_RUN_SAMPLES = Math.round(2.5 * NUM_SAMPLES / ECHO_DEPTH_CM);
+function lungReverb(dCm, pleuraCm) {
+  if (dCm - pleuraCm < 0.18) return { val: 230, shadow: 0, enhance: 0, organKey: 'lung', fid: 'lungGas' };
+  const n = Math.round(dCm / pleuraCm), off = Math.abs(dCm - n * pleuraCm);
+  const band = n >= 2 && off < 0.12 ? 170 * Math.pow(0.6, n - 2) : 0;
+  return { val: 22 + band, shadow: 0, enhance: 0, organKey: 'lung', fid: 'lungGas' };
+}
 function renderEcho(time) {
   if (!state.frozen) {
     const data = imgData.data, frame = currentProbeFrame(), origin = probeOrigin(), schema = activeSchema();
@@ -4739,13 +4752,16 @@ function renderEcho(time) {
     const sampleStart = performance.now(), rayStep = echoRayStep;
     for (let rIdx = 0; rIdx < NUM_RAYS; rIdx += rayStep) {
       const th = ((rIdx / (NUM_RAYS - 1)) * 2 - 1) * halfAngle;
-      let rayShadow = 0, rayEnhance = 0, runSamples = 0;
+      let rayShadow = 0, rayEnhance = 0, runSamples = 0, pleuraCm = 0;
       for (let sIdx = 0; sIdx < NUM_SAMPLES; sIdx++) {
         const frac = sIdx / (NUM_SAMPLES - 1), dCm = frac * ECHO_DEPTH_CM, [lCm, aCm] = probeRayPoint(dCm, th);
         const wx = origin[0] + frame.ux * lCm + frame.bx * aCm;
         const wy = origin[1] + frame.uy * lCm + frame.by * aCm + respY;
         const wz = origin[2] + frame.uz * lCm + frame.bz * aCm;
-        const s = sampleEchoPoint(origin, frame, lCm, aCm, respY, schema);
+        let s = sampleEchoPoint(origin, frame, lCm, aCm, respY, schema);
+        // 肺：走査線が最初に肺に入った所（胸膜）は明るい線、その奥は胸膜までの距離ごとに薄れていく横線（A ライン）だけになる。
+        if (pleuraCm) s = lungReverb(dCm, pleuraCm);
+        else if (s.reverb && rayShadow < 0.5) { pleuraCm = Math.max(0.5, dCm); }
         if (s.fid && (rIdx & 3) === 0 && (sIdx & 3) === 0 && !(realisticEcho && rayShadow >= 0.5 && s.shadow < 0.5)) {
           const rPx = rMin + frac * (rMax - rMin);
           const acc = findingCentroids.get(s.fid) || { sumX: 0, sumY: 0, count: 0 };

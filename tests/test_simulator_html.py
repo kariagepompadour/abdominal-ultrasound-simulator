@@ -1177,6 +1177,19 @@ class AtlasAnatomyTest(BrowserTestBase):
         self.assertGreaterEqual(counts.get('psoas', {}).get('n', 0), 12)
         self.assertEqual(self.errors, [])
 
+    def test_real_ct_has_lung_duodenum_and_esophagus_from_totalsegmentator(self):
+        # TotalSegmentator で同じCTから取った構造（atlas/ts_overlay.py）
+        self.open_atlas('?anatomy=atlas&schema=off')
+        for view, fid in (('spl_ic', 'lungGas'), ('pan_head', 'duod'), ('vas_pv', 'duodBulb'), ('liver_ao_long', 'eso')):
+            counts = self.page.evaluate(f"() => {{ selectTextbookView('{view}'); return textbookFindingCounts(true); }}")
+            with self.subTest(view=view, fid=fid):
+                self.assertGreaterEqual(counts.get(fid, {}).get('n', 0), 12)
+        # 肺：胸膜の奥は多重反射（胸膜までの距離ごとの横線）だけで、肺の奥の臓器は見えない
+        self.assertEqual(self.page.evaluate("[lungReverb(6, 3).val > 100, lungReverb(4.5, 3).val < 50, lungReverb(3.05, 3).val > 200]"), [True, True, True])
+        classes = self.page.evaluate("() => { const s = new Set(ATLAS.data); return [7, 8, 24, 26, 28].map(c => s.has(c)); }")
+        self.assertEqual(classes, [True, True, True, True, True])
+        self.assertEqual(self.errors, [])
+
     def test_spleen_views_use_a_probe_on_the_left_side_of_the_body(self):
         self.open_atlas()
         self.page.evaluate("selectTextbookView('spl_ic')")

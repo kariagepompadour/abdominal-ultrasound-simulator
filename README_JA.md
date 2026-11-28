@@ -259,6 +259,8 @@ respect to Slicer.
 
 肝内の血管・胆管・肝の区域は **BodyParts3D, © The Database Center for Life Science licensed under CC Attribution 4.0 International**（[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)）から作りました。立体モデルを実CTの肝の形に合わせて変形し、中心線にして、エコーで見える太さを与えています。変更点は [data/bodyparts3d/LICENSE-BODYPARTS3D.txt](data/bodyparts3d/LICENSE-BODYPARTS3D.txt) にあります。DBCLSはこのアプリを確認・推奨していません。
 
+肺・十二指腸・食道・肋軟骨は、同じ SPL アトラスのCTから **[TotalSegmentator](https://github.com/wasserth/TotalSegmentator)**（Apache-2.0。Wasserthal J ほか, *Radiology: Artificial Intelligence* 2023;5(5):e230024）で抽出しました。上腸間膜静脈・左腎の血管・腸腰筋は、SPL アトラスにもともと分かれて入っていたラベルを使っています。ほかの患者のデータは使っていないので、解剖は実在の1人のCTのままです。
+
 ## ライセンス
 
 本体は [MIT License](LICENSE) です。QR生成ライブラリは別の [MITライセンス](vendor/LICENSE-qrcodejs) に従います。解剖データは [3D Slicer License](data/spl-abdominal-atlas/LICENSE-SPL-ABDOMINAL-ATLAS.txt) に、BodyParts3D から作ったデータは [CC BY 4.0](data/bodyparts3d/LICENSE-BODYPARTS3D.txt) に従います。

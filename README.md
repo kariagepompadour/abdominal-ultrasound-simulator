@@ -259,6 +259,8 @@ respect to Slicer.
 
 The intrahepatic vessels, bile ducts and liver segments are derived from **BodyParts3D, © The Database Center for Life Science licensed under CC Attribution 4.0 International** ([CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)). The meshes were deformed to fit the CT liver, reduced to centre lines and given minimum widths for ultrasound; see [data/bodyparts3d/LICENSE-BODYPARTS3D.txt](data/bodyparts3d/LICENSE-BODYPARTS3D.txt) for the changes. DBCLS has not reviewed or endorsed this app.
 
+The lung, duodenum, oesophagus and costal cartilage were extracted from the same SPL atlas CT with **[TotalSegmentator](https://github.com/wasserth/TotalSegmentator)** (Apache-2.0; Wasserthal J et al. TotalSegmentator: robust segmentation of 104 anatomic structures in CT images. *Radiology: Artificial Intelligence* 2023;5(5):e230024), and the SPL atlas already contained the superior mesenteric vein, left renal vessels and psoas, which are now kept separate. No other patient's data is used, so the model stays a single real CT.
+
 ## License
 
 The application is released under the [MIT License](LICENSE). The bundled QR code library has its own [MIT license](vendor/LICENSE-qrcodejs). The anatomy data follow the [3D Slicer License](data/spl-abdominal-atlas/LICENSE-SPL-ABDOMINAL-ATLAS.txt) and, for the BodyParts3D-derived data, [CC BY 4.0](data/bodyparts3d/LICENSE-BODYPARTS3D.txt).
