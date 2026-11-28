@@ -727,8 +727,8 @@ const FINDING_DEFS = {
   medulla: { ja: '腎髄質（錐体：低エコー）', en: 'Renal medulla (pyramids, hypoechoic)', tag: { ja: '髄質', en: 'Medulla' } },
   arcuate: { ja: '弓状動脈（皮質と髄質の境の明るい点）', en: 'Arcuate vessels (bright dots at the corticomedullary junction)', tag: { ja: '弓状動脈', en: 'Arcuate' } },
   psoas: { ja: '腸腰筋', en: 'Iliopsoas muscle', tag: { ja: '腸腰筋', en: 'Psoas' } },
-  renalArtery: { ja: '腎洞内の腎動脈', en: 'Renal artery in the sinus', tag: { ja: '腎動脈', en: 'Renal a.' } },
-  renalVein: { ja: '腎洞内の腎静脈', en: 'Renal vein in the sinus', tag: { ja: '腎静脈', en: 'Renal v.' } },
+  renalArtery: { ja: '腎洞内の腎動脈', en: 'Renal artery in the sinus', tag: { ja: '腎動脈', en: 'Renal a.' }, any: ['renalArtery', 'rra', 'lra'] },
+  renalVein: { ja: '腎洞内の腎静脈', en: 'Renal vein in the sinus', tag: { ja: '腎静脈', en: 'Renal v.' }, any: ['renalVein', 'rrv', 'lrv'] },
   bowelGas: { ja: '消化管ガス像', en: 'Bowel gas', tag: { ja: 'ガス', en: 'Gas' } },
   pancTail: { ja: '膵尾部', en: 'Pancreatic tail', tag: { ja: '膵尾部', en: 'Panc. tail' }, any: ['pancTail', 'pancreas'] },
   chd: { ja: '総肝管', en: 'Common hepatic duct', tag: { ja: '総肝管', en: 'CHD' } },
@@ -3949,11 +3949,13 @@ const ATLAS_LOOK = {
   30: [12, 0, 0.25, 'ao', 'ao'], 31: [11, 0, 0.32, 'ivc', 'ivc'], 32: [15, 0, 0.15, 'pv', 'pv'], 33: [15, 0, 0.15, 'sv', 'sv'],
   34: [15, 0, 0.15, 'hv', 'rhv'], 35: [15, 0, 0.15, 'hv', 'lhv'], 36: [12, 0, 0.2, 'ao', 'ce'], 37: [12, 0, 0.2, 'ao', 'sa'], 38: [12, 0, 0.2, 'ao', 'lga'],
   39: [12, 0, 0.2, 'ao', 'cha'], 40: [12, 0, 0.2, 'ao', 'pha'], 41: [12, 0, 0.2, 'ao', 'gda'], 42: [12, 0, 0.2, 'sma', 'sma'], 43: [12, 0, 0.2, 'ao', 'ima'],
-  44: [12, 0, 0.2, 'ao', 'lha'], 45: [12, 0, 0.2, 'ao', 'rha'], 46: [12, 0, 0.2, 'ao', 'renalArtery'], 47: [15, 0, 0.15, 'ivc', 'renalVein'],
+  44: [12, 0, 0.2, 'ao', 'lha'], 45: [12, 0, 0.2, 'ao', 'rha'], 46: [12, 0, 0.2, 'ao', 'rra'], 47: [15, 0, 0.15, 'ivc', 'rrv'],
+  // SPL に最初から分かれて入っていたラベルを分け直したもの（atlas/split_labels.py）
+  51: [15, 0, 0.15, 'pv', 'smv'], 52: [15, 0, 0.15, 'ivc', 'lrv'], 53: [12, 0, 0.2, 'ao', 'lra'], 54: [64, 0, 0, null, 'psoas'],
   48: [12, 0, 0.2, 'ao', 'iliacArtery'], 49: [15, 0, 0.15, 'ivc', 'iliacVein'], 50: [12, 0, 0.2, 'ao', null]
 };
 // 血管は境界の1層を壁として明るくする（門脈・動脈は明るく厚く、静脈は薄く）
-const ATLAS_WALL = { 30: 170, 32: 190, 33: 150, 36: 170, 37: 170, 38: 170, 39: 170, 40: 170, 41: 170, 42: 170, 43: 170, 44: 170, 45: 170, 46: 170, 48: 170, 50: 170, 18: 150 };
+const ATLAS_WALL = { 30: 170, 32: 190, 33: 150, 36: 170, 37: 170, 38: 170, 39: 170, 40: 170, 41: 170, 42: 170, 43: 170, 44: 170, 45: 170, 46: 170, 53: 170, 51: 150, 48: 170, 50: 170, 18: 150 };
 // 実CTの肝には、肝内の門脈枝・中肝静脈・胆管・肝円索のラベルがない。教本の断層模式図（p.10–11）の位置関係に合わせ、
 // 実際の肝の形・門脈本幹・右肝静脈・IVC の位置を目印に、肝の中へ中心線を配置した（座標は実CTのモデル座標、cm）。
 // 前区域枝・後区域枝の分岐と枝は、教本③の「腹側へ傾ける」「背側へ傾ける」断面（p.15）の中に置いた。
@@ -4090,7 +4092,7 @@ function atlasSample(x, y, z) {
   const c = atlasClass(x, y, z);
   if (c === 0) return { val: 0, shadow: 0, enhance: 0, organKey: null };
   // 肝内の血管・胆管・肝円索（肝・肝門の脂肪・軟部組織の中だけに描く）
-  if (c === 10 || (c >= 81 && c <= 88) || c === 1 || c === 2 || c === 6 || c === 32 || c === 12) {
+  if (c === 10 || (c >= 81 && c <= 88) || c === 1 || c === 2 || c === 6 || c === 54 || c === 32 || c === 51 || c === 12) {
     const vessel = sampleAtlasVessels(x, y, z, c);
     if (vessel) return vessel;
   }

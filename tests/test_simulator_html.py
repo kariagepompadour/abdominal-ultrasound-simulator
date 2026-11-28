@@ -1154,6 +1154,29 @@ class AtlasAnatomyTest(BrowserTestBase):
         self.assertEqual(self.page.evaluate("ZONE_PROBE_BASES.right_flank.lateral"), True)
         self.assertEqual(self.errors, [])
 
+    def test_real_ct_separates_smv_left_renal_vessels_and_psoas(self):
+        # SPL に最初から分かれて入っているラベル（atlas/split_labels.py で分け直した）
+        self.open_atlas('?anatomy=atlas&schema=off')
+        counts = self.page.evaluate("() => { selectTextbookView('pan_head'); return textbookFindingCounts(true); }")
+        for fid in ('smv', 'sma', 'lrv', 'lra', 'ao'):
+            with self.subTest(fid=fid):
+                self.assertGreaterEqual(counts.get(fid, {}).get('n', 0), 12)
+        # 左腎静脈は大動脈と上腸間膜動脈の間（深さで大動脈より浅く、上腸間膜動脈より深い）
+        self.assertLess(counts['sma']['depth'], counts['lrv']['depth'])
+        self.assertLess(counts['lrv']['depth'], counts['ao']['depth'])
+        # 上腸間膜静脈は門脈より尾側、腸腰筋は右腎の縦走査で腎の背側
+        y = self.page.evaluate("""() => {
+          const { data, NI, NJ, NK, vy, xiphoidK } = ATLAS, ys = { 32: [], 51: [] };
+          for (let k = 0; k < NK; k++) for (let j = 0; j < NJ; j++) for (let i = 0; i < NI; i++) {
+            const c = data[(k * NJ + j) * NI + i]; if (c === 32 || c === 51) ys[c].push((k - xiphoidK) * vy);
+          }
+          const mean = a => a.reduce((s, v) => s + v, 0) / a.length;
+          return [mean(ys[32]), mean(ys[51])]; }""")
+        self.assertLess(y[0] + 2, y[1])
+        counts = self.page.evaluate("() => { selectTextbookView('ren_r_long'); return textbookFindingCounts(true); }")
+        self.assertGreaterEqual(counts.get('psoas', {}).get('n', 0), 12)
+        self.assertEqual(self.errors, [])
+
     def test_spleen_views_use_a_probe_on_the_left_side_of_the_body(self):
         self.open_atlas()
         self.page.evaluate("selectTextbookView('spl_ic')")
